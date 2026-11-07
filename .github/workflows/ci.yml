@@ -44,3 +44,39 @@ jobs:
         run: pnpm build
         env:
           API_INTERNAL_URL: http://api:4000
+
+  migrations:
+    name: Prisma migrate validate (empty Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: techwin
+          POSTGRES_PASSWORD: techwin
+          POSTGRES_DB: techwin_migrate_validate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U techwin -d techwin_migrate_validate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://techwin:techwin@127.0.0.1:5432/techwin_migrate_validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm --filter @techwin/api db:generate
+      - name: Validate full migration history
+        run: pnpm --filter @techwin/api db:migrate:validate

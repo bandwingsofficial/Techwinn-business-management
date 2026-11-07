@@ -28,6 +28,75 @@ Never run restore experiments against production unless executing a real inciden
 - Rolling back **application** code does not revert schema. If a migration already applied, older API binaries may fail against the new schema.
 - Recovery options: restore DB to pre-migration snapshot, or ship a **new forward migration** that fixes the issue.
 
+### Failed migration recovery (Coolify / production)
+
+Prisma blocks further `migrate deploy` while a migration is marked **failed** in `_prisma_migrations`.
+
+**Never** run `prisma migrate reset`, `prisma db push`, or drop/recreate production. **Never** use `migrate resolve --applied` unless every statement in that migration is verified present in the database.
+
+#### 1. Backup
+
+Take a Coolify Postgres backup or `pg_dump` before any repair.
+
+#### 2. Inspect (gate)
+
+```sql
+SELECT migration_name, started_at, finished_at, rolled_back_at, LEFT(logs, 500) AS logs_preview
+FROM "_prisma_migrations"
+WHERE migration_name = '20261104122024_leave' OR migration_name LIKE '%leave%'
+ORDER BY started_at;
+
+SELECT column_name, data_type, character_maximum_length
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'leave_year_configurations'
+  AND column_name = 'name';
+
+SELECT conname
+FROM pg_constraint
+WHERE conname = 'leave_requests_leave_year_configuration_id_fkey';
+```
+
+For the known leave P3018 failure (`column "name" does not exist`): proceed only if `name` is **absent**, the FK is **absent**, and the migration row is failed / not finished. That confirms PostgreSQL rolled the migration transaction back. If either object exists, stop — that is a partial apply and needs a different plan.
+
+#### 3. Deploy fixed migration files
+
+Ship the API image/commit that contains the corrected SQL for `20261104122024_leave` (FK only), `20261104190000_leave_year_configuration_name` (`name VARCHAR(120)`), and `20261107160000_client_phone_normalized` (unique index only — aligns with `schema.prisma`; these migrations were not successfully applied on the stuck production DB).
+
+#### 4. Resolve rolled-back failure, then deploy
+
+Inside the API container (same `DATABASE_URL`):
+
+```bash
+node node_modules/prisma/build/index.js migrate status
+node node_modules/prisma/build/index.js migrate resolve --rolled-back 20261104122024_leave
+node node_modules/prisma/build/index.js migrate deploy
+node node_modules/prisma/build/index.js migrate status
+```
+
+#### 5. Post-verify
+
+```sql
+SELECT column_name, data_type, character_maximum_length
+FROM information_schema.columns
+WHERE table_name = 'leave_year_configurations' AND column_name = 'name';
+
+SELECT conname FROM pg_constraint
+WHERE conname = 'leave_requests_leave_year_configuration_id_fkey';
+```
+
+Confirm `migrate status` is clean, then `GET /api/v1/ready`, login, and leave-module smoke tests.
+
+### Automated migration validation
+
+Against an **empty disposable** database (never production):
+
+```bash
+DATABASE_URL=postgresql://…/empty_db pnpm --filter @techwin/api db:migrate:validate
+```
+
+CI runs the same check on every PR (Postgres service + `db:migrate:validate`).
+
 ## Object storage (S3)
 
 - Employee profile images and WhatsApp media references live in S3 (production default).

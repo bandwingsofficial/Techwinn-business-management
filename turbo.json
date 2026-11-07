@@ -50,6 +50,10 @@
     "db:migrate:status": {
       "cache": false
     },
+    "db:migrate:validate": {
+      "dependsOn": ["db:generate"],
+      "cache": false
+    },
     "db:seed": {
       "dependsOn": ["^build", "db:generate"],
       "cache": false

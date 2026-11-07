@@ -1,8 +1,6 @@
 -- Canonical phone key for duplicate detection (same rules as TS normalizeIndianMobileInput).
 ALTER TABLE "clients" ADD COLUMN "phone_normalized" VARCHAR(16);
 
-CREATE INDEX "clients_organization_id_phone_normalized_idx" ON "clients"("organization_id", "phone_normalized");
-
 UPDATE "clients" c
 SET "phone_normalized" = sub.n
 FROM (
@@ -24,6 +22,7 @@ FROM (
 ) sub
 WHERE c.id = sub.id;
 
+-- Unique index only (matches schema.prisma); a separate non-unique index is redundant.
 CREATE UNIQUE INDEX "clients_organization_id_phone_normalized_key" ON "clients"("organization_id", "phone_normalized");
 
 ALTER TYPE "LeadActivityType" ADD VALUE IF NOT EXISTS 'LEAD_LINKED_TO_CLIENT';

@@ -108,6 +108,8 @@ node node_modules/prisma/build/index.js migrate deploy
 
 Once per release. Never `migrate dev` / `db push` / `migrate reset` on production.
 
+If `migrate deploy` stops with **P3018** (failed migration recorded), do **not** mark it applied blindly. Follow the inspect → `migrate resolve --rolled-back` → `migrate deploy` procedure in [BACKUP-RECOVERY.md](../BACKUP-RECOVERY.md).
+
 ---
 
 ## 4. Web service

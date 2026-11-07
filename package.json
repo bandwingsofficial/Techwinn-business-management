@@ -23,6 +23,7 @@
     "db:generate": "turbo run db:generate --filter=@techwin/api",
     "db:migrate": "turbo run db:migrate --filter=@techwin/api",
     "db:migrate:deploy": "turbo run db:migrate:deploy --filter=@techwin/api",
+    "db:migrate:validate": "turbo run db:migrate:validate --filter=@techwin/api",
     "db:seed": "turbo run db:seed --filter=@techwin/api",
     "db:setup": "turbo run db:setup --filter=@techwin/api",
     "admin:bootstrap": "turbo run admin:bootstrap --filter=@techwin/api --",
