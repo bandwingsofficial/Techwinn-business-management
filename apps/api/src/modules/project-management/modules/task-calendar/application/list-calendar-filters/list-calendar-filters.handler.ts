@@ -23,7 +23,7 @@ export class ListCalendarFiltersHandler {
 
   async execute(input: ListCalendarFiltersQuery): Promise<TaskCalendarFiltersResponse> {
     const effective = await this.dailyTaskAuthz.resolveEffective(input.accessActor);
-    const orgWide = this.dailyTaskAuthz.canManageOrganizationTasks(input.accessActor, effective);
+    const orgWide = this.dailyTaskAuthz.canViewOrganizationTasks(input.accessActor, effective);
 
     const stages = await this.dailyTasks.listWorkflowStages(input.organizationId);
     const empPage = orgWide

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TaskCalendarPage } from '@/features/project-management/task-calendar';
+import { EmployeeTaskCalendarRoute } from '@/features/employee/components/employee-task-calendar-route';
 
 export default function EmployeeTaskCalendarPage() {
   return (
@@ -12,7 +12,7 @@ export default function EmployeeTaskCalendarPage() {
         </div>
       }
     >
-      <TaskCalendarPage dataScope="self" dailyTasksBasePath="/employee/daily-tasks" />
+      <EmployeeTaskCalendarRoute />
     </Suspense>
   );
 }

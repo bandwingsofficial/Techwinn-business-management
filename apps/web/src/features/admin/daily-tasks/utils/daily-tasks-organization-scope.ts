@@ -1,18 +1,29 @@
 import type { PermissionKey } from '@techwin/contracts';
 
-/** Matches backend `ORGANIZATION_TASK_MANAGE_KEYS` for org-wide board/list access. */
-const ORGANIZATION_DAILY_TASK_KEYS: readonly PermissionKey[] = [
+/** Matches backend manage keys for assign/create/update/delete. */
+const ORGANIZATION_DAILY_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
   'tasks.create',
   'tasks.assign',
   'tasks.update',
   'tasks.delete',
 ];
 
+/**
+ * Org-wide task board/calendar view.
+ * Must stay aligned with `DailyTaskAuthorizationService.canViewOrganizationTasks`.
+ * Employee self-service keys keep the account on own-task scope even with `projects.read`.
+ */
 export function canViewOrganizationDailyTasks(
   has: (key: PermissionKey) => boolean,
   hasAny: (...keys: PermissionKey[]) => boolean,
 ): boolean {
-  return hasAny(...ORGANIZATION_DAILY_TASK_KEYS);
+  if (hasAny(...ORGANIZATION_DAILY_TASK_MANAGE_KEYS)) return true;
+  if (!has('tasks.read')) return false;
+  if (hasAny('employees.read', 'leads.read', 'clients.read')) return true;
+  if (hasAny('attendance.view_own', 'leave.requests.read_own', 'leave.balances.read_own')) {
+    return false;
+  }
+  return has('projects.read');
 }
 
 export type DailyTasksDataScope = 'team' | 'own';

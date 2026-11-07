@@ -70,7 +70,7 @@ export class ListCalendarTasksHandler {
   async execute(input: ListCalendarTasksQuery): Promise<TaskCalendarResponse> {
     const { organizationId, clientToday, accessActor, query } = input;
     const effective = await this.dailyTaskAuthz.resolveEffective(accessActor);
-    const orgWide = this.dailyTaskAuthz.canManageOrganizationTasks(accessActor, effective);
+    const orgWide = this.dailyTaskAuthz.canViewOrganizationTasks(accessActor, effective);
 
     const effectiveToday = query.clientToday ?? clientToday;
     const startDate = query.startDate;
@@ -198,7 +198,11 @@ export class ListCalendarTasksHandler {
       select: { id: true },
     });
     if (!employee) {
-      throw new ForbiddenException('No employee profile is linked to this account.');
+      // Self-service calendar requires a linked employee profile. Organization-scoped
+      // viewers never reach this branch (see canViewOrganizationTasks).
+      throw new ForbiddenException(
+        'No employee profile is linked to this account. Link an employee record for self-service task calendar access, or ask an administrator to grant organization task visibility.',
+      );
     }
 
     if (input.query.employeeId && input.query.employeeId !== employee.id) {

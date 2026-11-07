@@ -25,7 +25,7 @@ RUN pnpm --filter @techwin/contracts build \
   && pnpm --filter @techwin/validation build \
   && pnpm --filter @techwin/api db:generate \
   && pnpm --filter @techwin/api build \
-  && pnpm --filter @techwin/api deploy --prod /out
+  && pnpm --filter @techwin/api deploy --prod --legacy /out
 
 FROM node:22-alpine AS runner
 RUN apk add --no-cache openssl libc6-compat \

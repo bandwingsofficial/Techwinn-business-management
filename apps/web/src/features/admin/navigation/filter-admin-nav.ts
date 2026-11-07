@@ -5,6 +5,7 @@ import {
   type AdminNavGroup,
   type AdminNavItem,
 } from './admin-nav-config';
+import { shouldShowNavHref } from './navigation-route-policy';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
 
 export type AdminNavGroupWithAccess = AdminNavGroup;
@@ -20,7 +21,9 @@ export function filterAdminNav(
     const items: AdminNavItem[] = [];
     for (const item of group.items) {
       if (item.kind === 'soon') continue;
-      if (canAccessAppPath(item.href, granted, access)) items.push(item);
+      if (!canAccessAppPath(item.href, granted, access)) continue;
+      if (!shouldShowNavHref(item.href, granted, access)) continue;
+      items.push(item);
     }
     if (items.length > 0) {
       groups.push({ ...group, items });

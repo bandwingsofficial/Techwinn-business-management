@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TaskCalendarResponse } from '@techwin/contracts';
 import { localDateInputValue } from '@/features/admin/daily-tasks/utils/local-date';
+import { describeCrmError } from '@/features/admin/crm/utils/errors';
+import { isAbortError } from '@/shared/lib/abort-error';
 import { fetchTaskCalendar } from '../api/task-calendar.api';
 import type { TaskCalendarPageSearch } from '../schemas/task-calendar.schema';
 import type { TaskCalendarRequestQuery } from '../types/task-calendar.types';
@@ -33,7 +35,7 @@ export function useCalendarTasks(monthKey: string, filters: TaskCalendarPageSear
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchCause, setFetchCause] = useState<FetchCause>('initial');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | false>(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [trackedMonthKey, setTrackedMonthKey] = useState(monthKey);
   if (trackedMonthKey !== monthKey) {
@@ -127,9 +129,9 @@ export function useCalendarTasks(monthKey: string, filters: TaskCalendarPageSear
         lastCompletedRef.current = { monthKey, debouncedSearch, filterSig };
         setIsInitialLoading(false);
       })
-      .catch(() => {
-        if (ac.signal.aborted || seq !== fetchSeqRef.current) return;
-        setError(true);
+      .catch((failure) => {
+        if (ac.signal.aborted || seq !== fetchSeqRef.current || isAbortError(failure)) return;
+        setError(describeCrmError(failure));
         if (!hasSucceededRef.current) {
           setData(null);
         }

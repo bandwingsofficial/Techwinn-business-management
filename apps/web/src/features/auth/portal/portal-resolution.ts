@@ -4,6 +4,7 @@ import {
   type AdminNavGroupWithAccess,
 } from '@/features/admin/navigation/filter-admin-nav';
 import type { AdminNavLink } from '@/features/admin/navigation/admin-nav-config';
+import { prefersOrganizationWorkspace } from '@/features/admin/navigation/navigation-route-policy';
 import {
   canAccessWorkspaceDashboard,
   membershipAccessContext,
@@ -38,15 +39,26 @@ export function defaultDashboardPath(
     if (adminDashboard) return adminDashboard.href;
   }
 
+  const permissionSet = new Set(permissions);
+  const orgWorkspace = prefersOrganizationWorkspace(permissionSet, access);
+
+  // Self-service accounts land on `/employee/*` first. Organization collaborators keep `/admin/*`.
+  if (!orgWorkspace) {
+    const employeeModule = links.find(
+      (item) => item.href.startsWith('/employee/') && item.href !== '/employee/dashboard',
+    );
+    if (employeeModule) return employeeModule.href;
+  }
+
   const adminModule = links.find(
     (item) => item.href.startsWith('/admin/') && item.href !== '/admin/dashboard',
   );
   if (adminModule) return adminModule.href;
 
-  const employeeModule = links.find(
+  const employeeFallback = links.find(
     (item) => item.href.startsWith('/employee/') && item.href !== '/employee/dashboard',
   );
-  if (employeeModule) return employeeModule.href;
+  if (employeeFallback) return employeeFallback.href;
 
   const fallback = links.find((item) => item.href.endsWith('/dashboard'));
   return fallback?.href ?? links[0]?.href ?? '/employee/dashboard';

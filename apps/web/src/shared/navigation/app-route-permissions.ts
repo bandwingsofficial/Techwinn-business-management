@@ -1,8 +1,17 @@
 import type { PermissionKey } from '@techwin/contracts';
+import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import {
   canAccessWorkspaceDashboard,
   type MembershipAccessContext,
 } from '@/features/auth/membership/membership-access';
+
+/** Organization task boards — require org-scope view, not merely `tasks.read` (Employee self-service). */
+const ORGANIZATION_TASK_BOARD_ROUTES: ReadonlySet<string> = new Set([
+  '/admin/daily-tasks',
+  '/admin/task-calendar',
+  '/admin/my-tasks',
+  '/admin/project-tasks',
+]);
 
 /** Unified route → permission map for all authenticated app paths (`/admin` and `/employee`). */
 export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionKey[]>> = {
@@ -12,7 +21,8 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/roles': ['roles.read'],
   '/admin/employees': ['employees.read'],
   '/admin/attendance': ['attendance.view_all', 'attendance.manage_settings'],
-  '/admin/calendar': ['calendar.view', 'calendar.view_all', 'calendar.manage_holidays'],
+  /** Org calendar admin — not the employee self-service `/employee/calendar` (`calendar.view`). */
+  '/admin/calendar': ['calendar.view_all', 'calendar.manage_holidays'],
   '/admin/leave-types': [
     'leave.types.read',
     'leave.types.create',
@@ -118,6 +128,17 @@ export function canAccessAppPath(
   if (access && (path === '/admin' || path === '/admin/dashboard')) {
     if (!canAccessWorkspaceDashboard(access)) return false;
   }
+
+  const matchedBoardRoute = [...ORGANIZATION_TASK_BOARD_ROUTES].find(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+  if (matchedBoardRoute) {
+    return canViewOrganizationDailyTasks(
+      (key) => permissions.has(key),
+      (...keys) => keys.some((key) => permissions.has(key)),
+    );
+  }
+
   const required = permissionsForAppPath(path);
   if (required === null) {
     return (

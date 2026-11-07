@@ -239,7 +239,11 @@ export function TaskCalendarPage({
         <div className="min-w-0 px-3 py-3 sm:px-5">
           {error ? (
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-destructive text-sm">Unable to load the task calendar.</p>
+              <p className="text-destructive text-sm">
+                {typeof error === 'string' && error.length > 0
+                  ? error
+                  : 'Unable to load the task calendar.'}
+              </p>
               <Button type="button" variant="outline" size="sm" onClick={retry}>
                 Retry
               </Button>
@@ -254,7 +258,7 @@ export function TaskCalendarPage({
             cellContentLoading={showGridSkeleton}
             onOpenTask={openDetail}
             onNavigateToDailyKanban={navigateToDailyKanban}
-            showEmptyDayAddTask={resolvedScope !== 'self'}
+            showEmptyDayAddTask={resolvedScope !== 'self' && has('tasks.create')}
           />
           <TaskCalendarStatusLegend />
           {data ? (

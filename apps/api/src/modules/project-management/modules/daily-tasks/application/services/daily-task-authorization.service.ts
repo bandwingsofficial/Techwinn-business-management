@@ -24,6 +24,17 @@ const ORGANIZATION_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
   'tasks.delete',
 ];
 
+/**
+ * Signals that the account collaborates on organization task boards (not self-service).
+ * Do not include `projects.read` alone — the Employee system role also has it for own
+ * project-task visibility, which must stay self-scoped.
+ */
+const ORGANIZATION_TASK_COLLABORATOR_KEYS: readonly PermissionKey[] = [
+  'employees.read',
+  'leads.read',
+  'clients.read',
+];
+
 @Injectable()
 export class DailyTaskAuthorizationService {
   constructor(
@@ -44,16 +55,35 @@ export class DailyTaskAuthorizationService {
     return ORGANIZATION_TASK_MANAGE_KEYS.some((key) => effective.has(key));
   }
 
+  canViewOrganizationTasks(
+    actor: OrgAccessActor,
+    effective: ReadonlySet<PermissionKey>,
+  ): boolean {
+    if (this.canManageOrganizationTasks(actor, effective)) return true;
+    if (!effective.has('tasks.read')) return false;
+    if (ORGANIZATION_TASK_COLLABORATOR_KEYS.some((key) => effective.has(key))) return true;
+    // Project-module collaborators may use projects.read, but Employee self-service
+    // accounts also receive projects.read — keep those on self-scope.
+    if (
+      effective.has('attendance.view_own') ||
+      effective.has('leave.requests.read_own') ||
+      effective.has('leave.balances.read_own')
+    ) {
+      return false;
+    }
+    return effective.has('projects.read');
+  }
+
   async assertOrganizationTaskAccess(actor: OrgAccessActor): Promise<void> {
     const effective = await this.resolveEffective(actor);
-    if (!this.canManageOrganizationTasks(actor, effective)) {
+    if (!this.canViewOrganizationTasks(actor, effective)) {
       throw new DailyTaskForbiddenError('Organization-wide daily task access is not allowed.');
     }
   }
 
   async assertCanReadTask(actor: OrgAccessActor, taskId: string): Promise<void> {
     const effective = await this.resolveEffective(actor);
-    if (this.canManageOrganizationTasks(actor, effective)) return;
+    if (this.canViewOrganizationTasks(actor, effective)) return;
     const assigned = await this.tasks.isTaskAssignedToAdmin(
       actor.organizationId,
       actor.adminId,
