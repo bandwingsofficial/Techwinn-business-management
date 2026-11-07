@@ -1,5 +1,10 @@
 # syntax=docker/dockerfile:1
-# Build context: repository root (`docker compose build` / `docker build -f docker/api/Dockerfile .`)
+# Build context: repository root
+#   docker build -f docker/api/Dockerfile -t techwin-api .
+#
+# pnpm 10: production deploy uses --legacy so workspace packages need not be
+# injected in the lockfile. All workspace deps used by @techwin/api must be
+# copied and built before `pnpm deploy` (catalog, contracts, validation).
 
 FROM node:22-alpine AS base
 ENV PNPM_HOME=/pnpm
@@ -8,20 +13,25 @@ RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 WORKDIR /repo
 
 FROM base AS build
+# Native deps for argon2 (and similar) during install/build only.
 RUN apk add --no-cache python3 make g++ openssl
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY packages/catalog/package.json packages/catalog/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/validation/package.json packages/validation/package.json
 COPY packages/tsconfig packages/tsconfig
 COPY packages/eslint-config packages/eslint-config
 COPY packages/scripts/package.json packages/scripts/package.json
 RUN pnpm install --frozen-lockfile --filter @techwin/api...
+COPY packages/catalog packages/catalog
 COPY packages/contracts packages/contracts
 COPY packages/validation packages/validation
 COPY apps/api apps/api
-RUN pnpm --filter @techwin/contracts build \
+# Shared libraries → Prisma Client → Nest compile → self-contained deploy dir.
+RUN pnpm --filter @techwin/catalog build \
+  && pnpm --filter @techwin/contracts build \
   && pnpm --filter @techwin/validation build \
   && pnpm --filter @techwin/api db:generate \
   && pnpm --filter @techwin/api build \
@@ -33,7 +43,10 @@ RUN apk add --no-cache openssl libc6-compat \
   && adduser -S techwin -G techwin
 WORKDIR /app
 ENV NODE_ENV=production
+# Runtime secrets (DATABASE_URL, JWT_*, AWS_*, etc.) come from the orchestrator.
+# Do not bake ARG/ENV secrets into this image.
 COPY --from=build --chown=techwin:techwin /out/ ./
 USER techwin
 EXPOSE 4000
+# Nest enableShutdownHooks() handles SIGTERM (Prisma + Redis disconnect).
 CMD ["node", "dist/main.js"]

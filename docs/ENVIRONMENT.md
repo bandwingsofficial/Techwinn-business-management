@@ -113,8 +113,10 @@ Used by `docker-compose.yml` for Postgres service — not read by the API proces
 
 | Variable | Purpose |
 |----------|---------|
-| `API_INTERNAL_URL` | Server-side rewrite target for `/api/v1` |
-| `NEXT_PUBLIC_API_BASE_URL` | Browser API base (empty = same-origin) |
+| `API_INTERNAL_URL` | Server-side rewrite target for `/api/v1` (Docker/Coolify **build arg**; internal API URL) |
+| `NEXT_PUBLIC_API_BASE_URL` | Browser API base (empty = same-origin; recommended in production) |
+
+Coolify-oriented checklist: [deployment/environment-variables.md](./deployment/environment-variables.md).
 
 ## Unknown variables
 

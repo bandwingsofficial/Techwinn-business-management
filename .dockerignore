@@ -1,17 +1,41 @@
+# VCS / editor
 .git
 .github
 .cursor
 .vscode
-.tmp
-coverage
-docs
-**/.next
-**/dist
-**/node_modules
-**/*.tsbuildinfo
-apps/api/src/generated
+.idea
+
+# Local env and secrets — never bake into images
 .env
 .env.*
 !.env.example
+**/*.pem
+**/*.key
+
+# Dependencies and build outputs (rebuilt inside Docker)
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+apps/api/src/generated
+
+# Tests, coverage, caches
+coverage
+.tmp
+**/.turbo
+**/playwright-report
+**/test-results
+
+# Docs and non-runtime assets (images do not need them)
+docs
+*.md
+!packages/**/README.md
+
+# Logs and OS junk
 *.log
-README.md
+.DS_Store
+Thumbs.db
+
+# Local helper scripts / temp files
+tmp-*.mjs
+apps/api/tmp-*.mjs

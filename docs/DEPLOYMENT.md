@@ -131,10 +131,11 @@ docker build -f docker/web/Dockerfile -t techwin-web .
 
 API image:
 
-- Multi-stage build, `pnpm deploy --prod` output as non-root user `techwin`
+- Multi-stage build, `pnpm deploy --prod --legacy` output as non-root user `techwin`
+- Builds workspace packages `@techwin/catalog`, `@techwin/contracts`, `@techwin/validation` before deploy
 - `CMD ["node", "dist/main.js"]`
 - Includes Prisma CLI under `node_modules` for `migrate deploy`
-- Does **not** include repo `docs/` (see `.dockerignore`)
+- Does **not** include repo `docs/` or `.env` (see `.dockerignore`)
 
 Local stack:
 
@@ -144,16 +145,11 @@ docker compose exec api node node_modules/prisma/build/index.js migrate deploy
 docker compose exec api node dist/modules/auth/cli/synchronize-super-admin.js
 ```
 
-## Coolify (generic)
+## Coolify (Bluehost VPS)
 
-The repository does not ship Coolify-specific manifests. Typical mapping:
+Step-by-step service settings, domains (`api.techwinn.com` / `crm.techwinn.com`), migrations, and volumes: **[deployment/coolify.md](./deployment/coolify.md)**.
 
-1. **API service** — Dockerfile `docker/api/Dockerfile`, port 4000, env from Coolify secrets.
-2. **Web service** — Dockerfile `docker/web/Dockerfile`, port 3000, build arg `API_INTERNAL_URL=http://<api-service-name>:4000`.
-3. **PostgreSQL & Redis** — Coolify managed databases or linked containers; set `DATABASE_URL` and `REDIS_URL` on the API.
-4. **Pre-deploy command (API)** — `node node_modules/prisma/build/index.js migrate deploy` (once per release).
-5. **Health** — readiness URL on API; web depends on API healthy.
-6. **TLS** — terminate HTTPS at Coolify/proxy; set `WEB_ORIGIN` to the public HTTPS admin URL and `TRUST_PROXY=1` on the API.
+Environment inventory for Coolify secrets: **[deployment/environment-variables.md](./deployment/environment-variables.md)**.
 
 Object storage: configure S3 (or compatible) credentials per [STORAGE.md](./STORAGE.md).
 
