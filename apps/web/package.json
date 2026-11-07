@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
     "typecheck": "next typegen && tsc -p tsconfig.json --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:api-url": "node --experimental-strip-types --test scripts/resolve-api-base-url.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

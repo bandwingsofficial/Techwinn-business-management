@@ -2,7 +2,18 @@
 
 All API runtime configuration is validated at startup by `apps/api/src/config/env.schema.ts` and exposed as `AppConfig`. Validation errors name the variable and rule only — **never secret values**.
 
-Load order: process environment wins; local dev may load repository-root `.env` via `loadEnvFile()` before validation.
+## Single root `.env` (monorepo)
+
+Local development uses **one** environment file at the repository root (copy from [`.env.example`](../.env.example)). Do **not** add `apps/api/.env` or `apps/web/.env`.
+
+| App | How root `.env` is loaded locally |
+|-----|-----------------------------------|
+| API | `loadEnvFile()` in `apps/api/src/config/load-env-file.ts` (also Prisma `prisma.config.ts` / seed CLIs) |
+| Web | `loadRootEnvFile()` at the top of `apps/web/next.config.ts` |
+
+Load order: **process environment always wins**; file values fill gaps only. Production containers omit the file and receive Coolify/runtime env instead.
+
+Coolify split (API vs Web variables): [deployment/environment-variables.md](./deployment/environment-variables.md).
 
 ## Core API
 
@@ -113,8 +124,8 @@ Used by `docker-compose.yml` for Postgres service — not read by the API proces
 
 | Variable | Purpose |
 |----------|---------|
-| `API_INTERNAL_URL` | Server-side rewrite target for `/api/v1` (Docker/Coolify **build arg**; internal API URL) |
-| `NEXT_PUBLIC_API_BASE_URL` | Browser API base (empty = same-origin; recommended in production) |
+| `API_INTERNAL_URL` | Server-only Nest upstream for App Router `/api/v1` proxy (runtime env, not a build arg; Coolify internal hostname in production; rejects loopback when `NODE_ENV=production`) |
+| `NEXT_PUBLIC_API_BASE_URL` | Browser API base (empty = same-origin; required for Strict cookies in production) |
 
 Coolify-oriented checklist: [deployment/environment-variables.md](./deployment/environment-variables.md).
 

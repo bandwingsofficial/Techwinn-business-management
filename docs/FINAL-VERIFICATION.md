@@ -88,7 +88,7 @@ No speculative caching added.
 | Item | Finding |
 |------|---------|
 | Web uses `@techwin/contracts` routes | **Verified** (pattern in features) |
-| Next.js rewrites to API | **Verified** (`API_INTERNAL_URL` in `.env.example`) |
+| Next.js `/api/v1` App Router proxy to API | **Verified** (runtime `API_INTERNAL_URL`; not build-time rewrites) |
 | Web lint / architecture | **REQUIRES USER APPROVAL** to fix (32 lint errors + 2 arch violations) |
 
 ## Documentation deliverables

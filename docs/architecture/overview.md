@@ -33,7 +33,7 @@ The browser keeps the access token in memory only. Reloads restore it through `P
 
 `pnpm db:seed` synchronizes the sole Platform Super Admin from `PLATFORM_ADMIN_*` in `.env`. Those variables are server-only (never `NEXT_PUBLIC_*`) and are not part of HTTP process configuration.
 
-The web app talks to `/api/v1/*` on its own origin. Next.js rewrites those paths to the API so cookies stay first-party (`SameSite=Strict`).
+The web app talks to `/api/v1/*` on its own origin. An App Router handler proxies those paths to Nest via runtime `API_INTERNAL_URL` so cookies stay first-party (`SameSite=Strict`).
 
 ## Docker
 

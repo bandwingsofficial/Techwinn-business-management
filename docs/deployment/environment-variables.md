@@ -4,7 +4,15 @@ Canonical inventory of variables used by the Techwin API and web app. Values are
 
 Also see repository-root [`.env.example`](../../.env.example) and [ENVIRONMENT.md](../ENVIRONMENT.md).
 
-**Never** put secrets in Docker build args, image layers, `NEXT_PUBLIC_*` variables, or committed `.env` files. Configure secrets only in Coolify (or equivalent) runtime environment.
+## Root-level architecture (do not change casually)
+
+| Context | Where configuration lives |
+|---------|---------------------------|
+| Local development | **One** file: repository-root `.env` (from `.env.example`). No `apps/api/.env` or `apps/web/.env`. |
+| Docker image build | **No** `.env` in the image (`.dockerignore`). Builds use defaults / build args only. |
+| Coolify production | Runtime env on **each** application separately — API secrets only on API; web-only vars on Web. |
+
+**Never** put secrets in Docker build args, image layers, `NEXT_PUBLIC_*` variables, or committed `.env` files.
 
 ---
 
@@ -60,8 +68,10 @@ Leave unset until needed (schema keeps them optional):
 | `NODE_ENV` | Runtime | `production` |
 | `PORT` | Runtime | `3000` (Coolify) |
 | `HOSTNAME` | Runtime | `0.0.0.0` |
-| `API_INTERNAL_URL` | **Build arg** | Internal Docker/Coolify URL of the API, e.g. `http://<api-service>:4000`. Compiled into Next rewrites. Not a secret. |
-| `NEXT_PUBLIC_API_BASE_URL` | Optional runtime | Leave **empty** so the browser uses same-origin `/api/v1` (recommended). Never put secrets here. |
+| `API_INTERNAL_URL` | **Runtime (server-only)** | Internal Docker/Coolify origin of the API, e.g. `http://<api-service>:4000`. Used by App Router `/api/v1` proxy. **Not** a build arg (no `next.config` rewrite bake-in). Not a secret; never `NEXT_PUBLIC_*`. Production rejects missing / loopback / non-http(s) / paths. |
+| `NEXT_PUBLIC_API_BASE_URL` | Optional | Leave **empty** so the browser uses same-origin `/api/v1` (required for `SameSite=Strict` cookies). Never put secrets here. |
+
+Production public hosts: Web `https://crm.techwinn.com`, API `https://api2.techwinn.com`.
 
 Do not set `DATABASE_URL`, JWT, or AWS keys on the web service.
 

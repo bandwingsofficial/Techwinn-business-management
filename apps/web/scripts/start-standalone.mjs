@@ -28,6 +28,37 @@ if (!existsSync(publicTarget) && existsSync(path.join(webRoot, 'public'))) {
 const port = process.env.PORT ?? '3000';
 const hostname = process.env.HOSTNAME ?? '0.0.0.0';
 
+// Fail before spawning the server when production proxy upstream is missing/invalid.
+// Mirrors `resolveApiInternalUrl` / `src/instrumentation.ts` (kept inline so this
+// script stays plain JS without TypeScript imports).
+{
+  const raw = (process.env.API_INTERNAL_URL ?? '').trim().replace(/\/+$/, '');
+  if (!raw) {
+    console.error(
+      'API_INTERNAL_URL is required in production. Set it to the NestJS service URL on the Docker/Coolify network (e.g. http://<api-hostname>:4000).',
+    );
+    process.exit(1);
+  }
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    console.error(`API_INTERNAL_URL must be a valid absolute URL (got "${raw}").`);
+    process.exit(1);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    console.error(`API_INTERNAL_URL must use http: or https: (got "${parsed.protocol}").`);
+    process.exit(1);
+  }
+  const host = parsed.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1') {
+    console.error(
+      `API_INTERNAL_URL must not use a loopback host in production (got "${host}").`,
+    );
+    process.exit(1);
+  }
+}
+
 const child = spawn(process.execPath, [serverEntry], {
   cwd: standaloneRoot,
   env: { ...process.env, PORT: port, HOSTNAME: hostname, NODE_ENV: 'production' },

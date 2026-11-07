@@ -1,4 +1,7 @@
-# Local / self-hosted stack. Copy `.env.example` to `.env` before starting.
+# Local / self-hosted stack. Copy root `.env.example` → root `.env` only
+# (never apps/api/.env or apps/web/.env). Image builds ignore `.env` via
+# .dockerignore; the API service reads runtime env from Compose `env_file` /
+# `environment`, and Web gets API_INTERNAL_URL as a build arg.
 # PostgreSQL and Redis are not published on the host: containers talk over the
 # compose network. For host-based `pnpm dev`, run Postgres/Redis locally or
 # temporarily add `ports` under those services.
@@ -97,12 +100,14 @@ services:
     build:
       context: .
       dockerfile: docker/web/Dockerfile
-      args:
-        API_INTERNAL_URL: http://api:4000
     environment:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      # Runtime proxy target for App Router `/api/v1/*` (not a browser/public URL).
+      API_INTERNAL_URL: http://api:4000
+      # Keep empty so the browser uses same-origin `/api/v1` (recommended).
+      NEXT_PUBLIC_API_BASE_URL: ''
     ports:
       - '${WEB_PORT:-3000}:3000'
     depends_on:

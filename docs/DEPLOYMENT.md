@@ -147,7 +147,7 @@ docker compose exec api node dist/modules/auth/cli/synchronize-super-admin.js
 
 ## Coolify (Bluehost VPS)
 
-Step-by-step service settings, domains (`api.techwinn.com` / `crm.techwinn.com`), migrations, and volumes: **[deployment/coolify.md](./deployment/coolify.md)**.
+Step-by-step service settings, domains (`api2.techwinn.com` / `crm.techwinn.com`), migrations, and volumes: **[deployment/coolify.md](./deployment/coolify.md)**.
 
 Environment inventory for Coolify secrets: **[deployment/environment-variables.md](./deployment/environment-variables.md)**.
 

@@ -43,8 +43,8 @@ RUN apk add --no-cache openssl libc6-compat \
   && adduser -S techwin -G techwin
 WORKDIR /app
 ENV NODE_ENV=production
-# Runtime secrets (DATABASE_URL, JWT_*, AWS_*, etc.) come from the orchestrator.
-# Do not bake ARG/ENV secrets into this image.
+# Runtime secrets (DATABASE_URL, JWT_*, AWS_*, etc.) come from the orchestrator
+# (Coolify / Compose). Root `.env` is excluded by .dockerignore and is never COPY'd.
 COPY --from=build --chown=techwin:techwin /out/ ./
 USER techwin
 EXPOSE 4000

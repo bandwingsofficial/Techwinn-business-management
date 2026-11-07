@@ -1,34 +1,53 @@
 # Coolify deployment (Bluehost VPS)
 
-Production-oriented runbook for deploying Techwin independently as **API** and **Web** services on Coolify. Domains below match the intended public hosts; adjust if your DNS differs.
+Production-oriented runbook for deploying Techwin independently as **API** and **Web** services on Coolify.
 
 Repository: `bandwingsofficial/Techwinn-business-management`  
 Branch: `main`
+
+| Public surface | Domain |
+|----------------|--------|
+| API | `https://api2.techwinn.com` |
+| Web / CRM | `https://crm.techwinn.com` |
 
 Related: [DEPLOYMENT.md](../DEPLOYMENT.md), [environment-variables.md](./environment-variables.md), [BACKUP-RECOVERY.md](../BACKUP-RECOVERY.md).
 
 ---
 
-## 1. Prerequisites
+## Frontend ↔ API communication (required reading)
 
-1. Coolify installed on the VPS (Docker already required).
-2. GitHub app / deploy key connected so Coolify can clone the private or public repo.
-3. DNS:
-   - `api.techwinn.com` → VPS / Coolify proxy
-   - `crm.techwinn.com` → VPS / Coolify proxy
-4. AWS S3 bucket + IAM user for production object storage.
-5. Persistent Coolify resources for **PostgreSQL** and **Redis** (do not delete volumes).
+| Path | URL |
+|------|-----|
+| Browser → Web | `https://crm.techwinn.com/api/v1/...` (same-origin) |
+| Web container → API | Runtime `API_INTERNAL_URL` + `/api/v1/...` (Coolify internal hostname) |
+| Public API (health, webhooks, optional direct clients) | `https://api2.techwinn.com/api/v1/...` |
+
+- Leave **`NEXT_PUBLIC_API_BASE_URL` empty** so the browser never talks cross-origin to `api2` (preserves `SameSite=Strict` cookies + CSRF).
+- Set **`API_INTERNAL_URL`** on the **Web** service at **runtime** to the Coolify-internal API URL (not localhost). Do not invent the hostname — copy it from Coolify’s API service networking panel.
+- Set **`WEB_ORIGIN=https://crm.techwinn.com`** on the **API** service (CORS + origin checks).
+
+Local development uses a **single repository-root `.env`**. Production does **not** use that file.
 
 ---
 
-## 2. Create PostgreSQL and Redis in Coolify
+## 1. Prerequisites
 
-1. Create a **PostgreSQL** database resource (16+; 18 is fine if offered).
-2. Create a **Redis** resource (7.x). Prefer AOF/persistence if Coolify exposes the option.
-3. **Do not** publish Postgres or Redis on the public internet. Keep them on Coolify’s internal network.
-4. From each resource’s Coolify UI, copy the **internal connection URL** Coolify shows (hostnames are Coolify-generated — do not invent them). Typical patterns look like service names on an internal Docker network; always paste the value Coolify displays into `DATABASE_URL` / `REDIS_URL`.
+1. Coolify + Docker on the VPS.
+2. GitHub connected for deploys.
+3. DNS:
+   - `api2.techwinn.com` → VPS / Coolify proxy
+   - `crm.techwinn.com` → VPS / Coolify proxy
+4. AWS S3 + IAM for production storage.
+5. Persistent Coolify **PostgreSQL** and **Redis** (never delete volumes).
 
-Suggested API pool size on a ~2 vCPU / ~3.8 GB VPS with one API replica: `DATABASE_POOL_MAX=5`.
+---
+
+## 2. PostgreSQL and Redis
+
+1. Create PostgreSQL (16–18) and Redis 7 in Coolify.
+2. Keep them **internal** (not public).
+3. Paste Coolify’s displayed internal URLs into the API’s `DATABASE_URL` and `REDIS_URL`.
+4. Suggested pool on ~2 vCPU / ~3.8 GB with one API replica: `DATABASE_POOL_MAX=5`.
 
 ---
 
@@ -39,14 +58,12 @@ Suggested API pool size on a ~2 vCPU / ~3.8 GB VPS with one API replica: `DATABA
 | Repository | `bandwingsofficial/Techwinn-business-management` |
 | Branch | `main` |
 | Build Pack | Dockerfile |
-| Base Directory | `/` (repository root) |
+| Base Directory | `/` |
 | Dockerfile | `docker/api/Dockerfile` |
 | Exposed Port | `4000` |
-| Domain | `https://api.techwinn.com` |
+| Domain | `https://api2.techwinn.com` |
 
-### Environment (API)
-
-Set in Coolify (examples — use your real secrets):
+### Environment (API only)
 
 ```text
 NODE_ENV=production
@@ -74,7 +91,7 @@ AWS_S3_BUCKET=…
 DISTRIBUTED_LOCK_STRICT=true
 ```
 
-Optional WhatsApp / SMTP variables: see [environment-variables.md](./environment-variables.md).
+Optional WhatsApp / SMTP: see [environment-variables.md](./environment-variables.md).
 
 ### Health checks (API)
 
@@ -83,24 +100,13 @@ Optional WhatsApp / SMTP variables: see [environment-variables.md](./environment
 | Liveness | `GET /api/v1/health` |
 | Readiness | `GET /api/v1/ready` |
 
-Configure Coolify healthcheck to readiness if the UI allows a path; otherwise use `/api/v1/health` for process liveness and rely on `/ready` during smoke tests after deploy.
-
-### Migrations (controlled step — not image build)
-
-After a successful API image build, **before** or **immediately as** traffic cuts over to a release that needs new schema:
+### Migrations (not during image build)
 
 ```bash
-# One-off / pre-deploy command inside the API container (Coolify “Execute command” or pre-deploy hook):
 node node_modules/prisma/build/index.js migrate deploy
 ```
 
-Rules:
-
-- Use **`prisma migrate deploy` only** (never `migrate dev`, never `db push`, never `migrate reset` on production).
-- Run **once per release**, not on every replica boot.
-- If migrate fails, **stop the rollout**.
-
-Prisma Client is generated at **image build** time; migrations are applied at **deploy** time against runtime `DATABASE_URL`.
+Once per release. Never `migrate dev` / `db push` / `migrate reset` on production.
 
 ---
 
@@ -116,85 +122,60 @@ Prisma Client is generated at **image build** time; migrations are applied at **
 | Exposed Port | `3000` |
 | Domain | `https://crm.techwinn.com` |
 
-### Build argument
-
-| Arg | Value |
-|-----|--------|
-| `API_INTERNAL_URL` | Internal HTTP URL of the API service Coolify created, e.g. `http://<api-container-or-service-name>:4000` |
-
-Copy the hostname from Coolify’s API service networking panel. Wrong hostnames break `/api/v1` rewrites (login/CSRF will fail).
-
-### Runtime environment (Web)
+### Runtime environment (Web only)
 
 ```text
 NODE_ENV=production
 PORT=3000
 HOSTNAME=0.0.0.0
+API_INTERNAL_URL=http://<coolify-api-service-hostname>:4000
 NEXT_PUBLIC_API_BASE_URL=
 ```
 
-Leave `NEXT_PUBLIC_API_BASE_URL` empty so browsers call same-origin `/api/v1` (proxied to the API).
+`API_INTERNAL_URL` is **server-only** (App Router `/api/v1` proxy at **runtime**).
+
+- Set it as a Coolify **runtime** environment variable — **not** a Docker build argument.
+- It is **not** compiled into `next.config` rewrites (rewrites are intentionally unused so the hostname is not frozen at image build time).
+- It is **not** a `NEXT_PUBLIC_*` value and never appears in browser bundles.
+- Do **not** use `localhost` / `127.0.0.1` (production refuses loopback).
+- Do **not** use the public `https://api2.techwinn.com` URL unless you intentionally want the web container to egress via the public network.
+- Missing or invalid values fail process start (`instrumentation`) and return `503 PROXY_MISCONFIGURED` from the proxy.
 
 ### Health check (Web)
 
-`GET /login` (or `/`) on port 3000.
+`GET /login` on port 3000.
 
 ---
 
-## 5. SSL and reverse proxy
+## 5. SSL and proxy
 
-- Attach domains in Coolify; enable Let’s Encrypt (or your certificate provider).
-- Terminate TLS at Coolify/Traefik.
-- API must have `TRUST_PROXY=1` (or equivalent hop count) so client IPs and secure cookies work.
-- `WEB_ORIGIN` must be the public HTTPS CRM origin.
+- Attach domains; enable TLS at Coolify.
+- API: `TRUST_PROXY=1`.
+- API: `WEB_ORIGIN=https://crm.techwinn.com`.
 
 ---
 
 ## 6. Deployment order
 
-1. Build API image.
-2. Run `migrate deploy` once against production DB.
-3. Roll out API (restart / new container).
-4. Verify `https://api.techwinn.com/api/v1/ready`.
-5. Build web with correct `API_INTERNAL_URL`.
-6. Roll out web; verify `https://crm.techwinn.com/login`.
-7. Smoke: login, one CRM read, one task calendar read.
+1. Build/roll API → run `migrate deploy` once → verify `https://api2.techwinn.com/api/v1/ready`.
+2. Set Web **runtime** `API_INTERNAL_URL` to the internal API host → roll Web (rebuild only if the web image itself changed; hostname changes do not require a rebuild).
+3. Verify `https://crm.techwinn.com/login`, login, and a CRM/task page load.
 
 ### Rollback
 
-1. Redeploy previous **API** and **web** image tags in Coolify.
-2. Schema: Prisma does not auto-down-migrate — restore Postgres from backup or ship a forward fix migration ([BACKUP-RECOVERY.md](../BACKUP-RECOVERY.md)).
+Redeploy previous image tags. Schema: restore DB backup or ship a forward fix migration ([BACKUP-RECOVERY.md](../BACKUP-RECOVERY.md)).
 
 ---
 
 ## 7. Data durability
 
-| Data | Persistence |
-|------|-------------|
-| PostgreSQL | Coolify volume / managed DB — **never** delete the volume during cleanup |
-| Redis | Volume or managed Redis; business data is in Postgres (Redis may be cold after recreate) |
-| S3 | Outside the VPS — configure bucket versioning separately |
-| Secrets | Coolify env store / password manager |
-
-Container recreation and image updates must not wipe Postgres volumes.
+Postgres and Redis volumes must survive redeploys. S3 lives outside the VPS. Never delete production volumes during cleanup.
 
 ---
 
-## 8. Backups
+## 8. Workspace / Docker notes
 
-Configure outside the app:
-
-- Daily Postgres backups + restore test quarterly
-- S3 versioning
-- Documented secret escrow for JWT / TOTP / WhatsApp encryption keys
-
-See [BACKUP-RECOVERY.md](../BACKUP-RECOVERY.md).
-
----
-
-## 9. Workspace / Docker build notes
-
-- Build context is always the **repo root** (Coolify Base Directory `/`).
-- API image runs `pnpm deploy --prod --legacy` and must include workspace packages **catalog**, **contracts**, and **validation** (see `docker/api/Dockerfile`).
-- Web image builds Next.js `output: 'standalone'` and includes the same shared packages.
-- Images do not contain `.env` files; `.dockerignore` excludes them.
+- Build context: repo root.
+- API image: `pnpm deploy --prod --legacy` with catalog/contracts/validation.
+- Web image: Next standalone; `/api/v1` proxied at **runtime**.
+- Images never contain `.env`.
