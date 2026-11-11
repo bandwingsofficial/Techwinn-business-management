@@ -32,6 +32,11 @@ export class AttendanceAuthorizationService {
   }
 
   async requireEmployeeId(actor: OrgAccessActor): Promise<string> {
+    if (actor.isPlatformSuperAdmin) {
+      throw new AttendanceEmployeeProfileNotLinkedError(
+        'Employee self-service attendance is not available for platform Super Admin accounts. Use Attendance under Human Resources instead.',
+      );
+    }
     const employeeId = await this.attendance.resolveEmployeeId(actor.organizationId, actor.adminId);
     if (!employeeId) {
       throw new AttendanceEmployeeProfileNotLinkedError();

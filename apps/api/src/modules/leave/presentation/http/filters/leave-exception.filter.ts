@@ -23,6 +23,9 @@ export class LeaveExceptionFilter implements ExceptionFilter<LeaveError> {
     } else if (error.code === 'LEAVE_FORBIDDEN') {
       status = HttpStatus.FORBIDDEN;
       code = API_ERROR_CODES.FORBIDDEN;
+    } else if (error.code === 'LEAVE_EMPLOYEE_PROFILE_NOT_LINKED') {
+      status = HttpStatus.FORBIDDEN;
+      code = API_ERROR_CODES.EMPLOYEE_PROFILE_NOT_LINKED;
     } else if (error.code === 'LEAVE_CONFLICT') {
       status = HttpStatus.CONFLICT;
       code = API_ERROR_CODES.BAD_REQUEST;

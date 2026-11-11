@@ -16,6 +16,7 @@ import {
 import { useAttendanceDeviceKey } from '@/features/attendance/hooks/use-attendance-device-key';
 import { addDaysToDateKey } from '@/features/attendance/utils/time';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { canUseEmployeeSelfService } from '@/features/auth/membership/membership-access';
 import { isAbortError } from '@/shared/lib/abort-error';
 import {
   describeAttendanceError,
@@ -42,7 +43,8 @@ async function retryAfterAccessRefresh<T>(
 
 export function useEmployeeAttendancePage() {
   const toast = useAdminToast();
-  const { refresh: refreshPermissions } = usePermissions();
+  const { refresh: refreshPermissions, navAccess } = usePermissions();
+  const selfServiceEligible = canUseEmployeeSelfService(navAccess);
   const deviceKey = useAttendanceDeviceKey();
 
   const [today, setToday] = useState<AttendanceMyTodayResponse | null>(null);
@@ -91,6 +93,12 @@ export function useEmployeeAttendancePage() {
   }, [filterDate, filterFrom, filterTo, orgTodayKey, page, pageSize, statusFilter]);
 
   const loadToday = useCallback(async (signal?: AbortSignal, opts?: { silent?: boolean }) => {
+    if (!selfServiceEligible) {
+      setToday(null);
+      setTodayError(null);
+      setTodayLoading(false);
+      return;
+    }
     setTodayError(null);
     if (!opts?.silent) setTodayLoading(true);
     try {
@@ -107,9 +115,15 @@ export function useEmployeeAttendancePage() {
     } finally {
       if (!signal?.aborted) setTodayLoading(false);
     }
-  }, [refreshPermissions]);
+  }, [refreshPermissions, selfServiceEligible]);
 
   const loadHistory = useCallback(async (signal?: AbortSignal) => {
+    if (!selfServiceEligible) {
+      setHistory(null);
+      setHistoryError(null);
+      setHistoryLoading(false);
+      return;
+    }
     setHistoryError(null);
     setHistoryLoading(true);
     try {
@@ -125,7 +139,7 @@ export function useEmployeeAttendancePage() {
     } finally {
       if (!signal?.aborted) setHistoryLoading(false);
     }
-  }, [historyQuery, refreshPermissions]);
+  }, [historyQuery, refreshPermissions, selfServiceEligible]);
 
   useEffect(() => {
     const controller = new AbortController();

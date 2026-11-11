@@ -22,6 +22,16 @@ export class LeaveForbiddenError extends LeaveError {
   }
 }
 
+/** Self-service leave requires an active linked employee profile (not platform Super Admin). */
+export class LeaveEmployeeProfileNotLinkedError extends LeaveError {
+  constructor(
+    message = 'No active employee profile is linked to your account. Ask an administrator to link your user to an employee record before using leave self-service.',
+  ) {
+    super(message, 'LEAVE_EMPLOYEE_PROFILE_NOT_LINKED');
+    this.name = 'LeaveEmployeeProfileNotLinkedError';
+  }
+}
+
 export class LeaveConflictError extends LeaveError {
   constructor(message: string) {
     super(message, 'LEAVE_CONFLICT');

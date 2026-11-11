@@ -1,4 +1,9 @@
-import type { MyOrganizationRole, PermissionKey, PlatformAdminProfile } from '@techwin/contracts';
+import type {
+  MyOrganizationRole,
+  MySessionEmployeeSummary,
+  PermissionKey,
+  PlatformAdminProfile,
+} from '@techwin/contracts';
 import {
   filterAdminNav,
   type AdminNavGroupWithAccess,
@@ -29,9 +34,14 @@ export function defaultDashboardPath(
   input: {
     readonly admin: PlatformAdminProfile;
     readonly roles: readonly MyOrganizationRole[];
+    readonly sessionEmployee?: MySessionEmployeeSummary | null;
   },
 ): string {
-  const access = membershipAccessContext(input.admin, input.roles);
+  const access = membershipAccessContext(
+    input.admin,
+    input.roles,
+    input.sessionEmployee ?? null,
+  );
   const links = navLinks(filterAdminNav(permissions, access));
 
   if (canAccessWorkspaceDashboard(access)) {
@@ -87,11 +97,16 @@ export function resolvePostAuthRedirect(input: {
   readonly admin: PlatformAdminProfile;
   readonly permissions: readonly PermissionKey[];
   readonly roles: readonly MyOrganizationRole[];
+  readonly sessionEmployee?: MySessionEmployeeSummary | null;
   readonly returnTo?: string | null;
 }): string {
   const portal = resolvePortalKind(input.admin, input.permissions, input.roles);
   const permissionSet = new Set(input.permissions);
-  const access = membershipAccessContext(input.admin, input.roles);
+  const access = membershipAccessContext(
+    input.admin,
+    input.roles,
+    input.sessionEmployee ?? null,
+  );
   const safeReturn = sanitizeReturnPath(input.returnTo, portal, permissionSet, access);
   return safeReturn ?? defaultDashboardPath(portal, input.permissions, input);
 }

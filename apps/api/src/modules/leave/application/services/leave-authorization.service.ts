@@ -4,7 +4,10 @@ import {
   PermissionCheckerService,
   type OrgAccessActor,
 } from '../../../org-access/index.js';
-import { LeaveForbiddenError } from '../../domain/errors/leave.errors.js';
+import {
+  LeaveEmployeeProfileNotLinkedError,
+  LeaveForbiddenError,
+} from '../../domain/errors/leave.errors.js';
 import {
   LEAVE_REPOSITORY,
   type LeaveRepository,
@@ -29,10 +32,19 @@ export class LeaveAuthorizationService {
     throw new LeaveForbiddenError();
   }
 
+  /**
+   * Resolves the actor's own employee id for self-service leave endpoints.
+   * Platform Super Admins use HR admin modules — they are not employee self-service actors.
+   */
   async requireEmployeeId(actor: OrgAccessActor): Promise<string> {
+    if (actor.isPlatformSuperAdmin) {
+      throw new LeaveEmployeeProfileNotLinkedError(
+        'Employee self-service leave is not available for platform Super Admin accounts. Use Leave Management under Human Resources instead.',
+      );
+    }
     const employeeId = await this.leave.resolveEmployeeId(actor.organizationId, actor.adminId);
     if (!employeeId) {
-      throw new LeaveForbiddenError('No active employee profile is linked to your account.');
+      throw new LeaveEmployeeProfileNotLinkedError();
     }
     return employeeId;
   }

@@ -17,7 +17,8 @@
     "test:attendance-errors": "node --experimental-strip-types --test scripts/attendance-errors.test.mjs",
     "test:finalize-sign-in": "node --experimental-strip-types --test scripts/finalize-sign-in.test.mjs",
     "test:api-client-refresh": "node --experimental-strip-types --test scripts/api-client-refresh.test.mjs",
-    "test:auth-lifecycle": "pnpm run test:finalize-sign-in && pnpm run test:api-client-refresh && pnpm run test:attendance-errors && pnpm run test:proxy"
+    "test:self-service-access": "node --experimental-strip-types --test scripts/self-service-access.test.mjs",
+    "test:auth-lifecycle": "pnpm run test:finalize-sign-in && pnpm run test:api-client-refresh && pnpm run test:attendance-errors && pnpm run test:self-service-access && pnpm run test:proxy"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

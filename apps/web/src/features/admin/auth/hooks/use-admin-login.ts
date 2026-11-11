@@ -33,6 +33,7 @@ export function useAdminLogin() {
           admin: result.admin,
           permissions: bootstrap?.permissions ?? [],
           roles: bootstrap?.roles ?? [],
+          sessionEmployee: bootstrap?.sessionEmployee ?? null,
           returnTo: searchParams.get('returnTo'),
         });
         router.replace(destination);

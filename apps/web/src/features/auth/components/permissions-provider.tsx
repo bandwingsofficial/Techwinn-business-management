@@ -202,7 +202,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     const hasAny = (...keys: PermissionKey[]) => keys.some((key) => permissionSet.has(key));
     const hasAll = (...keys: PermissionKey[]) => keys.every((key) => permissionSet.has(key));
     const portal = resolvePortalKind(admin, permissions, roles);
-    const navAccess = membershipAccessContext(admin, roles);
+    const navAccess = membershipAccessContext(admin, roles, sessionEmployee);
     return {
       portal,
       permissions,
@@ -215,7 +215,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       has,
       hasAny,
       hasAll,
-      defaultDashboard: defaultDashboardPath(portal, permissions, { admin, roles }),
+      defaultDashboard: defaultDashboardPath(portal, permissions, {
+        admin,
+        roles,
+        sessionEmployee,
+      }),
       refresh: async () => {
         invalidateMyPermissionsCache();
         const generation = ++loadGenerationRef.current;

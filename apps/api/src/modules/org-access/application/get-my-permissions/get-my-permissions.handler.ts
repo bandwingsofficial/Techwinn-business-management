@@ -58,7 +58,12 @@ export class GetMyPermissionsHandler {
     adminId: string,
   ): Promise<MySessionEmployeeSummary | null> {
     const row = await this.prisma.employee.findFirst({
-      where: { organizationId, platformAdminId: adminId },
+      where: {
+        organizationId,
+        platformAdminId: adminId,
+        employmentStatus: { in: ['ACTIVE', 'ON_LEAVE'] },
+        deactivatedAt: null,
+      },
       select: {
         id: true,
         displayName: true,

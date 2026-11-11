@@ -39,6 +39,7 @@ export function useTotpVerification() {
             admin: session.admin,
             permissions: bootstrap?.permissions ?? [],
             roles: bootstrap?.roles ?? [],
+            sessionEmployee: bootstrap?.sessionEmployee ?? null,
           }),
         );
       } catch (failure) {

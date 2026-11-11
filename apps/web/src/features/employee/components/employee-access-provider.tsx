@@ -13,7 +13,10 @@ export type EmployeeNavItem = {
   readonly label: string;
 };
 
-export function filterEmployeeNav(permissions: readonly PermissionKey[]): EmployeeNavItem[] {
+export function filterEmployeeNav(
+  permissions: readonly PermissionKey[],
+  access?: Parameters<typeof canAccessEmployeePath>[2],
+): EmployeeNavItem[] {
   const granted = new Set(permissions);
   const items: EmployeeNavItem[] = [
     { href: '/employee/dashboard', label: 'Dashboard' },
@@ -23,21 +26,24 @@ export function filterEmployeeNav(permissions: readonly PermissionKey[]): Employ
     { href: '/employee/calendar', label: 'Calendar' },
     { href: '/employee/leave', label: 'Leave' },
   ];
-  return items.filter((item) => canAccessEmployeePath(item.href, granted));
+  return items.filter((item) => canAccessEmployeePath(item.href, granted, access));
 }
 
 export function EmployeeAccessProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { permissions, permissionSet } = usePermissions();
+  const { permissions, permissionSet, navAccess, defaultDashboard } = usePermissions();
 
-  const navItems = useMemo(() => filterEmployeeNav(permissions), [permissions]);
+  const navItems = useMemo(
+    () => filterEmployeeNav(permissions, navAccess),
+    [navAccess, permissions],
+  );
 
   const redirectTarget = useMemo(() => {
-    if (canAccessEmployeePath(pathname, permissionSet)) return null;
-    const fallback = navItems[0]?.href ?? '/employee/dashboard';
+    if (canAccessEmployeePath(pathname, permissionSet, navAccess)) return null;
+    const fallback = navItems[0]?.href ?? defaultDashboard;
     return pathname !== fallback ? fallback : null;
-  }, [navItems, pathname, permissionSet]);
+  }, [defaultDashboard, navAccess, navItems, pathname, permissionSet]);
 
   useEffect(() => {
     if (redirectTarget) router.replace(redirectTarget);

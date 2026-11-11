@@ -1,6 +1,9 @@
 import type { PermissionKey } from '@techwin/contracts';
 import type { MembershipAccessContext } from '@/features/auth/membership/membership-access';
-import { canAccessWorkspaceDashboard } from '@/features/auth/membership/membership-access';
+import {
+  canAccessWorkspaceDashboard,
+  canUseEmployeeSelfService,
+} from '@/features/auth/membership/membership-access';
 import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
 
@@ -63,6 +66,9 @@ export function shouldShowNavHref(
   permissions: ReadonlySet<PermissionKey>,
   access?: MembershipAccessContext,
 ): boolean {
+  if (access && href.startsWith('/employee') && !canUseEmployeeSelfService(access)) {
+    return false;
+  }
   const orgTasks = hasOrganizationTaskView(permissions);
   if (orgTasks && EMPLOYEE_TASK_DUPLICATES.has(href)) return false;
   if (!orgTasks && ADMIN_TASK_DUPLICATES.has(href)) return false;

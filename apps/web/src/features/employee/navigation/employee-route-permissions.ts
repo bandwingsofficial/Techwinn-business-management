@@ -1,4 +1,5 @@
 import type { PermissionKey } from '@techwin/contracts';
+import type { MembershipAccessContext } from '@/features/auth/membership/membership-access';
 import {
   APP_ROUTE_PERMISSIONS,
   canAccessAppPath,
@@ -18,6 +19,7 @@ export function permissionsForEmployeePath(pathname: string): readonly Permissio
 export function canAccessEmployeePath(
   pathname: string,
   permissions: ReadonlySet<PermissionKey>,
+  access?: MembershipAccessContext,
 ): boolean {
-  return canAccessAppPath(pathname, permissions);
+  return canAccessAppPath(pathname, permissions, access);
 }

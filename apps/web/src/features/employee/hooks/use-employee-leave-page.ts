@@ -21,6 +21,8 @@ import {
   previewLeaveDays,
 } from '@/features/leave/api/leave-api';
 import { notifyLeaveDataChanged, subscribeLeaveDataChanged } from '@/features/leave/lib/leave-data-sync';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { canUseEmployeeSelfService } from '@/features/auth/membership/membership-access';
 import { isAbortError } from '@/shared/lib/abort-error';
 import { isApiError } from '@/shared/api/api-error';
 import {
@@ -41,6 +43,8 @@ const DEFAULT_PAGE_SIZE = 10;
 
 export function useEmployeeLeavePage() {
   const toast = useAdminToast();
+  const { navAccess } = usePermissions();
+  const selfServiceEligible = canUseEmployeeSelfService(navAccess);
   const calendarYear = new Date().getFullYear();
 
   const [balances, setBalances] = useState<readonly EmployeeLeaveBalanceItem[]>([]);
@@ -80,6 +84,13 @@ export function useEmployeeLeavePage() {
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadBalances = useCallback(async (signal?: AbortSignal) => {
+    if (!selfServiceEligible) {
+      setBalances([]);
+      setBalancesAvailability(null);
+      setBalancesError(null);
+      setBalancesLoading(false);
+      return;
+    }
     setBalancesLoading(true);
     try {
       const result = await fetchMyLeaveBalances({ calendarYear, page: 1, pageSize: 100 }, signal);
@@ -92,10 +103,17 @@ export function useEmployeeLeavePage() {
     } finally {
       setBalancesLoading(false);
     }
-  }, [calendarYear]);
+  }, [calendarYear, selfServiceEligible]);
 
   const loadHistory = useCallback(
     async (signal?: AbortSignal) => {
+      if (!selfServiceEligible) {
+        setHistory([]);
+        setHistoryTotal(0);
+        setHistoryError(null);
+        setHistoryLoading(false);
+        return;
+      }
       setHistoryLoading(true);
       try {
         const result = await listMyLeaveRequests(
@@ -117,7 +135,7 @@ export function useEmployeeLeavePage() {
         setHistoryLoading(false);
       }
     },
-    [calendarYear, historyPage, historyPageSize, historyTab],
+    [calendarYear, historyPage, historyPageSize, historyTab, selfServiceEligible],
   );
 
   useEffect(() => {
@@ -127,6 +145,10 @@ export function useEmployeeLeavePage() {
   }, [loadBalances]);
 
   useEffect(() => {
+    if (!selfServiceEligible) {
+      setLeaveTypeMeta(new Map());
+      return;
+    }
     let cancelled = false;
     void listLeaveTypes({ page: 1, status: 'ACTIVE', pageSize: 100 })
       .then((result) => {
@@ -139,7 +161,7 @@ export function useEmployeeLeavePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selfServiceEligible]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -148,11 +170,12 @@ export function useEmployeeLeavePage() {
   }, [loadHistory]);
 
   useEffect(() => {
+    if (!selfServiceEligible) return;
     return subscribeLeaveDataChanged(() => {
       void loadBalances();
       void loadHistory();
     });
-  }, [loadBalances, loadHistory]);
+  }, [loadBalances, loadHistory, selfServiceEligible]);
 
   useEffect(() => {
     setHistoryPage(1);

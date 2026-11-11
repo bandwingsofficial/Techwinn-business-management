@@ -2,6 +2,7 @@ import type { PermissionKey } from '@techwin/contracts';
 import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import {
   canAccessWorkspaceDashboard,
+  canUseEmployeeSelfService,
   type MembershipAccessContext,
 } from '@/features/auth/membership/membership-access';
 
@@ -127,6 +128,10 @@ export function canAccessAppPath(
   const path = normalizePath(pathname);
   if (access && (path === '/admin' || path === '/admin/dashboard')) {
     if (!canAccessWorkspaceDashboard(access)) return false;
+  }
+
+  if (access && (path === '/employee' || path.startsWith('/employee/'))) {
+    if (!canUseEmployeeSelfService(access)) return false;
   }
 
   const matchedBoardRoute = [...ORGANIZATION_TASK_BOARD_ROUTES].find(
