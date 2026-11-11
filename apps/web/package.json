@@ -10,7 +10,10 @@
     "start": "node scripts/start-standalone.mjs",
     "typecheck": "next typegen && tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test:api-url": "node --experimental-strip-types --test scripts/resolve-api-base-url.test.mjs"
+    "test:api-url": "node --experimental-strip-types --test scripts/resolve-api-base-url.test.mjs",
+    "test:proxy-headers": "node --experimental-strip-types --test scripts/proxy-headers.test.mjs",
+    "test:proxy-route": "node --experimental-strip-types --test scripts/proxy-route.test.mjs",
+    "test:proxy": "pnpm run test:proxy-headers && pnpm run test:proxy-route"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
