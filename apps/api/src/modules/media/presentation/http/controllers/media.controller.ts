@@ -17,8 +17,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { StoredObjectMetadataResponse, StoredObjectUploadResponse } from '@techwin/contracts';
-import { storedObjectCategorySchema } from '@techwin/validation';
+import type { StoredObjectMetadataResponse, StoredObjectUploadResponse } from '#contracts';
+import { storedObjectCategorySchema } from '#validation';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import {
   CrmContext,

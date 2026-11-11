@@ -1,4 +1,4 @@
-import type { UpdateLeaveTypeRequest } from '@techwin/validation';
+import type { UpdateLeaveTypeRequest } from '#validation';
 import { LeaveValidationError } from '../../../../domain/errors/leave.errors.js';
 import type { UpdateLeaveTypeData } from '../types/leave-type.types.js';
 

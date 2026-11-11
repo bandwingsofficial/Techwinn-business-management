@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { WhatsAppMessageView, WhatsAppSendMessageResponse } from '@techwin/contracts';
+import type { WhatsAppMessageView, WhatsAppSendMessageResponse } from '#contracts';
 import type {
   WhatsAppSendMediaFields,
   WhatsAppSendTemplateRequest,
   WhatsAppSendTextRequest,
-} from '@techwin/validation';
+} from '#validation';
 import {
   RATE_LIMITER,
   type RateLimiter,

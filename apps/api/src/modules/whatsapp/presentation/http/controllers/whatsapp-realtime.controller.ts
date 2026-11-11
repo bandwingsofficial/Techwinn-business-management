@@ -1,7 +1,7 @@
 import { Controller, Get, Inject, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { WhatsAppRealtimeResponse } from '@techwin/contracts';
-import { whatsappRealtimeQuerySchema } from '@techwin/validation';
+import type { WhatsAppRealtimeResponse } from '#contracts';
+import { whatsappRealtimeQuerySchema } from '#validation';
 import type { Request, Response } from 'express';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import { CrmOrganizationGuard } from '../../../../../platform/tenant-context/index.js';

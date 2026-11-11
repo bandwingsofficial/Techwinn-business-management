@@ -27,7 +27,7 @@ import type {
   EmployeeDetail,
   EmployeeListResponse,
   EmployeeProfileImageUploadResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   changeEmployeeStatusRequestSchema,
   createEmployeeRequestSchema,
@@ -36,7 +36,7 @@ import {
   updateEmployeeRequestSchema,
   type CreateEmployeeRequest,
   type UpdateEmployeeRequest,
-} from '@techwin/validation';
+} from '#validation';
 import {
   PlatformAdminGuard,
   type PlatformAuthenticatedRequest,

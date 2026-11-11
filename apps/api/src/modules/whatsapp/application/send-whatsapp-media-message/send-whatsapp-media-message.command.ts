@@ -1,4 +1,4 @@
-import type { WhatsAppSendMediaFields } from "@techwin/validation";
+import type { WhatsAppSendMediaFields } from "#validation";
 import type { WhatsAppActor } from "../shared/whatsapp-actor.js";
 import type { UploadedAttachment } from "../services/whatsapp-outbound.service.js";
 export interface SendWhatsAppMediaMessageCommand {

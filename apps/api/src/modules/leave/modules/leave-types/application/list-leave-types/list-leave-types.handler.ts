@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { LeaveTypeListResponse } from '@techwin/contracts';
-import type { LeaveTypeListQuery } from '@techwin/validation';
+import type { LeaveTypeListResponse } from '#contracts';
+import type { LeaveTypeListQuery } from '#validation';
 import type { OrgAccessActor } from '../../../../../org-access/index.js';
 import { LeaveAuthorizationService } from '../../../../application/services/leave-authorization.service.js';
 import {

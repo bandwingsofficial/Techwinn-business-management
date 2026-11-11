@@ -94,12 +94,12 @@ export interface LeadRepository {
     organizationId: string,
     pipelineId: string,
     rows: readonly LeadImportRowInput[],
-  ): Promise<import('@techwin/contracts').CrmLeadImportPreviewResponse>;
+  ): Promise<import('#contracts').CrmLeadImportPreviewResponse>;
   executeLeadImport(
     organizationId: string,
     pipelineId: string,
     rows: readonly LeadImportRowInput[],
     adminId: string,
     audit: LeadAuditEntry,
-  ): Promise<import('@techwin/contracts').CrmLeadImportResponse & { totalRows: number }>;
+  ): Promise<import('#contracts').CrmLeadImportResponse & { totalRows: number }>;
 }

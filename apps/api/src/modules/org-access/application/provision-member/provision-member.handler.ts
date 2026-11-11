@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SYSTEM_ROLE_KEYS } from '@techwin/contracts';
+import { SYSTEM_ROLE_KEYS } from '#contracts';
 import { OrgAccessValidationError } from '../../domain/errors/org-access.errors.js';
 import {
   ORG_ACCESS_REPOSITORY,

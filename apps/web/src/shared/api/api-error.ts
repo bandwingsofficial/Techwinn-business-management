@@ -37,9 +37,11 @@ export class ApiError extends Error {
     );
   }
 
-  /** True when the failure says nothing about the session (offline, timeout, 5xx). */
+  /** True when the failure says nothing about the session (offline, timeout, 429, 5xx). */
   get isTransient(): boolean {
-    return this.kind !== 'http' || (this.status !== null && this.status >= 500);
+    if (this.kind !== 'http') return true;
+    if (this.status === 429) return true;
+    return this.status !== null && this.status >= 500;
   }
 }
 

@@ -1,4 +1,4 @@
-import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES } from '#contracts';
 import type { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import type { DailyTaskListItem } from '../../../../domain/read-models/daily-task.models.js';
 

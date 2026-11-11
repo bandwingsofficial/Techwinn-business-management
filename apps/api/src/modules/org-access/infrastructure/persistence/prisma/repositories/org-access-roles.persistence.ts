@@ -1,4 +1,4 @@
-import { type PermissionKey } from '@techwin/contracts';
+import { type PermissionKey } from '#contracts';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';

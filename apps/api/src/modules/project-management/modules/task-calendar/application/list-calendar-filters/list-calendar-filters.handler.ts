@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { TaskCalendarFiltersResponse } from '@techwin/contracts';
+import type { TaskCalendarFiltersResponse } from '#contracts';
 import { DailyTaskAuthorizationService } from '../../../daily-tasks/application/services/daily-task-authorization.service.js';
 import {
   DAILY_TASK_REPOSITORY,

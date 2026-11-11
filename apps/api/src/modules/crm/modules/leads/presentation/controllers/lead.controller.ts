@@ -32,7 +32,7 @@ import type {
   CrmLeadTag,
   CrmLeadBulkActionResponse,
   CrmLeadTagListResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   bulkLeadIdsRequestSchema,
   createLeadTagRequestSchema,
@@ -45,7 +45,7 @@ import {
   type CreateLeadRequest,
   type CreateLeadTagRequest,
   type UpdateLeadRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {

@@ -5,7 +5,7 @@ import type {
   WhatsAppConversationListResponse,
   WhatsAppFolderCounts,
   WhatsAppTimelineResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   WhatsAppAssignRequest,
   WhatsAppConsentRequest,
@@ -14,7 +14,7 @@ import type {
   WhatsAppCrmLinkRequest,
   WhatsAppStartConversationRequest,
   WhatsAppTimelineQuery,
-} from '@techwin/validation';
+} from '#validation';
 import {
   WhatsAppForbiddenError,
   WhatsAppNotFoundError,

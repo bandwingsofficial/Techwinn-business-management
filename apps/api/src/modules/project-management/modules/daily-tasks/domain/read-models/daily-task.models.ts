@@ -1,4 +1,4 @@
-/** API-aligned daily task read models (structurally matches @techwin/contracts). */
+/** API-aligned daily task read models (structurally matches #contracts). */
 
 export type DailyTaskType = 'GENERAL' | 'PROJECT';
 export type DailyTaskBoardMode = 'daily' | 'project';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 import { RedisService } from '../../../../../../infrastructure/cache/redis.service.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import type {

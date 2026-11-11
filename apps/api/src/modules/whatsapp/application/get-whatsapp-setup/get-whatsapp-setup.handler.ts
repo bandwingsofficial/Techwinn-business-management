@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { WhatsAppChannelService } from '../services/whatsapp-channel.service.js';
 import type { GetWhatsAppSetupQuery } from './get-whatsapp-setup.query.js';
-import type { WhatsAppSetupInfo } from "@techwin/contracts";
+import type { WhatsAppSetupInfo } from "#contracts";
 
 @Injectable()
 export class GetWhatsAppSetupHandler {

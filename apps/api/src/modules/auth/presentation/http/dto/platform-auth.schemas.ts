@@ -1,10 +1,10 @@
 import type { ApiResponseSchemaHost } from '@nestjs/swagger';
-import { API_ERROR_CODES } from '@techwin/contracts';
+import { API_ERROR_CODES } from '#contracts';
 import {
   platformLoginRequestSchema,
   platformSessionIdSchema,
   platformVerifyTotpRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 
 /** Request schemas are shared with the web app's form validation. */

@@ -1,5 +1,5 @@
 import { Catch, HttpStatus, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
-import { API_ERROR_CODES, type ApiErrorCode } from '@techwin/contracts';
+import { API_ERROR_CODES, type ApiErrorCode } from '#contracts';
 import type { Request, Response } from 'express';
 import { sendApiError } from '../../../../../common/filters/api-error.response.js';
 import { AttendanceError } from '../../../domain/errors/attendance.errors.js';
@@ -15,6 +15,9 @@ export class AttendanceExceptionFilter implements ExceptionFilter<AttendanceErro
     if (error.code === 'ATTENDANCE_NOT_FOUND') {
       status = HttpStatus.NOT_FOUND;
       code = API_ERROR_CODES.NOT_FOUND;
+    } else if (error.code === 'ATTENDANCE_EMPLOYEE_PROFILE_NOT_LINKED') {
+      status = HttpStatus.FORBIDDEN;
+      code = API_ERROR_CODES.EMPLOYEE_PROFILE_NOT_LINKED;
     } else if (error.code === 'ATTENDANCE_FORBIDDEN') {
       status = HttpStatus.FORBIDDEN;
       code = API_ERROR_CODES.FORBIDDEN;

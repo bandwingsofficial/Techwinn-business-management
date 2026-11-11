@@ -1,4 +1,4 @@
-import type { CrmClient } from '@techwin/contracts';
+import type { CrmClient } from '#contracts';
 import type { ClientReadModel } from '../../domain/types/client-read-model.js';
 
 const iso = (value: Date): string => value.toISOString();

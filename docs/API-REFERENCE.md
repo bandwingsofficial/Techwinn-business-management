@@ -74,7 +74,7 @@ Route constants for the web app live in `@techwin/contracts` — keep web fetch 
 
 ## CRM (`CRM_ROUTES`)
 
-Pipelines, stages, bulk status/delete, leads (list, CRUD, stage, activities, convert), clients, proposals (print, status), service packages — see `packages/contracts/src/crm.ts` for the full path map.
+Pipelines, stages, bulk status/delete, leads (list, CRUD, stage, activities, convert), clients, proposals (print, status), service packages — see `apps/api/src/lib/contracts/crm.ts` for the full path map.
 
 Base paths:
 
@@ -108,7 +108,7 @@ Base paths:
 
 ## WhatsApp
 
-Controllers mount under `/whatsapp` and `/webhooks/whatsapp/:channelKey`. Full path list: `packages/contracts/src/whatsapp.ts` (`WHATSAPP_ROUTES` + webhook).
+Controllers mount under `/whatsapp` and `/webhooks/whatsapp/:channelKey`. Full path list: `apps/api/src/lib/contracts/whatsapp.ts` (`WHATSAPP_ROUTES` + webhook).
 
 ## Errors
 

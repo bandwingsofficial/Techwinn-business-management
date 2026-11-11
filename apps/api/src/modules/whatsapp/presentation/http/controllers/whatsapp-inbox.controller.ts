@@ -26,7 +26,7 @@ import type {
   WhatsAppMessageView,
   WhatsAppSendMessageResponse,
   WhatsAppTimelineResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   whatsappAddNoteRequestSchema,
   whatsappAssignRequestSchema,
@@ -39,7 +39,7 @@ import {
   whatsappSendTextRequestSchema,
   whatsappStartConversationRequestSchema,
   whatsappTimelineQuerySchema,
-} from '@techwin/validation';
+} from '#validation';
 import type { Request, Response } from 'express';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import { CrmOrganizationGuard } from '../../../../../platform/tenant-context/index.js';

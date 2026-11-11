@@ -2,7 +2,7 @@
   "name": "techwin",
   "version": "0.1.0",
   "private": true,
-  "description": "Techwin - reusable foundation for business applications (NestJS API + Next.js admin).",
+  "description": "Techwin - NestJS API + Next.js admin (independent apps, shared Git repo).",
   "packageManager": "pnpm@10.28.2",
   "engines": {
     "node": ">=22.12.0",
@@ -19,7 +19,8 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:architecture": "turbo run check:architecture --filter=@techwin/scripts",
+    "check:dissolve": "node scripts/check-dissolve.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "db:generate": "turbo run db:generate --filter=@techwin/api",
     "db:migrate": "turbo run db:migrate --filter=@techwin/api",
     "db:migrate:deploy": "turbo run db:migrate:deploy --filter=@techwin/api",
@@ -27,8 +28,8 @@
     "db:seed": "turbo run db:seed --filter=@techwin/api",
     "db:setup": "turbo run db:setup --filter=@techwin/api",
     "admin:bootstrap": "turbo run admin:bootstrap --filter=@techwin/api --",
-    "secrets:generate": "pnpm --filter @techwin/scripts run secrets:generate",
-    "verify": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm check:architecture && pnpm build"
+    "secrets:generate": "node scripts/generate-secrets.mjs",
+    "verify": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm check:dissolve && pnpm check:architecture && pnpm build"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

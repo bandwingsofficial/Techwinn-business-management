@@ -3,7 +3,7 @@ import type {
   EmployeeDetail,
   EmployeeListItem,
   EmployeeSalaryStructure,
-} from '@techwin/contracts';
+} from '#contracts';
 import { EmployeeCompensationService } from '../../../domain/services/employee-compensation.service.js';
 import type {
   AssignableEmployeeRecord,

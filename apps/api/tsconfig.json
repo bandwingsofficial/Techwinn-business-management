@@ -1,10 +1,18 @@
 {
-  "extends": "@techwin/tsconfig/nestjs.json",
+  "extends": "../../tooling/tsconfig/nestjs.json",
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
     "noEmit": true,
-    "incremental": false
+    "incremental": false,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "#contracts": ["./src/lib/contracts/index.ts"],
+      "#contracts/*": ["./src/lib/contracts/*"],
+      "#validation": ["./src/lib/validation/index.ts"],
+      "#validation/*": ["./src/lib/validation/*"]
+    }
   },
   "include": ["src", "prisma", "prisma.config.ts"]
 }

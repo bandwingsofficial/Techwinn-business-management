@@ -3,8 +3,8 @@ import type {
   WhatsAppTemplateListResponse,
   WhatsAppTemplateSummary,
   WhatsAppTemplateSyncResponse,
-} from '@techwin/contracts';
-import type { WhatsAppCreateTemplateRequest, WhatsAppTemplateListQuery } from '@techwin/validation';
+} from '#contracts';
+import type { WhatsAppCreateTemplateRequest, WhatsAppTemplateListQuery } from '#validation';
 import {
   RATE_LIMITER,
   type RateLimiter,

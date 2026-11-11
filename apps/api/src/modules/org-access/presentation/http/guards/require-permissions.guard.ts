@@ -6,7 +6,7 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { API_ERROR_CODES, type PermissionKey } from '@techwin/contracts';
+import { API_ERROR_CODES, type PermissionKey } from '#contracts';
 import { ApiException } from '../../../../../common/filters/api-error.response.js';
 import type { OrgAccessActor } from '../../../application/shared/org-access-actor.js';
 import { PermissionCheckerService } from '../../../application/services/permission-checker.service.js';

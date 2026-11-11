@@ -1,4 +1,4 @@
-import { normalizedLeadPhoneOrNull } from '@techwin/validation';
+import { normalizedLeadPhoneOrNull } from '#validation';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import {

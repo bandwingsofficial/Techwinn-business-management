@@ -132,7 +132,7 @@ docker build -f docker/web/Dockerfile -t techwin-web .
 API image:
 
 - Multi-stage build, `pnpm deploy --prod --legacy` output as non-root user `techwin`
-- Builds workspace packages `@techwin/catalog`, `@techwin/contracts`, `@techwin/validation` before deploy
+- Builds only the target application (`apps/api` or `apps/web`); no shared `packages/` workspace libraries
 - `CMD ["node", "dist/main.js"]`
 - Includes Prisma CLI under `node_modules` for `migrate deploy`
 - Does **not** include repo `docs/` or `.env` (see `.dockerignore`)

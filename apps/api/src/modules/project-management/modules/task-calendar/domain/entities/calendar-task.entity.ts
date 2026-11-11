@@ -1,4 +1,4 @@
-import type { DailyTaskListItem } from '@techwin/contracts';
+import type { DailyTaskListItem } from '#contracts';
 import type { TaskCalendarProjectTaskRow } from '../../application/integration/org-task-calendar-data.port.js';
 import type { CalendarNormalizedTask } from '../types/calendar-task.types.js';
 import {

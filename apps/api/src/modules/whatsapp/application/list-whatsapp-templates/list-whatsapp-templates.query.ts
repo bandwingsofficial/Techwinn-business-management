@@ -1,4 +1,4 @@
-import type { WhatsAppTemplateListQuery } from "@techwin/validation";
+import type { WhatsAppTemplateListQuery } from "#validation";
 export interface ListWhatsAppTemplatesQuery {
   readonly organizationId: string;
   readonly query: WhatsAppTemplateListQuery;

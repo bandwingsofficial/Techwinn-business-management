@@ -1,5 +1,5 @@
 import type { OrganizationCalendarEvent } from '../../../../../../generated/prisma/client.js';
-import type { OrgCalendarEventItem, OrgCalendarEventType } from '@techwin/contracts';
+import type { OrgCalendarEventItem, OrgCalendarEventType } from '#contracts';
 
 const DEFAULT_COLORS: Record<OrgCalendarEventType, string> = {
   PUBLIC_HOLIDAY: '#dc2626',

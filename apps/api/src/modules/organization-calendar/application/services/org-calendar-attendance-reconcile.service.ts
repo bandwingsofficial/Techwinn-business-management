@@ -5,7 +5,7 @@ import {
   ORG_CALENDAR_REPOSITORY,
   type OrgCalendarRepository,
 } from '../../domain/repositories/org-calendar.repository.js';
-import type { OrgCalendarDayKind } from '@techwin/contracts';
+import type { OrgCalendarDayKind } from '#contracts';
 import { parseDateOnly } from '../../infrastructure/persistence/prisma/mappers/org-calendar.mapper.js';
 
 function isNonWorkingCalendarKind(dayKind: OrgCalendarDayKind): boolean {

@@ -5,4 +5,4 @@ export {
   hasDailyTaskNoteViewOwnPermission,
   hasDailyTaskNoteViewAllPermission,
   hasDailyTaskNoteAcknowledgePermission,
-} from '@techwin/contracts';
+} from '#contracts';

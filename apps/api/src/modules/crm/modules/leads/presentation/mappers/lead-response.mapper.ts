@@ -1,4 +1,4 @@
-import type { CrmLead, CrmLeadActivity } from '@techwin/contracts';
+import type { CrmLead, CrmLeadActivity } from '#contracts';
 import type { LeadActivityReadModel, LeadReadModel } from '../../domain/types/lead-read-model.js';
 
 const iso = (value: Date): string => value.toISOString();

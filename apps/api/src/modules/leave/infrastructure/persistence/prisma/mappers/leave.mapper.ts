@@ -13,7 +13,7 @@ import type {
   LeaveRequestItem,
   LeaveYearAllocationItem,
   LeaveYearConfigurationItem,
-} from '@techwin/contracts';
+} from '#contracts';
 import type { LeaveBalanceTransactionItem } from '../../../../domain/repositories/leave.repository.js';
 import { expandInclusiveCalendarRange } from '../../../../domain/policies/leave-request-dates.policy.js';
 

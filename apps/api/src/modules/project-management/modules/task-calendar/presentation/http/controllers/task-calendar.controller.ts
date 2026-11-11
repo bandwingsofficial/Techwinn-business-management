@@ -1,8 +1,8 @@
 import { Controller, Get, Inject, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { TaskCalendarFiltersResponse, TaskCalendarResponse } from '@techwin/contracts';
-import { parseTaskCalendarApiQuery } from '@techwin/validation';
+import type { TaskCalendarFiltersResponse, TaskCalendarResponse } from '#contracts';
+import { parseTaskCalendarApiQuery } from '#validation';
 import { PlatformAdminGuard, type PlatformAuthenticatedRequest } from '../../../../../../auth/index.js';
 import {
   CrmContext,

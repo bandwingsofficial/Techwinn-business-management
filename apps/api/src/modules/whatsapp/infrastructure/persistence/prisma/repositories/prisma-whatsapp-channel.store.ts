@@ -4,7 +4,7 @@ import {
   WHATSAPP_ROUTES,
   type WhatsAppChannelStatus,
   type WhatsAppChannelSummary,
-} from '@techwin/contracts';
+} from '#contracts';
 import type { WhatsAppChannel } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { WhatsAppConflictError, WhatsAppNotFoundError } from '../../../../domain/whatsapp.errors.js';

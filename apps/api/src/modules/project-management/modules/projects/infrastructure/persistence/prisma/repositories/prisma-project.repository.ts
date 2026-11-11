@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { formatProjectNumber } from '@techwin/validation';
+import { formatProjectNumber } from '#validation';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../../../infrastructure/database/prisma.service.js';

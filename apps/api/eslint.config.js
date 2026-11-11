@@ -1,4 +1,4 @@
-import { nestConfig } from '@techwin/eslint-config/nest';
+import { nestConfig } from '../../tooling/eslint/nest.js';
 
 export default [
   ...nestConfig({ tsconfigRootDir: import.meta.dirname }),

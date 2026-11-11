@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import type { TaskCalendarDayBucketDto, TaskCalendarResponse, TaskCalendarTaskDto } from '@techwin/contracts';
-import { projectTaskStatusSchema } from '@techwin/validation';
+import type { TaskCalendarDayBucketDto, TaskCalendarResponse, TaskCalendarTaskDto } from '#contracts';
+import { projectTaskStatusSchema } from '#validation';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { DailyTaskAuthorizationService } from '../../../daily-tasks/application/services/daily-task-authorization.service.js';
 import {

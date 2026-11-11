@@ -1,6 +1,6 @@
 import { HttpStatus, StandardSchemaValidationPipe } from '@nestjs/common';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { API_ERROR_CODES, type ApiErrorDetail } from '@techwin/contracts';
+import { API_ERROR_CODES, type ApiErrorDetail } from '#contracts';
 import { ApiException } from '../filters/api-error.response.js';
 
 const UNRECOGNIZED_KEY = /^Unrecognized key: "([^"]+)"/;

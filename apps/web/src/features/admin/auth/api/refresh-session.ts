@@ -10,7 +10,9 @@ import type { PlatformRefreshResponse } from '../types/auth.types';
 
 /**
  * Rotates the refresh cookie and stores the new access token in memory.
- * Network failures are re-thrown: they do not prove the session has ended.
+ * Network / rate-limit failures are re-thrown: they do not prove the session ended.
+ *
+ * Uses `skipAuthRefresh` so this call can never recursively trigger another refresh.
  */
 export async function refreshSession(): Promise<RefreshOutcome> {
   // Without the CSRF cookie the refresh cannot succeed; skip the round trip.
@@ -22,6 +24,7 @@ export async function refreshSession(): Promise<RefreshOutcome> {
     const response = await apiRequest<PlatformRefreshResponse>(PLATFORM_AUTH_ROUTES.refresh, {
       method: 'POST',
       csrf: true,
+      skipAuthRefresh: true,
     });
     accessTokenStore.set(response.accessToken);
     return 'refreshed';

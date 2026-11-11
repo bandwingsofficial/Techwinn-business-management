@@ -2,7 +2,7 @@ import {
   computeQuotationLinePricing,
   computeQuotationSummaryTotals,
   normalizeQuotationTaxRateFraction,
-} from '@techwin/validation';
+} from '#validation';
 import type {
   QuotationLineItemWriteInput,
   QuotationPersistLineItem,

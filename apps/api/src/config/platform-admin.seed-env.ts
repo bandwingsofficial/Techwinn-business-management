@@ -1,4 +1,4 @@
-import { platformEmailSchema, platformNewPasswordSchema } from '@techwin/validation';
+import { platformEmailSchema, platformNewPasswordSchema } from '#validation';
 import { z } from 'zod';
 
 /**

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AttendanceListResponse } from '@techwin/contracts';
-import type { AttendanceListQuery } from '@techwin/validation';
+import type { AttendanceListResponse } from '#contracts';
+import type { AttendanceListQuery } from '#validation';
 import type { OrgAccessActor } from '../../../org-access/index.js';
 import {
   ATTENDANCE_REPOSITORY,

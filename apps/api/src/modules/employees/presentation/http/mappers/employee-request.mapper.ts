@@ -1,4 +1,4 @@
-import type { CreateEmployeeRequest, UpdateEmployeeRequest } from '@techwin/validation';
+import type { CreateEmployeeRequest, UpdateEmployeeRequest } from '#validation';
 import type {
   CreateEmployeeInput,
   UpdateEmployeeInput,

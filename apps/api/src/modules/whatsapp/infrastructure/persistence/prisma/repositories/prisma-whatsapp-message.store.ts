@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { WhatsAppMessageType } from '@techwin/contracts';
+import type { WhatsAppMessageType } from '#contracts';
 import type {
   WhatsAppBroadcastRecipientStatus,
   WhatsAppConversationStatus,

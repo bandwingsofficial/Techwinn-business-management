@@ -17,7 +17,7 @@ import type {
   UpdateLeaveYearConfigurationStatusRequest,
   AdjustEmployeeLeaveBalanceRequest,
   ApplyLeaveRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import {
   LeaveConflictError,
@@ -28,7 +28,7 @@ import type {
   EmployeeLeaveBalanceAvailability,
   EmployeeLeaveBalanceListResponse,
   EmployeeLeaveRecordsResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type { LeaveRepository } from '../../../../domain/repositories/leave.repository.js';
 import { resolveLeaveRequestDates } from '../../../../domain/policies/leave-request-dates.policy.js';
 import { LeaveBalanceDeletionPolicy } from '../../../../modules/leave-balances/domain/policies/leave-balance-deletion.policy.js';

@@ -1,4 +1,4 @@
-import type { WhatsAppTimelineQuery } from "@techwin/validation";
+import type { WhatsAppTimelineQuery } from "#validation";
 import type { WhatsAppActor } from "../shared/whatsapp-actor.js";
 export interface GetWhatsAppConversationTimelineQuery {
   readonly actor: WhatsAppActor;

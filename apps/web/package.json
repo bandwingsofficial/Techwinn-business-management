@@ -13,16 +13,17 @@
     "test:api-url": "node --experimental-strip-types --test scripts/resolve-api-base-url.test.mjs",
     "test:proxy-headers": "node --experimental-strip-types --test scripts/proxy-headers.test.mjs",
     "test:proxy-route": "node --experimental-strip-types --test scripts/proxy-route.test.mjs",
-    "test:proxy": "pnpm run test:proxy-headers && pnpm run test:proxy-route"
+    "test:proxy": "pnpm run test:proxy-headers && pnpm run test:proxy-route",
+    "test:attendance-errors": "node --experimental-strip-types --test scripts/attendance-errors.test.mjs",
+    "test:finalize-sign-in": "node --experimental-strip-types --test scripts/finalize-sign-in.test.mjs",
+    "test:api-client-refresh": "node --experimental-strip-types --test scripts/api-client-refresh.test.mjs",
+    "test:auth-lifecycle": "pnpm run test:finalize-sign-in && pnpm run test:api-client-refresh && pnpm run test:attendance-errors && pnpm run test:proxy"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
     "@hookform/resolvers": "6.0.0",
-    "@techwin/catalog": "workspace:*",
-    "@techwin/contracts": "workspace:*",
-    "@techwin/validation": "workspace:*",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lucide-react": "1.60.0",
@@ -37,16 +38,20 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "@tailwindcss/postcss": "4.3.3",
-    "@techwin/eslint-config": "workspace:*",
-    "@techwin/tsconfig": "workspace:*",
     "@types/node": "22.20.5",
     "@types/papaparse": "5.5.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-unused-imports": "4.3.0",
+    "globals": "17.13.0",
     "tailwindcss": "4.3.3",
     "tw-animate-css": "1.4.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0"
   }
 }

@@ -1,4 +1,4 @@
-import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES } from '#contracts';
 import type {
   AttendanceDeviceItem,
   AttendanceRecordDetail,

@@ -1,4 +1,4 @@
-import type { OrgCalendarDayKind } from '@techwin/contracts';
+import type { OrgCalendarDayKind } from '#contracts';
 import type { AttendanceScheduleConfig } from '../types/attendance-schedule.types.js';
 import type { AttendanceStatus } from '../enums/attendance-status.enum.js';
 

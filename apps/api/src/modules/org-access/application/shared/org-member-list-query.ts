@@ -1,4 +1,4 @@
-import type { OrgMemberListQuery } from '@techwin/validation';
+import type { OrgMemberListQuery } from '#validation';
 import { normalizeListPage, normalizeListPageSize } from '../../../../shared/pagination/index.js';
 import type { OrgMemberListFilters } from '../../domain/repositories/org-access.repository.js';
 

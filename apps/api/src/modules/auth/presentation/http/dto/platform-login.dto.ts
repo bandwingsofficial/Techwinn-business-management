@@ -1,5 +1,5 @@
-import type { PlatformLoginResponse } from '@techwin/contracts';
-import type { PlatformLoginRequest } from '@techwin/validation';
+import type { PlatformLoginResponse } from '#contracts';
+import type { PlatformLoginRequest } from '#validation';
 import type { LoginWithPasswordResult } from '../../../application/login-with-password/login-with-password.result.js';
 import { toVerifyTotpResponse } from './platform-verify-totp.dto.js';
 

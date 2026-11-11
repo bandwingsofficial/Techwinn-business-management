@@ -10,7 +10,7 @@ import type {
   LeaveYearAllocationItem,
   LeaveYearAllocationListResponse,
   LeaveYearConfigurationItem,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   AdjustEmployeeLeaveBalanceRequest,
   ApplyLeaveRequest,
@@ -27,7 +27,7 @@ import type {
   UpdateLeaveYearAllocationRequest,
   UpdateLeaveYearConfigurationRequest,
   UpdateLeaveYearConfigurationStatusRequest,
-} from '@techwin/validation';
+} from '#validation';
 import type { OrgAccessActor } from '../../org-access/index.js';
 import {
   LEAVE_REPOSITORY,

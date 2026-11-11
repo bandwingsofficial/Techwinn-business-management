@@ -8,7 +8,7 @@ import {
   platformEmailSchema,
   platformNewPasswordSchema,
   PLATFORM_PASSWORD_MIN_LENGTH,
-} from '@techwin/validation';
+} from '#validation';
 import QRCode from 'qrcode';
 import { AppConfigModule } from '../../../config/config.module.js';
 import { loadEnvFile } from '../../../config/load-env-file.js';

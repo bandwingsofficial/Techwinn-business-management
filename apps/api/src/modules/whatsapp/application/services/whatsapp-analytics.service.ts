@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { WhatsAppAnalyticsResponse } from '@techwin/contracts';
-import type { WhatsAppAnalyticsQuery } from '@techwin/validation';
+import type { WhatsAppAnalyticsResponse } from '#contracts';
+import type { WhatsAppAnalyticsQuery } from '#validation';
 import { WhatsAppValidationError } from '../../domain/whatsapp.errors.js';
 import { WHATSAPP_ANALYTICS_STORE, type WhatsAppAnalyticsStore } from '../repositories/whatsapp-stores.js';
 

@@ -1,4 +1,4 @@
-import type { WhatsAppAssignRequest } from "@techwin/validation";
+import type { WhatsAppAssignRequest } from "#validation";
 import type { WhatsAppActor } from "../shared/whatsapp-actor.js";
 export interface AssignWhatsAppConversationCommand {
   readonly actor: WhatsAppActor;

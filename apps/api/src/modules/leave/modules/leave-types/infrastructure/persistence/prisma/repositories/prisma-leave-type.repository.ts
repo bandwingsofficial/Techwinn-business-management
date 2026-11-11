@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../../../../../../generated/prisma/client.js';
-import type { LeaveTypeItem, LeaveTypeListResponse, LeaveTypeStatus } from '@techwin/contracts';
+import type { LeaveTypeItem, LeaveTypeListResponse, LeaveTypeStatus } from '#contracts';
 import { PrismaService } from '../../../../../../../../infrastructure/database/prisma.service.js';
 import { LeaveConflictError, LeaveNotFoundError } from '../../../../../../domain/errors/leave.errors.js';
 import type { LeaveTypeRepository } from '../../../../domain/repositories/leave-type.repository.js';

@@ -1,0 +1,142 @@
+import { API_PREFIX } from './http';
+
+export const PROJECT_ROUTES = {
+  projects: `${API_PREFIX}/projects`,
+  project: (id: string) => `${API_PREFIX}/projects/${id}`,
+  projectStatus: (id: string) => `${API_PREFIX}/projects/${id}/status`,
+  projectPlan: (id: string) => `${API_PREFIX}/projects/${id}/plan`,
+  projectStartProduction: (id: string) => `${API_PREFIX}/projects/${id}/start-production`,
+  projectComplete: (id: string) => `${API_PREFIX}/projects/${id}/complete`,
+  projectNumberPreview: `${API_PREFIX}/projects/number-preview`,
+  projectManagers: `${API_PREFIX}/projects/managers`,
+  projectClientOptions: `${API_PREFIX}/projects/client-options`,
+  clientQuotations: (clientId: string) => `${API_PREFIX}/projects/clients/${clientId}/quotations`,
+} as const;
+
+export type ProjectStatus = 'ACTIVE' | 'INACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ProjectLifecyclePhase =
+  | 'PLANNING'
+  | 'PRODUCTION'
+  | 'QA'
+  | 'DEPLOYMENT'
+  | 'HANDOVER'
+  | 'COMPLETED';
+
+export type ProjectPhaseStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED';
+
+export type ProjectExecutionLifecycle =
+  | 'NOT_PLANNED'
+  | 'PLANNED'
+  | 'IN_PRODUCTION'
+  | 'COMPLETED';
+
+export type ProjectLifecycleTab =
+  | 'ALL'
+  | 'NOT_PLANNED'
+  | 'PLANNED'
+  | 'IN_PRODUCTION'
+  | 'COMPLETED';
+
+export interface ProjectManagerOption {
+  readonly id: string;
+  readonly displayName: string;
+  readonly email: string;
+}
+
+/** Client fields needed to pick a project client without CRM access. */
+export interface ProjectClientOption {
+  readonly id: string;
+  readonly name: string;
+  readonly primaryContact: string;
+  readonly phone: string | null;
+  readonly status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface ProjectClientOptionListResponse {
+  readonly clients: readonly ProjectClientOption[];
+}
+
+export interface ProjectPhase {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly phase: ProjectLifecyclePhase;
+  readonly status: ProjectPhaseStatus;
+  readonly startDate: string;
+  readonly expectedEndDate: string;
+  readonly ownerAdminId: string | null;
+  readonly sortOrder: number;
+}
+
+export interface ProjectListItem {
+  readonly id: string;
+  readonly projectNumber: string;
+  readonly name: string;
+  readonly clientId: string;
+  readonly clientName: string;
+  readonly companyName: string;
+  readonly priority: ProjectPriority;
+  readonly startDate: string;
+  readonly status: ProjectStatus;
+  readonly executionLifecycle: ProjectExecutionLifecycle;
+  readonly actualProductionStartedAt: string | null;
+  readonly actualCompletedAt: string | null;
+  readonly phaseCount: number;
+  readonly progressPercent: number;
+}
+
+export interface ProjectDetail extends ProjectListItem {
+  readonly description: string;
+  readonly clientPhone: string;
+  readonly clientEmail: string;
+  readonly projectManagerAdminId: string | null;
+  readonly projectManagerName: string | null;
+  readonly expectedEndDate: string;
+  readonly currentPhase: ProjectLifecyclePhase;
+  readonly proposalId: string | null;
+  readonly quotationNumber: string;
+  readonly quotationTitle: string;
+  readonly acceptedCommercialValue: string | null;
+  readonly currency: string;
+  readonly scopeAndRequirements: string;
+  readonly mainDeliverables: string;
+  readonly acceptanceCriteria: string;
+  readonly internalNotes: string;
+  readonly phases: readonly ProjectPhase[];
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ProjectListTabCounts {
+  readonly all: number;
+  readonly notPlanned: number;
+  readonly planned: number;
+  readonly inProduction: number;
+  readonly completed: number;
+}
+
+export interface ProjectListResponse {
+  readonly items: readonly ProjectListItem[];
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly tabCounts: ProjectListTabCounts;
+}
+
+export interface ProjectNumberPreviewResponse {
+  readonly projectNumber: string;
+  readonly isPreview: true;
+}
+
+export interface ClientQuotationOption {
+  readonly id: string;
+  readonly documentNumber: string;
+  readonly title: string;
+  readonly grandTotal: string;
+  readonly status: string;
+}
+
+export interface ClientQuotationListResponse {
+  readonly quotations: readonly ClientQuotationOption[];
+}

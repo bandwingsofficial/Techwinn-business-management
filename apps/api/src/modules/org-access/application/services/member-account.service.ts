@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SYSTEM_ROLE_KEYS } from '@techwin/contracts';
+import { SYSTEM_ROLE_KEYS } from '#contracts';
 import { randomUUID } from 'node:crypto';
 import {
   PASSWORD_HASHER,

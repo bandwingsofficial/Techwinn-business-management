@@ -1,4 +1,4 @@
-import { PERMISSION_KEYS, SYSTEM_ROLE_KEYS, type PermissionKey } from '@techwin/contracts';
+import { PERMISSION_KEYS, SYSTEM_ROLE_KEYS, type PermissionKey } from '#contracts';
 import { randomUUID } from 'node:crypto';
 import { RedisService } from '../../../../../../infrastructure/cache/redis.service.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';

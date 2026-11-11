@@ -5,7 +5,7 @@ import type {
   CrmPipelineStage,
   CrmServicePackage,
   CatalogSelection,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   LeadActivityRecord,
   LeadRecord,

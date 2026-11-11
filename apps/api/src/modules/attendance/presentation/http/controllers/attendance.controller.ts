@@ -24,7 +24,7 @@ import type {
   AttendanceRecordItem,
   AttendanceSettingsResponse,
   AttendanceSummaryResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   correctAttendanceRecordRequestSchema,
   createAttendanceRecordRequestSchema,
@@ -35,7 +35,7 @@ import {
   punchAttendanceRequestSchema,
   registerAttendanceDeviceRequestSchema,
   upsertAttendanceSettingsRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard, type PlatformAuthenticatedRequest } from '../../../../auth/index.js';
 import {
   CrmContext,

@@ -1,4 +1,4 @@
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 import {
   OrgAccessForbiddenError,
   PermissionCheckerService,

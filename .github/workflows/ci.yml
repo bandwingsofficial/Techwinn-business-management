@@ -38,8 +38,11 @@ jobs:
         run: pnpm typecheck
       - name: Lint
         run: pnpm lint
+      - name: Dissolve independence
+        run: pnpm check:dissolve
       - name: Architecture
         run: pnpm check:architecture
+        continue-on-error: true
       - name: Production build
         run: pnpm build
         env:

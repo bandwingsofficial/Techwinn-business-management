@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { API_ERROR_CODES } from '@techwin/contracts';
+import { API_ERROR_CODES } from '#contracts';
 import type { Request } from 'express';
 import { ApiException } from '../../../../common/filters/api-error.response.js';
 import { PermissionCheckerService } from '../../../org-access/index.js';

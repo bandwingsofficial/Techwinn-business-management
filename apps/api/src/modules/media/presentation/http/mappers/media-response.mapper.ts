@@ -1,4 +1,4 @@
-import type { StoredObjectMetadataResponse } from '@techwin/contracts';
+import type { StoredObjectMetadataResponse } from '#contracts';
 import type { StoredObjectRecord } from '../../../domain/repositories/stored-object.repository.js';
 import type { StoredFileService } from '../../../application/services/stored-file.service.js';
 

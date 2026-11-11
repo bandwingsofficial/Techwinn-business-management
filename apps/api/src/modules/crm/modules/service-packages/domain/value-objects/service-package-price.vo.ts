@@ -1,4 +1,4 @@
-import { normalizeMoneyInput } from '@techwin/validation';
+import { normalizeMoneyInput } from '#validation';
 import { ServicePackageValidationError } from '../errors/service-package.errors.js';
 
 export class ServicePackagePrice {

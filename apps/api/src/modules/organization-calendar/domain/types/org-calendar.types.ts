@@ -2,7 +2,7 @@ import type {
   OrgCalendarEventItem,
   OrgCalendarEventType,
   OrgCalendarRecurrence,
-} from '@techwin/contracts';
+} from '#contracts';
 
 export type OrgCalendarEventRecord = OrgCalendarEventItem;
 

@@ -5,7 +5,7 @@ import type {
   OrgCalendarMonthDay,
   OrgCalendarMonthResponse,
   OrgCalendarEventItem,
-} from '@techwin/contracts';
+} from '#contracts';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { OrgCalendarNotFoundError } from '../../../../domain/errors/org-calendar.errors.js';

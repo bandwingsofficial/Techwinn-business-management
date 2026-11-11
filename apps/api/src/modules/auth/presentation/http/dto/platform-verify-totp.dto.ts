@@ -4,8 +4,8 @@ import type {
   PlatformCurrentSessionResponse,
   PlatformSessionSummary,
   PlatformVerifyTotpResponse,
-} from '@techwin/contracts';
-import type { PlatformVerifyTotpRequest } from '@techwin/validation';
+} from '#contracts';
+import type { PlatformVerifyTotpRequest } from '#validation';
 import type {
   GetCurrentSessionResult,
   PlatformAdminView,

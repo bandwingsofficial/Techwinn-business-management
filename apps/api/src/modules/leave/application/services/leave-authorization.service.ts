@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 import {
   PermissionCheckerService,
   type OrgAccessActor,

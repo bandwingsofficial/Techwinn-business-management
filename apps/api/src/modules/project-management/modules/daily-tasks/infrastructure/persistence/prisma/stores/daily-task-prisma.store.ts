@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES } from '#contracts';
 import type {
   DailyTaskListItem,
   DailyTaskNoteItem,

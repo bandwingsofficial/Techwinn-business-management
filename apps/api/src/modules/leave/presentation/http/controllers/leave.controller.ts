@@ -26,7 +26,7 @@ import type {
   LeaveYearAllocationListResponse,
   LeaveYearConfigurationItem,
   EmployeeLeaveRecordsResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   adjustEmployeeLeaveBalanceRequestSchema,
   parseApplyLeaveRequest,
@@ -46,7 +46,7 @@ import {
   updateLeaveYearAllocationRequestSchema,
   updateLeaveYearConfigurationRequestSchema,
   updateLeaveYearConfigurationStatusRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard, type PlatformAuthenticatedRequest } from '../../../../auth/index.js';
 import {
   CrmContext,

@@ -6,7 +6,7 @@ import {
   type ArgumentsHost,
   type ExceptionFilter,
 } from '@nestjs/common';
-import { API_ERROR_CODES, type ApiErrorCode } from '@techwin/contracts';
+import { API_ERROR_CODES, type ApiErrorCode } from '#contracts';
 import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { ApiException, sendApiError } from './api-error.response.js';

@@ -1,4 +1,4 @@
-import { formatQuotationDocumentNumber } from '@techwin/validation';
+import { formatQuotationDocumentNumber } from '#validation';
 import type { QuotationDocumentType } from '../enums/quotation-status.enum.js';
 
 /** Formats the next document number from a sequence value (persistence assigns the sequence). */

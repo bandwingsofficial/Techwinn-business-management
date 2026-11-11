@@ -25,7 +25,7 @@ import type {
   CrmPipelineBulkActionResponse,
   CrmPipelineListResponse,
   CrmPipelineStage,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   bulkPipelineIdsRequestSchema,
   bulkPipelineStatusRequestSchema,
@@ -36,7 +36,7 @@ import {
   type ReorderPipelineStagesRequest,
   type UpdatePipelineRequest,
   type UpdatePipelineStageRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 import { ActivatePipelineStageHandler } from '../../application/activate-stage/activate-pipeline-stage.handler.js';
 import { BulkDeletePipelinesHandler } from '../../application/bulk-delete/bulk-delete-pipelines.handler.js';

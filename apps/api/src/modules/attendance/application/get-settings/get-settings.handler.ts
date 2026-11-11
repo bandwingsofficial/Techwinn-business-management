@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AttendanceSettingsResponse } from '@techwin/contracts';
+import type { AttendanceSettingsResponse } from '#contracts';
 import type { OrgAccessActor } from '../../../org-access/index.js';
 import {
   ATTENDANCE_REPOSITORY,

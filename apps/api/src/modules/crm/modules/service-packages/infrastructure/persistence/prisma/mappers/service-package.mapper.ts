@@ -1,4 +1,4 @@
-import { normalizeGstRatePercent } from '@techwin/validation';
+import { normalizeGstRatePercent } from '#validation';
 import type { Decimal } from '@prisma/client/runtime/client';
 import type { ServicePackageReadModel } from '../../../../domain/types/service-package-read-model.js';
 import { decimalToString } from '../../../../../../shared/infrastructure/services/quotation-money.js';

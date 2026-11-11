@@ -1,4 +1,4 @@
-import type { CrmServicePackage, CatalogSelection } from '@techwin/contracts';
+import type { CrmServicePackage, CatalogSelection } from '#contracts';
 import type { ServicePackageReadModel } from '../../domain/types/service-package-read-model.js';
 
 const iso = (value: Date): string => value.toISOString();

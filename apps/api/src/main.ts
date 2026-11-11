@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { API_PREFIX, PLATFORM_CSRF_HEADER, REQUEST_ID_HEADER } from '@techwin/contracts';
+import { API_PREFIX, PLATFORM_CSRF_HEADER, REQUEST_ID_HEADER } from '#contracts';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';

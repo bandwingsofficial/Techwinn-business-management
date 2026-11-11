@@ -5,7 +5,7 @@ import {
   type CanActivate,
   type ExecutionContext,
 } from '@nestjs/common';
-import { API_ERROR_CODES } from '@techwin/contracts';
+import { API_ERROR_CODES } from '#contracts';
 import { ApiException } from '../../common/filters/api-error.response.js';
 import {
   CRM_REPOSITORY,

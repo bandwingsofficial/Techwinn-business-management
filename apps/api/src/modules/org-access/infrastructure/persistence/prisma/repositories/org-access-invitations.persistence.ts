@@ -1,4 +1,4 @@
-import { SYSTEM_ROLE_KEYS } from '@techwin/contracts';
+import { SYSTEM_ROLE_KEYS } from '#contracts';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import {

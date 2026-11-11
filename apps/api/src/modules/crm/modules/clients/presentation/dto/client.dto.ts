@@ -2,7 +2,7 @@ export {
   createClientRequestSchema as createClientBodySchema,
   updateClientRequestSchema as updateClientBodySchema,
   changeClientStatusRequestSchema as changeClientStatusBodySchema,
-} from '@techwin/validation';
+} from '#validation';
 
 export {
   crmClientResponseSchema,

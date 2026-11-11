@@ -1,4 +1,4 @@
-import type { OrgCalendarDayKind, OrgCalendarMonthDay } from '@techwin/contracts';
+import type { OrgCalendarDayKind, OrgCalendarMonthDay } from '#contracts';
 import { ORG_CALENDAR_CLASSIFICATION_EVENT_TYPES } from '../policies/org-calendar-classification-events.policy.js';
 
 export type OrgCalendarMonthSummary = {

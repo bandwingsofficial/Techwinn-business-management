@@ -1,5 +1,5 @@
 import type { ApiResponseSchemaHost } from '@nestjs/swagger';
-import { API_ERROR_CODES } from '@techwin/contracts';
+import { API_ERROR_CODES } from '#contracts';
 import {
   changeLeadStageRequestSchema,
   createClientRequestSchema,
@@ -18,7 +18,7 @@ import {
   createServicePackageRequestSchema,
   updateServicePackageRequestSchema,
   catalogSelectionSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 
 export const createPipelineBodySchema = createPipelineRequestSchema;

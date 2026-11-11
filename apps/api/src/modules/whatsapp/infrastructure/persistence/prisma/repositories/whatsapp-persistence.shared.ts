@@ -5,7 +5,7 @@ import {
   type WhatsAppConversationSummary,
   type WhatsAppCrmLink,
   type WhatsAppMessageView,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   Prisma,
   type CrmAuditEventType,

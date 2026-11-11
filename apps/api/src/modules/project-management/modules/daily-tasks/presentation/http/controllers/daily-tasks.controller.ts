@@ -22,7 +22,7 @@ import type {
   DailyTaskNotesResponse,
   DailyTaskNoteItem,
   DailyTaskWorkflowStagesResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   createDailyTaskRequestSchema,
   moveDailyTaskStageRequestSchema,
@@ -39,8 +39,8 @@ import {
   type MoveDailyTaskStageRequest,
   type RescheduleDailyTaskRequest,
   type UpdateDailyTaskRequest,
-} from '@techwin/validation';
-import type { DailyTaskActivitiesResponse } from '@techwin/contracts';
+} from '#validation';
+import type { DailyTaskActivitiesResponse } from '#contracts';
 import { PlatformAdminGuard, type PlatformAuthenticatedRequest } from '../../../../../../auth/index.js';
 import {
   CrmContext,

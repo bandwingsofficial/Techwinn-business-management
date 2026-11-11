@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { WhatsAppAnalyticsResponse } from '@techwin/contracts';
-import type { WhatsAppAnalyticsQuery } from '@techwin/validation';
+import type { WhatsAppAnalyticsResponse } from '#contracts';
+import type { WhatsAppAnalyticsQuery } from '#validation';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 

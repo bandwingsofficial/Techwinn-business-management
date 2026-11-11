@@ -1,4 +1,4 @@
-import type { OrgCalendarEventType } from '@techwin/contracts';
+import type { OrgCalendarEventType } from '#contracts';
 import type { OrgCalendarEventRecord } from '../types/org-calendar.types.js';
 import { OrgCalendarConflictError } from '../errors/org-calendar.errors.js';
 

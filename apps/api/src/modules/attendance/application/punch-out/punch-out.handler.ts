@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AttendanceRecordItem } from '@techwin/contracts';
-import type { PunchAttendanceRequest } from '@techwin/validation';
+import type { AttendanceRecordItem } from '#contracts';
+import type { PunchAttendanceRequest } from '#validation';
 import type { OrgAccessActor } from '../../../org-access/index.js';
 import {
   ATTENDANCE_REPOSITORY,

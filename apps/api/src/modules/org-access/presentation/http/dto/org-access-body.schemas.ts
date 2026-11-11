@@ -1,5 +1,5 @@
 /**
- * HTTP body schemas for org-access routes. Re-exported from @techwin/validation so
+ * HTTP body schemas for org-access routes. Re-exported from #validation so
  * the API and web app share one canonical definition (including optional `phone`).
  */
 export {
@@ -13,4 +13,4 @@ export {
   type ProvisionMemberRequest,
   type ResetMemberPasswordRequest,
   type UpdateMemberRequest,
-} from '@techwin/validation';
+} from '#validation';

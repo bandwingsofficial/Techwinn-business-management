@@ -3,11 +3,11 @@ import type {
   WhatsAppBroadcastAudiencePreview,
   WhatsAppBroadcastDetail,
   WhatsAppBroadcastListResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   WhatsAppBroadcastAudiencePreviewRequest,
   WhatsAppCreateBroadcastRequest,
-} from '@techwin/validation';
+} from '#validation';
 import {
   RATE_LIMITER,
   type RateLimiter,

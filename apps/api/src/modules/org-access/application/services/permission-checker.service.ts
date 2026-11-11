@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 import type { OrgAccessActor } from '../shared/org-access-actor.js';
 import { OrgAccessForbiddenError } from '../../domain/errors/org-access.errors.js';
 import {

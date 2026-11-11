@@ -3,7 +3,7 @@ import {
   normalizeGstRatePercent,
   type ServicePackagePricingInput,
   type ServicePackagePricingTotals,
-} from '@techwin/validation';
+} from '#validation';
 import type { ServicePackageWriteInput } from '../types/service-package.types.js';
 
 type AddOnRow = {

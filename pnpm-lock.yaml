@@ -53,15 +53,6 @@ importers:
       '@prisma/client':
         specifier: 7.10.1
         version: 7.10.1(prisma@7.10.1(@types/node@22.20.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3)
-      '@techwin/catalog':
-        specifier: workspace:*
-        version: link:../../packages/catalog
-      '@techwin/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@techwin/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
       argon2:
         specifier: 0.45.1
         version: 0.45.1
@@ -114,15 +105,12 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@eslint/js':
+        specifier: 9.39.5
+        version: 9.39.5
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
-      '@techwin/eslint-config':
-        specifier: workspace:*
-        version: link:../../packages/eslint-config
-      '@techwin/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
       '@types/cookie-parser':
         specifier: 1.4.10
         version: 1.4.10(@types/express@5.0.6)
@@ -144,6 +132,15 @@ importers:
       eslint:
         specifier: 9.39.5
         version: 9.39.5(jiti@2.7.0)
+      eslint-config-prettier:
+        specifier: 10.1.8
+        version: 10.1.8(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-unused-imports:
+        specifier: 4.3.0
+        version: 4.3.0(@typescript-eslint/eslint-plugin@8.72.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))
+      globals:
+        specifier: 17.13.0
+        version: 17.13.0
       pino-pretty:
         specifier: 13.2.0
         version: 13.2.0
@@ -153,6 +150,9 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      typescript-eslint:
+        specifier: 8.72.0
+        version: 8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
 
   apps/web:
     dependencies:
@@ -168,15 +168,6 @@ importers:
       '@hookform/resolvers':
         specifier: 6.0.0
         version: 6.0.0(@standard-schema/spec@1.1.0)(ajv@8.20.0)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))(valibot@1.4.2(typescript@6.0.3))(zod@4.6.7)
-      '@techwin/catalog':
-        specifier: workspace:*
-        version: link:../../packages/catalog
-      '@techwin/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@techwin/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
@@ -188,7 +179,7 @@ importers:
         version: 1.60.0(@types/react@19.3.0)(react@19.3.1)
       next:
         specifier: 16.4.2
-        version: 16.4.2(@types/node@22.20.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.2(@babel/core@7.29.7)(@types/node@22.20.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       papaparse:
         specifier: 5.7.0
         version: 5.7.0
@@ -214,15 +205,12 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@eslint/js':
+        specifier: 9.39.5
+        version: 9.39.5
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
-      '@techwin/eslint-config':
-        specifier: workspace:*
-        version: link:../../packages/eslint-config
-      '@techwin/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
       '@types/node':
         specifier: 22.20.5
         version: 22.20.5
@@ -238,54 +226,6 @@ importers:
       eslint:
         specifier: 9.39.5
         version: 9.39.5(jiti@2.7.0)
-      tailwindcss:
-        specifier: 4.3.3
-        version: 4.3.3
-      tw-animate-css:
-        specifier: 1.4.0
-        version: 1.4.0
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
-  packages/catalog:
-    devDependencies:
-      '@techwin/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@techwin/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      eslint:
-        specifier: 9.39.5
-        version: 9.39.5(jiti@2.7.0)
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
-  packages/contracts:
-    devDependencies:
-      '@techwin/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@techwin/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      eslint:
-        specifier: 9.39.5
-        version: 9.39.5(jiti@2.7.0)
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
-  packages/eslint-config:
-    dependencies:
-      '@eslint/js':
-        specifier: 9.39.5
-        version: 9.39.5
-      eslint:
-        specifier: ^9.39.0
-        version: 9.39.5(jiti@2.7.0)
       eslint-config-next:
         specifier: 16.4.2
         version: 16.4.2(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
@@ -298,49 +238,18 @@ importers:
       globals:
         specifier: 17.13.0
         version: 17.13.0
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      tw-animate-css:
+        specifier: 1.4.0
+        version: 1.4.0
       typescript:
-        specifier: '>=5.4.0 <6.1.0'
+        specifier: 6.0.3
         version: 6.0.3
       typescript-eslint:
         specifier: 8.72.0
         version: 8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
-
-  packages/scripts:
-    dependencies:
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-    devDependencies:
-      '@techwin/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@types/node':
-        specifier: 22.20.5
-        version: 22.20.5
-      eslint:
-        specifier: 9.39.5
-        version: 9.39.5(jiti@2.7.0)
-
-  packages/tsconfig: {}
-
-  packages/validation:
-    dependencies:
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
-    devDependencies:
-      '@techwin/eslint-config':
-        specifier: workspace:*
-        version: link:../eslint-config
-      '@techwin/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      eslint:
-        specifier: 9.39.5
-        version: 9.39.5(jiti@2.7.0)
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
 
 packages:
 
@@ -8671,7 +8580,7 @@ snapshots:
       pino-http: 11.0.0
       rxjs: 7.8.2
 
-  next@16.4.2(@types/node@22.20.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.2(@babel/core@7.29.7)(@types/node@22.20.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.2
       '@swc/helpers': 0.5.23
@@ -8680,7 +8589,7 @@ snapshots:
       postcss: 8.5.23
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
-      styled-jsx: 5.1.6(react@19.3.1)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.3.1)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.4.2
       '@next/swc-darwin-x64': 16.4.2
@@ -9495,10 +9404,12 @@ snapshots:
     dependencies:
       '@tokenizer/token': 0.3.0
 
-  styled-jsx@5.1.6(react@19.3.1):
+  styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.3.1):
     dependencies:
       client-only: 0.0.1
       react: 19.3.1
+    optionalDependencies:
+      '@babel/core': 7.29.7
 
   supports-color@7.2.0:
     dependencies:

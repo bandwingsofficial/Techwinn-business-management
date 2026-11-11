@@ -1,4 +1,4 @@
-import type { LeaveTypeItem, LeaveTypeListResponse, LeaveTypeStatus } from '@techwin/contracts';
+import type { LeaveTypeItem, LeaveTypeListResponse, LeaveTypeStatus } from '#contracts';
 import type {
   CreateLeaveTypeData,
   LeaveTypeDependencyCounts,

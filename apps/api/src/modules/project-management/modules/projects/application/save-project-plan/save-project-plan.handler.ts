@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { SaveProjectPlanRequest } from '@techwin/validation';
+import type { SaveProjectPlanRequest } from '#validation';
 import {
   PROJECT_REPOSITORY,
   type ProjectRepository,

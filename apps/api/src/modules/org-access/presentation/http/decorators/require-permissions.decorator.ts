@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 
 export const REQUIRE_PERMISSIONS_KEY = 'org_access_required_permissions';
 

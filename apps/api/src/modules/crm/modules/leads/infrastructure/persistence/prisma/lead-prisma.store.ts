@@ -1,5 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/client';
-import { normalizedLeadPhoneForStorage } from '@techwin/validation';
+import { normalizedLeadPhoneForStorage } from '#validation';
 import { prepareClientCreateFromLead } from '../../../../clients/application/conversion/lead-to-client.integration.js';
 import {
   findClientByNormalizedPhone,

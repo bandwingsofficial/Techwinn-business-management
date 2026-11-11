@@ -22,6 +22,14 @@ export class AttendanceForbiddenError extends AttendanceError {
   }
 }
 
+/** Self-service attendance requires an active linked employee profile. */
+export class AttendanceEmployeeProfileNotLinkedError extends AttendanceError {
+  constructor(message = 'No active employee profile is linked to your account.') {
+    super(message, 'ATTENDANCE_EMPLOYEE_PROFILE_NOT_LINKED');
+    this.name = 'AttendanceEmployeeProfileNotLinkedError';
+  }
+}
+
 export class AttendanceConflictError extends AttendanceError {
   constructor(message: string) {
     super(message, 'ATTENDANCE_CONFLICT');

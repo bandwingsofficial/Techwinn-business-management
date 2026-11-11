@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { EMPLOYEE_ROUTES, MEDIA_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES, MEDIA_ROUTES } from '#contracts';
 import type { StoredObjectCategory } from '../../domain/enums/stored-object.enums.js';
 import {
   extensionForMime,

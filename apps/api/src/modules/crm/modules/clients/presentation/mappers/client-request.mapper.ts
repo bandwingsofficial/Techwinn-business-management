@@ -1,5 +1,5 @@
-import { normalizedLeadPhoneForStorage } from '@techwin/validation';
-import type { ChangeClientStatusRequest, CreateClientRequest, UpdateClientRequest } from '@techwin/validation';
+import { normalizedLeadPhoneForStorage } from '#validation';
+import type { ChangeClientStatusRequest, CreateClientRequest, UpdateClientRequest } from '#validation';
 import type { CreateClientData, UpdateClientData } from '../../domain/types/client.types.js';
 import type { ClientStatus } from '../../domain/enums/client-status.enum.js';
 

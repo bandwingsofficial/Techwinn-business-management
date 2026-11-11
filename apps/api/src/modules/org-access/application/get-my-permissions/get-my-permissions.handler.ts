@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EMPLOYEE_ROUTES, SYSTEM_ROLE_KEYS } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES, SYSTEM_ROLE_KEYS } from '#contracts';
 import type {
   MyOrganizationRole,
   MySessionEmployeeSummary,
   PermissionKey,
-} from '@techwin/contracts';
+} from '#contracts';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 import {
   ORG_ACCESS_REPOSITORY,

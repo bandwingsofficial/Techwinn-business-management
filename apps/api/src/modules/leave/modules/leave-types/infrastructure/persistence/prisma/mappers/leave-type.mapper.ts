@@ -1,5 +1,5 @@
 import type { LeaveType } from '../../../../../../../../generated/prisma/client.js';
-import type { LeaveTypeItem } from '@techwin/contracts';
+import type { LeaveTypeItem } from '#contracts';
 
 export function toLeaveTypeItem(row: LeaveType): LeaveTypeItem {
   return {

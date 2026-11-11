@@ -1,4 +1,4 @@
-import type { EmployeeListQuery } from '@techwin/validation';
+import type { EmployeeListQuery } from '#validation';
 import { normalizeListPage, normalizeListPageSize } from '../../../../shared/pagination/index.js';
 import type { EmployeeListFilters } from '../../domain/repositories/employee.repository.js';
 

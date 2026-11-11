@@ -1,4 +1,4 @@
-import type { UpdateProjectTaskRequest } from '@techwin/validation';
+import type { UpdateProjectTaskRequest } from '#validation';
 import type { OrgAccessActor } from '../../../../../org-access/index.js';
 import type { ProjectActor } from '../shared/project-actor.js';
 

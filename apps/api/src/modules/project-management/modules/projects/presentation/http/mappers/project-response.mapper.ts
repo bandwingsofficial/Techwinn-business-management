@@ -5,7 +5,7 @@ import type {
   ProjectListItem,
   ProjectManagerOption,
   ProjectPhase,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   ClientQuotationRecord,
   ProjectDetailRecord,

@@ -4,7 +4,7 @@ import type {
   OrgCalendarEventListResponse,
   OrgCalendarMonthDay,
   OrgCalendarMonthResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   ORG_CALENDAR_REPOSITORY,
   type OrgCalendarRepository,

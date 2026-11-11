@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { LeaveTypeItem } from '@techwin/contracts';
-import type { CreateLeaveTypeRequest } from '@techwin/validation';
+import type { LeaveTypeItem } from '#contracts';
+import type { CreateLeaveTypeRequest } from '#validation';
 import type { OrgAccessActor } from '../../../../../org-access/index.js';
 import { LeaveConflictError } from '../../../../domain/errors/leave.errors.js';
 import { LeaveAuthorizationService } from '../../../../application/services/leave-authorization.service.js';

@@ -2,7 +2,7 @@ import type { ApiResponseSchemaHost } from '@nestjs/swagger';
 import {
   projectTaskPrioritySchema,
   projectTaskStatusSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 
 type SchemaObject = ApiResponseSchemaHost['schema'];

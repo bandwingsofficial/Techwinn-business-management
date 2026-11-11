@@ -1,4 +1,4 @@
-import type { WhatsAppConversationListQuery } from "@techwin/validation";
+import type { WhatsAppConversationListQuery } from "#validation";
 import type { WhatsAppActor } from "../shared/whatsapp-actor.js";
 export interface ListWhatsAppConversationsQuery {
   readonly actor: WhatsAppActor;

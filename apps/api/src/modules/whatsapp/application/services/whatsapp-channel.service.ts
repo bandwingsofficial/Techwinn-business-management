@@ -4,12 +4,12 @@ import type {
   WhatsAppChannelSummary,
   WhatsAppChannelTestResult,
   WhatsAppSetupInfo,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   WhatsAppCreateChannelRequest,
   WhatsAppEmbeddedSignupRequest,
   WhatsAppRotateCredentialsRequest,
-} from '@techwin/validation';
+} from '#validation';
 import {
   RATE_LIMITER,
   type RateLimiter,

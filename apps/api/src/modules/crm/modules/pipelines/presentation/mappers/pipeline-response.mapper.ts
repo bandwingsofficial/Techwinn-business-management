@@ -1,4 +1,4 @@
-import type { CrmPipeline, CrmPipelineStage } from '@techwin/contracts';
+import type { CrmPipeline, CrmPipelineStage } from '#contracts';
 import type { PipelineReadModel, PipelineStageReadModel } from '../../domain/types/pipeline-read-model.js';
 
 const iso = (value: Date): string => value.toISOString();

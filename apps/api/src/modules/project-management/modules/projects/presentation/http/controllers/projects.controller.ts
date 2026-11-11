@@ -21,7 +21,7 @@ import type {
   ProjectDetail,
   ProjectListResponse,
   ProjectNumberPreviewResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   changeProjectStatusRequestSchema,
   createProjectRequestSchema,
@@ -31,7 +31,7 @@ import {
   type CreateProjectRequest,
   type SaveProjectPlanRequest,
   type UpdateProjectRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../../auth/index.js';
 import {

@@ -17,14 +17,13 @@ import { useAttendanceDeviceKey } from '@/features/attendance/hooks/use-attendan
 import { addDaysToDateKey } from '@/features/attendance/utils/time';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { isAbortError } from '@/shared/lib/abort-error';
-import { isApiError } from '@/shared/api/api-error';
+import {
+  describeAttendanceError,
+  isStalePermissionForbidden,
+} from '@/features/employee/utils/attendance-errors';
 
 const HISTORY_LOOKBACK_DAYS = 90;
 const DEFAULT_PAGE_SIZE = 10;
-
-function describeError(failure: unknown): string {
-  return failure instanceof Error ? failure.message : 'Something went wrong.';
-}
 
 async function retryAfterAccessRefresh<T>(
   action: () => Promise<T>,
@@ -33,7 +32,9 @@ async function retryAfterAccessRefresh<T>(
   try {
     return await action();
   } catch (failure) {
-    if (!isApiError(failure) || failure.status !== 403) throw failure;
+    // Missing employee profile and definitive auth failures must not trigger
+    // permission refresh loops (those amplify 429 storms).
+    if (!isStalePermissionForbidden(failure)) throw failure;
     await refreshPermissions();
     return action();
   }
@@ -102,7 +103,7 @@ export function useEmployeeAttendancePage() {
       setToday(response);
     } catch (failure) {
       if (signal?.aborted || isAbortError(failure)) return;
-      setTodayError(describeError(failure));
+      setTodayError(describeAttendanceError(failure));
     } finally {
       if (!signal?.aborted) setTodayLoading(false);
     }
@@ -120,7 +121,7 @@ export function useEmployeeAttendancePage() {
       setHistory(response);
     } catch (failure) {
       if (signal?.aborted || isAbortError(failure)) return;
-      setHistoryError(describeError(failure));
+      setHistoryError(describeAttendanceError(failure));
     } finally {
       if (!signal?.aborted) setHistoryLoading(false);
     }
@@ -176,7 +177,7 @@ export function useEmployeeAttendancePage() {
       setClockMs(Date.now() + serverSkewMs.current);
       return true;
     } catch (failure) {
-      toast.error(describeError(failure));
+      toast.error(describeAttendanceError(failure));
       await loadToday(undefined, { silent: true });
       return false;
     } finally {
@@ -193,7 +194,7 @@ export function useEmployeeAttendancePage() {
       await loadHistory();
       return true;
     } catch (failure) {
-      toast.error(describeError(failure));
+      toast.error(describeAttendanceError(failure));
       await loadToday(undefined, { silent: true });
       return false;
     } finally {

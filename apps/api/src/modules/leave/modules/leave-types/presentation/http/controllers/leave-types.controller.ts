@@ -14,13 +14,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { LeaveTypeItem, LeaveTypeListResponse } from '@techwin/contracts';
+import type { LeaveTypeItem, LeaveTypeListResponse } from '#contracts';
 import {
   changeLeaveTypeStatusRequestSchema,
   createLeaveTypeRequestSchema,
   parseLeaveTypeListQuery,
   updateLeaveTypeRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard, type PlatformAuthenticatedRequest } from '../../../../../../auth/index.js';
 import {
   CrmContext,

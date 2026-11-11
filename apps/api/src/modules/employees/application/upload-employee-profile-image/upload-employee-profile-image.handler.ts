@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { EmployeeProfileImageUploadResponse } from '@techwin/contracts';
+import type { EmployeeProfileImageUploadResponse } from '#contracts';
 import {
   MediaStorageError,
   MediaValidationError,

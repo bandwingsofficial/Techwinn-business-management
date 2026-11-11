@@ -21,19 +21,19 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"]
     },
     "dev": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": []
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": []
     },
     "db:generate": {
       "inputs": ["prisma/schema.prisma", "prisma.config.ts"],
@@ -55,26 +55,16 @@
       "cache": false
     },
     "db:seed": {
-      "dependsOn": ["^build", "db:generate"],
+      "dependsOn": ["db:generate"],
       "cache": false
     },
     "db:setup": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "cache": false
     },
     "admin:bootstrap": {
-      "dependsOn": ["^build", "db:generate"],
+      "dependsOn": ["db:generate"],
       "cache": false
-    },
-    "check:architecture": {
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/apps/**/*.ts",
-        "$TURBO_ROOT$/apps/**/*.tsx",
-        "$TURBO_ROOT$/apps/**/*.mjs",
-        "$TURBO_ROOT$/docker/**",
-        "$TURBO_ROOT$/docker-compose.yml"
-      ]
     }
   }
 }

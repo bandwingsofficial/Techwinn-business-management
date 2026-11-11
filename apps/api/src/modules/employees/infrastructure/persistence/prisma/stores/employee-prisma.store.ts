@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES } from '#contracts';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { type MemberAccountTransactionPort } from '../../../../../org-access/index.js';

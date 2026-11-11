@@ -1,9 +1,9 @@
-import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES } from '#contracts';
 import type {
   EmployeeLeaveRecordLeaveTypeBalance,
   EmployeeLeaveRecordRow,
   EmployeeLeaveRecordsResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import { Decimal } from '@prisma/client/runtime/client';
 import type { Employee, EmployeeLeaveBalance, LeaveType } from '../../../../../../generated/prisma/client.js';
 import {

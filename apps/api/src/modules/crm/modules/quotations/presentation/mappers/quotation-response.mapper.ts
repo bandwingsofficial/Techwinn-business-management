@@ -2,7 +2,7 @@ import type {
   CrmQuotation,
   CrmQuotationLineItem,
   CrmQuotationPrintResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   QuotationPrintReadModel,
   QuotationReadModel,

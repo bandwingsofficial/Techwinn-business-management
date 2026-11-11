@@ -5,8 +5,8 @@ import {
   normalizeLeadTagSlug,
   parseLeadImportEstimatedValue,
   parseLeadImportPhone,
-} from '@techwin/validation';
-import type { CrmLeadImportPreviewRow, CrmLeadImportRowStatus } from '@techwin/contracts';
+} from '#validation';
+import type { CrmLeadImportPreviewRow, CrmLeadImportRowStatus } from '#contracts';
 import { rethrowLeadContactUniqueViolation } from '../../../../../shared/infrastructure/persistence/prisma/mappers/lead-contact-unique-violation.js';
 import {
   formatReference,

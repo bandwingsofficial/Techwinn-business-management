@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable, Logger, type NestMiddleware } from '@nestjs/common';
-import { API_ERROR_CODES } from '@techwin/contracts';
+import { API_ERROR_CODES } from '#contracts';
 import type { NextFunction, Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../../config/app-config.js';
 import { isRedisInfrastructureError } from '../../infrastructure/cache/redis.errors.js';

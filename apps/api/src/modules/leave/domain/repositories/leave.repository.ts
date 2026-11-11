@@ -8,7 +8,7 @@ import type {
   LeaveYearAllocationItem,
   LeaveYearAllocationListResponse,
   LeaveYearConfigurationItem,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   AdjustEmployeeLeaveBalanceRequest,
   ApplyLeaveRequest,
@@ -24,7 +24,7 @@ import type {
   UpdateLeaveYearAllocationRequest,
   UpdateLeaveYearConfigurationRequest,
   UpdateLeaveYearConfigurationStatusRequest,
-} from '@techwin/validation';
+} from '#validation';
 
 export const LEAVE_REPOSITORY = Symbol('LEAVE_REPOSITORY');
 

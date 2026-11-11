@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AttendanceDeviceItem } from '@techwin/contracts';
-import type { RegisterAttendanceDeviceRequest } from '@techwin/validation';
+import type { AttendanceDeviceItem } from '#contracts';
+import type { RegisterAttendanceDeviceRequest } from '#validation';
 import type { OrgAccessActor } from '../../../org-access/index.js';
 import {
   ATTENDANCE_REPOSITORY,

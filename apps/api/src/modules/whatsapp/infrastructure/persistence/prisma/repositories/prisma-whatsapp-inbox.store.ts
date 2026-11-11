@@ -7,8 +7,8 @@ import type {
   WhatsAppRealtimeEvent,
   WhatsAppTimelineItem,
   WhatsAppTimelineResponse,
-} from '@techwin/contracts';
-import type { WhatsAppConversationListQuery, WhatsAppTimelineQuery } from '@techwin/validation';
+} from '#contracts';
+import type { WhatsAppConversationListQuery, WhatsAppTimelineQuery } from '#validation';
 import type { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { WhatsAppNotFoundError, WhatsAppValidationError } from '../../../../domain/whatsapp.errors.js';

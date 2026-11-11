@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { API_PREFIX, PLATFORM_CSRF_COOKIE, PLATFORM_CSRF_HEADER } from '@techwin/contracts';
+import { API_PREFIX, PLATFORM_CSRF_COOKIE, PLATFORM_CSRF_HEADER } from '#contracts';
 import type { CookieOptions, Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../../../../../config/app-config.js';
 

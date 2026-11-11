@@ -1,4 +1,4 @@
-import type { OrgCalendarDayKind, OrgCalendarEventType } from '@techwin/contracts';
+import type { OrgCalendarDayKind, OrgCalendarEventType } from '#contracts';
 import type { OrgCalendarEventRecord } from '../types/org-calendar.types.js';
 
 const HOLIDAY_TYPES: ReadonlySet<OrgCalendarEventType> = new Set([

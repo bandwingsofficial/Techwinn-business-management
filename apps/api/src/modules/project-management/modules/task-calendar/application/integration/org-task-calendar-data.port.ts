@@ -1,4 +1,4 @@
-import type { DailyTaskListItem } from '@techwin/contracts';
+import type { DailyTaskListItem } from '#contracts';
 import type { ProjectTaskPriority, ProjectTaskStatus } from '../../../projects/domain/project-task-types.js';
 import type {
   DailyTaskListQuery,

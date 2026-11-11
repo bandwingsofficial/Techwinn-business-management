@@ -1,4 +1,4 @@
-import type { DailyTaskWorkflowStagesResponse } from '@techwin/contracts';
+import type { DailyTaskWorkflowStagesResponse } from '#contracts';
 import type { DailyTaskWorkflowStage } from '../../../domain/read-models/daily-task.models.js';
 
 export function toDailyTaskWorkflowStagesResponse(

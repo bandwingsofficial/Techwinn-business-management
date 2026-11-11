@@ -3,4 +3,4 @@ export {
   createQuotationRequestSchema as createQuotationBodySchema,
   sendQuotationRequestSchema as sendQuotationBodySchema,
   updateQuotationRequestSchema as updateQuotationBodySchema,
-} from '@techwin/validation';
+} from '#validation';

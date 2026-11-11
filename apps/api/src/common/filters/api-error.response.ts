@@ -1,5 +1,5 @@
 import { HttpException } from '@nestjs/common';
-import type { ApiErrorCode, ApiErrorDetail, ApiErrorResponse } from '@techwin/contracts';
+import type { ApiErrorCode, ApiErrorDetail, ApiErrorResponse } from '#contracts';
 import type { Request, Response } from 'express';
 
 /** HTTP exception that carries a stable, machine-readable error code. */

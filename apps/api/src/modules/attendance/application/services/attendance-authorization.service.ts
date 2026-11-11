@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 import {
   PermissionCheckerService,
   type OrgAccessActor,
 } from '../../../org-access/index.js';
-import { AttendanceForbiddenError } from '../../domain/errors/attendance.errors.js';
+import {
+  AttendanceEmployeeProfileNotLinkedError,
+  AttendanceForbiddenError,
+} from '../../domain/errors/attendance.errors.js';
 import {
   ATTENDANCE_REPOSITORY,
   type AttendanceRepository,
@@ -31,7 +34,7 @@ export class AttendanceAuthorizationService {
   async requireEmployeeId(actor: OrgAccessActor): Promise<string> {
     const employeeId = await this.attendance.resolveEmployeeId(actor.organizationId, actor.adminId);
     if (!employeeId) {
-      throw new AttendanceForbiddenError('No active employee profile is linked to your account.');
+      throw new AttendanceEmployeeProfileNotLinkedError();
     }
     return employeeId;
   }

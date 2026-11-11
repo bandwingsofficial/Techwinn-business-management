@@ -1,7 +1,7 @@
 import type {
   CreateServicePackageRequest,
   UpdateServicePackageRequest,
-} from '@techwin/validation';
+} from '#validation';
 import type {
   CreateServicePackageInput,
   UpdateServicePackageInput,

@@ -3,7 +3,7 @@ import {
   isValidServicePackageCode,
   normalizeGstRatePercent,
   SERVICE_PACKAGE_CODE_SEQUENCE_KEY,
-} from '@techwin/validation';
+} from '#validation';
 import type { Prisma } from '../../../../../../../generated/prisma/client.js';
 import type { ServicePackageReadModel } from '../../../domain/types/service-package-read-model.js';
 import type { ServicePackageWriteInput } from '../../../domain/types/service-package.types.js';

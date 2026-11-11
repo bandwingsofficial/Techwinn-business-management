@@ -4,7 +4,7 @@ import type {
   OrgRoleDetail,
   OrgRoleListItem,
   PermissionKey,
-} from '@techwin/contracts';
+} from '#contracts';
 import type { OrgMemberRecord, OrgRoleRecord } from '../../../domain/repositories/org-access.repository.js';
 
 export function toOrgMemberListItem(record: OrgMemberRecord): OrgMemberListItem {

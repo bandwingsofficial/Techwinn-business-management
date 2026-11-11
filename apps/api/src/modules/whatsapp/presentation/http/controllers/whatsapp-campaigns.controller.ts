@@ -20,14 +20,14 @@ import type {
   WhatsAppBroadcastListResponse,
   WhatsAppTemplateListResponse,
   WhatsAppTemplateSummary,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   whatsappAnalyticsQuerySchema,
   whatsappBroadcastAudiencePreviewRequestSchema,
   whatsappCreateBroadcastRequestSchema,
   whatsappCreateTemplateRequestSchema,
   whatsappTemplateListQuerySchema,
-} from '@techwin/validation';
+} from '#validation';
 import type { Request } from 'express';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import {

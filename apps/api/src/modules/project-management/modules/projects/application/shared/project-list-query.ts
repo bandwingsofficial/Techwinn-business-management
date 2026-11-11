@@ -1,4 +1,4 @@
-import type { ProjectListQuery } from '@techwin/validation';
+import type { ProjectListQuery } from '#validation';
 import { normalizeListPage, normalizeListPageSize } from '../../../../shared/application/list-page.js';
 import type { ProjectListFilters } from '../../domain/repositories/project.repository.js';
 

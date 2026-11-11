@@ -1,8 +1,8 @@
 # Techwin API architecture
 
-Techwin is a **pnpm monorepo modular monolith**: a NestJS API (`apps/api`), Next.js admin (`apps/web`), and shared packages (`@techwin/contracts`, `@techwin/validation`, `@techwin/catalog`).
+Techwin is a **pnpm monorepo** with two independently buildable apps: a NestJS API (`apps/api`) and Next.js admin (`apps/web`). Contracts and validation schemas live as app-local libraries under each app’s `src/lib/` (duplicated where both need them). There is no shared runtime `packages/` directory.
 
-This document describes the **backend** architecture after Phases 3–4. The web app consumes HTTP APIs defined in `@techwin/contracts` and must not duplicate route strings ad hoc.
+This document describes the **backend** architecture. The web app consumes HTTP APIs defined in its local `@techwin/contracts` path alias (`apps/web/src/lib/contracts`) and must not duplicate route strings ad hoc.
 
 ## Layered module structure
 
@@ -27,7 +27,7 @@ Shared cross-cutting code lives outside modules:
 - `apps/api/src/infrastructure/` — database, cache, storage, security helpers
 - `apps/api/src/common/` — global filters, middleware, validation pipe
 - `apps/api/src/platform/` — tenant context guards shared by org-scoped routes
-- `packages/contracts/` — route paths and shared response TypeScript types for API + web
+- `apps/api/src/lib/contracts/` — route paths and response TypeScript types (API copy; web has its own under `apps/web/src/lib/contracts/`)
 
 ## Request flow
 
@@ -49,7 +49,7 @@ Responses map domain/application records back through **presentation mappers** t
 - `apps/api/src/infrastructure/database/prisma.service.ts`
 - Prisma CLI scripts under `apps/api/prisma/`
 
-Application handlers and controllers **must not** import `@prisma/client`, generated client paths, or `PrismaService`. Static enforcement: `packages/scripts/src/check-architecture.mjs`.
+Application handlers and controllers **must not** import `@prisma/client`, generated client paths, or `PrismaService`. Static enforcement: `scripts/check-architecture.mjs`.
 
 ## Module communication
 
@@ -84,21 +84,25 @@ Both use **Redis distributed locks** (`RedisExclusiveLockService`). Default beha
 - `GlobalExceptionFilter` catches remainder; 500 responses are generic to clients
 - Prisma connection errors map to 503 where appropriate
 
-## Packages
+## App-local libraries (no shared `packages/`)
 
-| Package | Role |
+| Location | Role |
 |---------|------|
-| `@techwin/contracts` | Route constants, shared DTO types, error codes |
-| `@techwin/validation` | Zod schemas shared by API and web |
-| `@techwin/catalog` | Permission catalog metadata |
+| `apps/api/src/lib/contracts` (`#contracts`) | API route constants, DTO types, error codes |
+| `apps/api/src/lib/validation` (`#validation`) | API Zod schemas |
+| `apps/web/src/lib/contracts` (`@techwin/contracts` path alias) | Web copy of contracts |
+| `apps/web/src/lib/validation` (`@techwin/validation` path alias) | Web copy of Zod schemas |
+| `apps/web/src/lib/catalog` (`@techwin/catalog` path alias) | Web-only catalog option data |
+| `tooling/*`, `scripts/` | Repo tooling only (not a runtime dependency) |
 
 ## Enforcement
 
 ```bash
+pnpm check:dissolve
 pnpm check:architecture
 ```
 
-Rules include: domain isolation, no Prisma in presentation, cross-module index imports, no `.spec`/`.test` in source tree, Dockerfiles only under `docker/`.
+`check:dissolve` confirms `packages/` is gone and each app embeds its own libs while Docker remains at `docker/api` and `docker/web`. `check:architecture` enforces layer and module boundaries (some legacy CRM/org-access cycles remain as known debt).
 
 ## Related documents
 

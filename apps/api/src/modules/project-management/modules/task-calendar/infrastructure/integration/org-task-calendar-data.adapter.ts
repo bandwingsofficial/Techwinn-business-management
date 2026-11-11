@@ -1,6 +1,6 @@
-import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { EMPLOYEE_ROUTES } from '#contracts';
 import { Inject, Injectable } from '@nestjs/common';
-import type { DailyTaskListItem } from '@techwin/contracts';
+import type { DailyTaskListItem } from '#contracts';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import {

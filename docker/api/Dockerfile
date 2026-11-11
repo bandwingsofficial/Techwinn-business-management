@@ -2,9 +2,9 @@
 # Build context: repository root
 #   docker build -f docker/api/Dockerfile -t techwin-api .
 #
-# pnpm 10: production deploy uses --legacy so workspace packages need not be
-# injected in the lockfile. All workspace deps used by @techwin/api must be
-# copied and built before `pnpm deploy` (catalog, contracts, validation).
+# Coolify: Dockerfile path `docker/api/Dockerfile`, context = repository root.
+# Contracts/validation live inside apps/api/src/lib after packages/ dissolve;
+# only tooling (tsconfig/eslint) remains outside the app.
 
 FROM node:22-alpine AS base
 ENV PNPM_HOME=/pnpm
@@ -18,22 +18,12 @@ RUN apk add --no-cache python3 make g++ openssl
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
-COPY packages/catalog/package.json packages/catalog/package.json
-COPY packages/contracts/package.json packages/contracts/package.json
-COPY packages/validation/package.json packages/validation/package.json
-COPY packages/tsconfig packages/tsconfig
-COPY packages/eslint-config packages/eslint-config
-COPY packages/scripts/package.json packages/scripts/package.json
+COPY tooling/tsconfig tooling/tsconfig
+COPY tooling/eslint tooling/eslint
 RUN pnpm install --frozen-lockfile --filter @techwin/api...
-COPY packages/catalog packages/catalog
-COPY packages/contracts packages/contracts
-COPY packages/validation packages/validation
 COPY apps/api apps/api
-# Shared libraries → Prisma Client → Nest compile → self-contained deploy dir.
-RUN pnpm --filter @techwin/catalog build \
-  && pnpm --filter @techwin/contracts build \
-  && pnpm --filter @techwin/validation build \
-  && pnpm --filter @techwin/api db:generate \
+# Prisma Client → Nest compile → self-contained deploy dir.
+RUN pnpm --filter @techwin/api db:generate \
   && pnpm --filter @techwin/api build \
   && pnpm --filter @techwin/api deploy --prod --legacy /out
 

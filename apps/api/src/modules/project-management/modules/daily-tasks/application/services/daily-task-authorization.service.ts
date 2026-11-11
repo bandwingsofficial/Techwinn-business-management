@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { PermissionKey } from '@techwin/contracts';
+import type { PermissionKey } from '#contracts';
 import type { OrgAccessActor } from '../../../../../org-access/application/shared/org-access-actor.js';
 import { PermissionCheckerService } from '../../../../../org-access/application/services/permission-checker.service.js';
 import { DailyTaskForbiddenError } from '../../domain/errors/daily-task.errors.js';

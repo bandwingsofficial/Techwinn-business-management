@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import type { WhatsAppTemplateSummary } from '@techwin/contracts';
-import type { WhatsAppTemplateListQuery } from '@techwin/validation';
+import type { WhatsAppTemplateSummary } from '#contracts';
+import type { WhatsAppTemplateListQuery } from '#validation';
 import type { Prisma, WhatsAppTemplate } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import type { ProviderTemplate } from '../../../../domain/whatsapp.ports.js';

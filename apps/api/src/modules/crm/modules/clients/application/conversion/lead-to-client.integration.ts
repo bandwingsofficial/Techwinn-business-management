@@ -1,4 +1,4 @@
-import { normalizedLeadPhoneForStorage } from '@techwin/validation';
+import { normalizedLeadPhoneForStorage } from '#validation';
 import { Client } from '../../domain/entities/client.entity.js';
 import type { ClientType } from '../../domain/enums/client-type.enum.js';
 import type { CreateClientData } from '../../domain/types/client.types.js';

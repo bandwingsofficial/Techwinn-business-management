@@ -1,4 +1,4 @@
-import { normalizedLeadPhoneForStorage } from '@techwin/validation';
+import { normalizedLeadPhoneForStorage } from '#validation';
 import { ClientEmail } from '../value-objects/client-email.vo.js';
 import { ClientName } from '../value-objects/client-name.vo.js';
 import { ClientPhone } from '../value-objects/client-phone.vo.js';

@@ -1,4 +1,4 @@
-import type { CreateLeaveTypeRequest } from '@techwin/validation';
+import type { CreateLeaveTypeRequest } from '#validation';
 import { generateLeaveTypeCodeFromName } from './leave-type-code-generation.policy.js';
 import type { CreateLeaveTypeData } from '../types/leave-type.types.js';
 

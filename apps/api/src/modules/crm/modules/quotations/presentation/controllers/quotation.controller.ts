@@ -22,7 +22,7 @@ import type {
   CrmQuotationListResponse,
   CrmQuotationPrintResponse,
   QuotationDocumentCodePreviewResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   parseQuotationListQuery,
   quotationDocumentTypeSchema,
@@ -30,7 +30,7 @@ import {
   type CreateQuotationRequest,
   type SendQuotationRequest,
   type UpdateQuotationRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {

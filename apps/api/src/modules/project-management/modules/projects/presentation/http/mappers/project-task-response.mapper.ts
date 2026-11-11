@@ -4,7 +4,7 @@ import type {
   ProjectTaskBoardResponse,
   ProjectTaskSummaryItem,
   ProjectTaskSummaryListResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   PaginatedProjectTaskSummaries,
   ProjectTaskBoardRecord,

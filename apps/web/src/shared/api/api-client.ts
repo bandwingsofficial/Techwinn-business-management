@@ -1,7 +1,7 @@
 import { API_ERROR_CODES, type ApiErrorCode } from '@techwin/contracts';
 import { readCookie } from '@/shared/lib/cookies';
 import { apiConfig } from './api-config';
-import { ApiError } from './api-error';
+import { ApiError, isApiError } from './api-error';
 import { accessTokenStore } from './access-token-store';
 import { shouldNotifySessionEnded, shouldSuppressSessionEnded } from './session-ended';
 
@@ -16,6 +16,7 @@ export { accessTokenStore } from './access-token-store';
  *   Locks API serializes rotation across tabs so a rotated refresh token is
  *   never replayed (which the API treats as theft).
  * - An authenticated request is retried at most once after a successful refresh.
+ * - The refresh endpoint itself never triggers another refresh (`skipAuthRefresh`).
  */
 
 export type RefreshOutcome = 'refreshed' | 'unauthenticated';
@@ -31,6 +32,11 @@ export interface ApiRequestOptions {
   /** Echo the CSRF cookie for cookie-authenticated endpoints. */
   readonly csrf?: boolean;
   readonly signal?: AbortSignal;
+  /**
+   * When true, never attempt session refresh before or after this call.
+   * Required for the refresh endpoint itself to prevent recursive refresh loops.
+   */
+  readonly skipAuthRefresh?: boolean;
 }
 
 /** 401 codes that a refresh can fix. Anything else is final. */
@@ -44,6 +50,8 @@ const SESSION_RUNTIME_KEY = '__techwinPlatformSessionRuntime';
 type SessionRuntime = {
   refresher: SessionRefresher | null;
   inFlight: Promise<RefreshOutcome> | null;
+  /** Soft cooldown after refresh 429 so we do not immediately re-storm. */
+  refreshCooldownUntilMs: number;
   sessionEndedListeners: Set<SessionEndedListener>;
   accessDeniedListeners: Set<AccessDeniedListener>;
 };
@@ -55,6 +63,7 @@ function sessionRuntime(): SessionRuntime {
   globalRecord[SESSION_RUNTIME_KEY] ??= {
     refresher: null,
     inFlight: null,
+    refreshCooldownUntilMs: 0,
     sessionEndedListeners: new Set(),
     accessDeniedListeners: new Set(),
   };
@@ -107,19 +116,45 @@ async function withCrossTabLock<T>(task: () => Promise<T>): Promise<T> {
   return task();
 }
 
+function rateLimitedRefreshError(retryAfterSeconds: number): ApiError {
+  return new ApiError(
+    'http',
+    'Too many authentication requests. Please wait a moment and try again.',
+    429,
+    API_ERROR_CODES.RATE_LIMITED,
+    [],
+    null,
+    retryAfterSeconds,
+  );
+}
+
 /** Single-flight refresh shared by every caller in this tab (and across chunk copies). */
 export function refreshAccessToken(): Promise<RefreshOutcome> {
   const state = sessionRuntime();
   if (!state.refresher) return Promise.resolve('unauthenticated');
+
+  const now = Date.now();
+  if (now < state.refreshCooldownUntilMs) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((state.refreshCooldownUntilMs - now) / 1000));
+    return Promise.reject(rateLimitedRefreshError(retryAfterSeconds));
+  }
+
   const refresher = state.refresher;
-  state.inFlight ??= withCrossTabLock(refresher)
-    .then((outcome) => {
+  state.inFlight ??= withCrossTabLock(async () => {
+    try {
+      const outcome = await refresher();
       if (outcome === 'unauthenticated') notifySessionEnded();
       return outcome;
-    })
-    .finally(() => {
-      state.inFlight = null;
-    });
+    } catch (error) {
+      if (isApiError(error) && error.status === 429) {
+        const waitSeconds = Math.max(1, error.retryAfterSeconds ?? 5);
+        state.refreshCooldownUntilMs = Date.now() + waitSeconds * 1000;
+      }
+      throw error;
+    }
+  }).finally(() => {
+    state.inFlight = null;
+  });
   return state.inFlight;
 }
 
@@ -161,67 +196,84 @@ async function parse<T>(response: Response): Promise<T> {
   return JSON.parse(text) as T;
 }
 
-export async function apiBinaryRequest(path: string, options: ApiRequestOptions = {}): Promise<Blob> {
-  if (options.auth && !accessTokenStore.get() && sessionRuntime().refresher) {
-    const outcome = await refreshAccessToken();
-    if (outcome === 'unauthenticated') {
-      throw new ApiError('http', 'Your session has ended.', 401, API_ERROR_CODES.SESSION_EXPIRED);
-    }
+function canAttemptRefresh(options: ApiRequestOptions): boolean {
+  return Boolean(options.auth && !options.skipAuthRefresh && sessionRuntime().refresher);
+}
+
+async function ensureAccessToken(options: ApiRequestOptions): Promise<void> {
+  if (!canAttemptRefresh(options) || accessTokenStore.get()) return;
+  const outcome = await refreshAccessToken();
+  if (outcome === 'unauthenticated') {
+    throw new ApiError('http', 'Your session has ended.', 401, API_ERROR_CODES.SESSION_EXPIRED);
   }
+}
+
+async function retryAfterRefresh<T>(
+  path: string,
+  options: ApiRequestOptions,
+  firstError: ApiError,
+  afterOk: (response: Response) => Promise<T>,
+): Promise<T> {
+  const outcome = await refreshAccessToken();
+  if (outcome === 'unauthenticated') {
+    if (shouldNotifySessionEnded(firstError)) notifySessionEnded();
+    throw firstError;
+  }
+
+  const retried = await send(path, options);
+  if (retried.ok) return afterOk(retried);
+  const retryError = await ApiError.fromResponse(retried);
+  if (retried.status === 401 && shouldNotifySessionEnded(retryError)) notifySessionEnded();
+  if (options.auth) notifyAccessDenied(retryError);
+  throw retryError;
+}
+
+export async function apiBinaryRequest(path: string, options: ApiRequestOptions = {}): Promise<Blob> {
+  await ensureAccessToken(options);
 
   const response = await send(path, { ...options, method: options.method ?? 'GET' });
   if (response.ok) return response.blob();
 
   const error = await ApiError.fromResponse(response);
-  if (!(options.auth && response.status === 401 && REFRESHABLE_CODES.has(error.code))) {
+  if (
+    !(
+      canAttemptRefresh(options) &&
+      response.status === 401 &&
+      REFRESHABLE_CODES.has(error.code)
+    )
+  ) {
     if (options.auth && shouldNotifySessionEnded(error)) notifySessionEnded();
     if (options.auth) notifyAccessDenied(error);
     throw error;
   }
 
-  const outcome = await refreshAccessToken();
-  if (outcome === 'unauthenticated') {
-    if (shouldNotifySessionEnded(error)) notifySessionEnded();
-    throw error;
-  }
-
-  const retried = await send(path, { ...options, method: options.method ?? 'GET' });
-  if (retried.ok) return retried.blob();
-  const retryError = await ApiError.fromResponse(retried);
-  if (retried.status === 401 && shouldNotifySessionEnded(retryError)) notifySessionEnded();
-  notifyAccessDenied(retryError);
-  throw retryError;
+  return retryAfterRefresh(path, { ...options, method: options.method ?? 'GET' }, error, (r) =>
+    r.blob(),
+  );
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  // No token in memory (e.g. after a reload): restore it before the first call.
-  if (options.auth && !accessTokenStore.get() && sessionRuntime().refresher) {
-    const outcome = await refreshAccessToken();
-    if (outcome === 'unauthenticated') {
-      throw new ApiError('http', 'Your session has ended.', 401, API_ERROR_CODES.SESSION_EXPIRED);
-    }
-  }
+  await ensureAccessToken(options);
 
   const response = await send(path, options);
   if (response.ok) return parse<T>(response);
 
   const error = await ApiError.fromResponse(response);
-  if (!(options.auth && response.status === 401 && REFRESHABLE_CODES.has(error.code))) {
+  // Never treat rate limits as refreshable auth failures.
+  if (response.status === 429) {
+    throw error;
+  }
+  if (
+    !(
+      canAttemptRefresh(options) &&
+      response.status === 401 &&
+      REFRESHABLE_CODES.has(error.code)
+    )
+  ) {
     if (options.auth && shouldNotifySessionEnded(error)) notifySessionEnded();
     if (options.auth) notifyAccessDenied(error);
     throw error;
   }
 
-  const outcome = await refreshAccessToken();
-  if (outcome === 'unauthenticated') {
-    if (shouldNotifySessionEnded(error)) notifySessionEnded();
-    throw error;
-  }
-
-  const retried = await send(path, options);
-  if (retried.ok) return parse<T>(retried);
-  const retryError = await ApiError.fromResponse(retried);
-  if (retried.status === 401 && shouldNotifySessionEnded(retryError)) notifySessionEnded();
-  notifyAccessDenied(retryError);
-  throw retryError;
+  return retryAfterRefresh(path, options, error, (r) => parse<T>(r));
 }

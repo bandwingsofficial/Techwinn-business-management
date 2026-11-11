@@ -20,7 +20,7 @@ import type {
   OrgCalendarEventListResponse,
   OrgCalendarMonthDay,
   OrgCalendarMonthResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   createOrgCalendarEventRequestSchema,
   duplicateOrgCalendarHolidaysRequestSchema,
@@ -29,7 +29,7 @@ import {
   parseOrgCalendarMonthQuery,
   updateOrgCalendarEventRequestSchema,
   replaceOrgCalendarDateClassificationSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import {
   CrmContext,

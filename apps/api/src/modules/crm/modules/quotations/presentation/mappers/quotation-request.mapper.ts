@@ -1,4 +1,4 @@
-import type { CreateQuotationRequest, UpdateQuotationRequest } from '@techwin/validation';
+import type { CreateQuotationRequest, UpdateQuotationRequest } from '#validation';
 import type {
   CreateQuotationData,
   UpdateQuotationData,

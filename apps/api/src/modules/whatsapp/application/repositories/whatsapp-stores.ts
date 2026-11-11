@@ -16,14 +16,14 @@ import type {
   WhatsAppRealtimeEvent,
   WhatsAppTemplateSummary,
   WhatsAppTimelineResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   WhatsAppAnalyticsQuery,
   WhatsAppBroadcastAudience,
   WhatsAppConversationListQuery,
   WhatsAppTemplateListQuery,
   WhatsAppTimelineQuery,
-} from '@techwin/validation';
+} from '#validation';
 import type { ProviderPhoneNumberInfo, ProviderTemplate } from '../../domain/whatsapp.ports.js';
 import type {
   InboundMessage,

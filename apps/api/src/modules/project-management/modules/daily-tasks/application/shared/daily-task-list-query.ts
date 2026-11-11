@@ -1,4 +1,4 @@
-import type { DailyTaskListQuery as ParsedDailyTaskListQuery } from '@techwin/validation';
+import type { DailyTaskListQuery as ParsedDailyTaskListQuery } from '#validation';
 import { normalizeListPage, normalizeListPageSize } from '../../../../shared/application/list-page.js';
 import type { DailyTaskListQuery } from '../../domain/types/daily-task-inputs.js';
 

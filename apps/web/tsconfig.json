@@ -1,9 +1,15 @@
 {
-  "extends": "@techwin/tsconfig/nextjs.json",
+  "extends": "../../tooling/tsconfig/nextjs.json",
   "compilerOptions": {
     "types": ["node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@techwin/contracts": ["./src/lib/contracts/index.ts"],
+      "@techwin/contracts/*": ["./src/lib/contracts/*"],
+      "@techwin/validation": ["./src/lib/validation/index.ts"],
+      "@techwin/validation/*": ["./src/lib/validation/*"],
+      "@techwin/catalog": ["./src/lib/catalog/index.ts"],
+      "@techwin/catalog/*": ["./src/lib/catalog/*"]
     }
   },
   "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts", "*.ts"],

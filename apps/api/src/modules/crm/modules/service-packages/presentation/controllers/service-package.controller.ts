@@ -22,12 +22,12 @@ import type {
   CrmServicePackage,
   CrmServicePackageListResponse,
   ServicePackageCodePreviewResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   ChangeServicePackageStatusRequest,
   CreateServicePackageRequest,
   UpdateServicePackageRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {
   RequirePermissions,

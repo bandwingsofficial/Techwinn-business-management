@@ -13,13 +13,13 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { CrmClient, CrmClientListResponse, CrmLeadConvertResponse } from '@techwin/contracts';
+import type { CrmClient, CrmClientListResponse, CrmLeadConvertResponse } from '#contracts';
 import {
   parseClientListQuery,
   type CreateClientRequest,
   type UpdateClientRequest,
   type ChangeClientStatusRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {

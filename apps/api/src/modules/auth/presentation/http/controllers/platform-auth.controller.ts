@@ -31,7 +31,7 @@ import {
   type PlatformLogoutAllResponse,
   type PlatformSessionListResponse,
   type PlatformVerifyTotpResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import type { Request, Response } from 'express';
 import {
   Client,

@@ -27,7 +27,7 @@ import {
   type OrgRoleDetail,
   type OrgRoleListResponse,
   type PermissionCatalogResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   acceptInvitationRequestSchema,
   assignMemberRolesRequestSchema,
@@ -37,7 +37,7 @@ import {
   parseOrgMemberListQuery,
   setRolePermissionsRequestSchema,
   updateRoleRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import {
   CrmContext,

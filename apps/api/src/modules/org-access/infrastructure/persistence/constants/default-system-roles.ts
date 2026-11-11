@@ -4,7 +4,7 @@ import {
   SYSTEM_ROLE_KEYS,
   USER_ADMINISTRATION_PERMISSIONS,
   type PermissionKey,
-} from '@techwin/contracts';
+} from '#contracts';
 
 export { SYSTEM_ROLE_KEYS };
 

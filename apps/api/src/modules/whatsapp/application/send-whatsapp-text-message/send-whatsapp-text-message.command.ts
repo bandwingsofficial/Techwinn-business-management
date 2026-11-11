@@ -1,4 +1,4 @@
-import type { WhatsAppSendTextRequest } from "@techwin/validation";
+import type { WhatsAppSendTextRequest } from "#validation";
 import type { WhatsAppActor } from "../shared/whatsapp-actor.js";
 export interface SendWhatsAppTextMessageCommand {
   readonly actor: WhatsAppActor;

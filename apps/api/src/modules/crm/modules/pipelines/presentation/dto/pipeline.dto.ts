@@ -1,5 +1,5 @@
 /**
- * Pipeline HTTP request bodies — Zod schemas owned by @techwin/validation.
+ * Pipeline HTTP request bodies — Zod schemas owned by #validation.
  * Response/OpenAPI helpers remain in crm/presentation/http/dto/crm.schemas.ts.
  */
 export {
@@ -11,4 +11,4 @@ export {
   updatePipelineStageRequestSchema as updatePipelineStageBodySchema,
   deletePipelineStageRequestSchema as deletePipelineStageBodySchema,
   reorderPipelineStagesRequestSchema as reorderPipelineStagesBodySchema,
-} from '@techwin/validation';
+} from '#validation';

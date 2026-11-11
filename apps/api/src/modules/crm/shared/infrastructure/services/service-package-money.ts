@@ -2,7 +2,7 @@ import { Decimal } from '@prisma/client/runtime/client';
 import {
   computeServicePackagePricing as computeShared,
   type ServicePackagePricingInput as SharedServicePackagePricingInput,
-} from '@techwin/validation';
+} from '#validation';
 
 export type ServicePackageAddOnInput = SharedServicePackagePricingInput['addOns'][number];
 export type ServicePackagePricingInput = SharedServicePackagePricingInput;

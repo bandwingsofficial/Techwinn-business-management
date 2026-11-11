@@ -3,7 +3,7 @@ import type {
   OrgCalendarMonthDay,
   OrgCalendarMonthResponse,
   OrgCalendarEventItem,
-} from '@techwin/contracts';
+} from '#contracts';
 import type {
   OrgCalendarEventWriteInput,
   OrgCalendarHolidaysQuery,

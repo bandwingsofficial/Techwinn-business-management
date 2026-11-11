@@ -20,13 +20,13 @@ import type {
   WhatsAppChannelTestResult,
   WhatsAppSetupInfo,
   WhatsAppTemplateSyncResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   whatsappCreateChannelRequestSchema,
   whatsappEmbeddedSignupRequestSchema,
   whatsappRotateCredentialsRequestSchema,
   whatsappUpdateChannelRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard } from '../../../../auth/index.js';
 import {
   CrmContext,

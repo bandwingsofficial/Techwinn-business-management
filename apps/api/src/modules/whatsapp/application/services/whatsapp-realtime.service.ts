@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { Inject, Injectable } from '@nestjs/common';
-import type { WhatsAppRealtimeResponse } from '@techwin/contracts';
+import type { WhatsAppRealtimeResponse } from '#contracts';
 import { inboxScope, type WhatsAppActor } from '../shared/whatsapp-access.js';
 import { WHATSAPP_INBOX_STORE, type WhatsAppInboxStore } from '../repositories/whatsapp-stores.js';
 

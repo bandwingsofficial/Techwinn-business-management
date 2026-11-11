@@ -1,4 +1,4 @@
-import type { CreateProjectRequest, UpdateProjectRequest } from '@techwin/validation';
+import type { CreateProjectRequest, UpdateProjectRequest } from '#validation';
 import type { CreateProjectInput, UpdateProjectInput } from '../../../domain/repositories/project.repository.js';
 
 export function toCreateProjectInput(

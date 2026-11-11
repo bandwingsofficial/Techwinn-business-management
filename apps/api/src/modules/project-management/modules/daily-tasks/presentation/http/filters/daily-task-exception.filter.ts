@@ -1,5 +1,5 @@
 import { Catch, HttpStatus, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
-import { API_ERROR_CODES, type ApiErrorCode } from '@techwin/contracts';
+import { API_ERROR_CODES, type ApiErrorCode } from '#contracts';
 import type { Request, Response } from 'express';
 import { sendApiError } from '../../../../../../../common/filters/api-error.response.js';
 import {

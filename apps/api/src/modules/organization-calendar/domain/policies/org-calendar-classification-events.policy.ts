@@ -1,4 +1,4 @@
-import type { OrgCalendarEventType } from '@techwin/contracts';
+import type { OrgCalendarEventType } from '#contracts';
 import type { ScheduleDayFlags } from '../services/org-calendar-classification.service.js';
 import type { OrgCalendarEventWriteInput } from '../types/org-calendar.types.js';
 

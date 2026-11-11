@@ -6,11 +6,12 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { API_ERROR_CODES, type PermissionKey } from '@techwin/contracts';
+import { API_ERROR_CODES, type PermissionKey } from '#contracts';
 import { ApiException } from '../../../../../common/filters/api-error.response.js';
 import type { OrgAccessActor } from '../../../../org-access/application/shared/org-access-actor.js';
 import { PermissionCheckerService } from '../../../../org-access/application/services/permission-checker.service.js';
 import { AttendanceAuthorizationService } from '../../../application/services/attendance-authorization.service.js';
+import { AttendanceEmployeeProfileNotLinkedError } from '../../../domain/errors/attendance.errors.js';
 import type { CrmAuthenticatedRequest } from '../../../../../platform/tenant-context/crm-organization.guard.js';
 import { REQUIRE_PERMISSIONS_KEY } from '../../../../org-access/presentation/http/decorators/require-permissions.decorator.js';
 
@@ -69,8 +70,15 @@ export class AttendanceSelfServiceGuard implements CanActivate {
       try {
         await this.attendanceAuthz.requireEmployeeId(actor);
         return true;
-      } catch {
-        // fall through to forbidden
+      } catch (error) {
+        if (error instanceof AttendanceEmployeeProfileNotLinkedError) {
+          throw new ApiException(
+            HttpStatus.FORBIDDEN,
+            API_ERROR_CODES.EMPLOYEE_PROFILE_NOT_LINKED,
+            error.message,
+          );
+        }
+        throw error;
       }
     }
 

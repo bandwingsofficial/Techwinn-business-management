@@ -6,7 +6,7 @@ import {
   PROTECTED_SYSTEM_ROLE_KEYS,
   SYSTEM_ROLE_KEYS,
   type PermissionKey,
-} from '@techwin/contracts';
+} from '#contracts';
 import { createHash, randomUUID } from 'node:crypto';
 import { Prisma, type CrmAuditEventType } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';

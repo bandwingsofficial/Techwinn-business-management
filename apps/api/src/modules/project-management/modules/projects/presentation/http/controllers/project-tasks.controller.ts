@@ -19,7 +19,7 @@ import type {
   ProjectTask,
   ProjectTaskBoardResponse,
   ProjectTaskSummaryListResponse,
-} from '@techwin/contracts';
+} from '#contracts';
 import {
   createProjectTaskRequestSchema,
   moveProjectTaskRequestSchema,
@@ -30,7 +30,7 @@ import {
   type MoveProjectTaskRequest,
   type ReorderProjectPhasesRequest,
   type UpdateProjectTaskRequest,
-} from '@techwin/validation';
+} from '#validation';
 import { PlatformAdminGuard, type PlatformAuthenticatedRequest } from '../../../../../../auth/index.js';
 import {
   CrmContext,

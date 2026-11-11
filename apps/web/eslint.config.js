@@ -1,4 +1,4 @@
-import { nextConfig } from '@techwin/eslint-config/next';
+import { nextConfig } from '../../tooling/eslint/next.js';
 
 const config = [
   { ignores: ['next-env.d.ts', '.next/**'] },

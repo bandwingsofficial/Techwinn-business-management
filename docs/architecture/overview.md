@@ -4,9 +4,10 @@ Techwin is a pnpm workspace with two applications and shared packages:
 
 - `@techwin/api` — NestJS modular monolith (PostgreSQL via Prisma, Redis, platform auth)
 - `@techwin/web` — Next.js App Router admin UI
-- `@techwin/contracts` — HTTP shapes, error codes, route constants
-- `@techwin/validation` — Zod schemas shared by API DTOs and web forms
-- `@techwin/tsconfig`, `@techwin/eslint-config`, `@techwin/scripts` — tooling
+- `apps/api/src/lib/contracts` + `apps/web/src/lib/contracts` — HTTP shapes, error codes, route constants (duplicated per app)
+- `apps/api/src/lib/validation` + `apps/web/src/lib/validation` — Zod schemas (duplicated per app)
+- `apps/web/src/lib/catalog` — web-only catalog option data
+- `tooling/tsconfig`, `tooling/eslint`, `scripts/` — repository tooling (not a runtime package)
 
 ## API layers
 

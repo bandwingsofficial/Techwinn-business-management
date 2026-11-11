@@ -5,8 +5,8 @@ import type {
   WhatsAppBroadcastDetail,
   WhatsAppBroadcastStats,
   WhatsAppBroadcastSummary,
-} from '@techwin/contracts';
-import type { WhatsAppBroadcastAudience } from '@techwin/validation';
+} from '#contracts';
+import type { WhatsAppBroadcastAudience } from '#validation';
 import type { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { WhatsAppPolicyError, WhatsAppValidationError } from '../../../../domain/whatsapp.errors.js';

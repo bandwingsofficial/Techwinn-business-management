@@ -9,7 +9,7 @@ import {
   projectStatusSchema,
   updateProjectRequestBodySchema,
   updateProjectRequestSchema,
-} from '@techwin/validation';
+} from '#validation';
 import type { ApiResponseSchemaHost } from '@nestjs/swagger';
 import { z } from 'zod';
 
