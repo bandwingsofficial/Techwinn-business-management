@@ -34,18 +34,44 @@ export class ProvisionMemberHandler {
       );
     }
 
+    let email = command.email;
+    let displayName = command.displayName;
+    let phone = command.phone ?? null;
+
+    if (command.employeeId) {
+      const employee = await this.repository.findLinkableEmployeeProfile(
+        command.organizationId,
+        command.employeeId,
+      );
+      if (!employee) {
+        throw new OrgAccessValidationError(
+          'The selected employee is not eligible for account linking.',
+          [
+            {
+              path: 'employeeId',
+              message: 'Choose an employee without a linked sign-in account.',
+            },
+          ],
+        );
+      }
+      // Trusted HR profile is the source of truth for linked employee accounts.
+      email = employee.workEmail;
+      displayName = employee.displayName;
+      phone = employee.phone?.trim() ? employee.phone : null;
+    }
+
     const account = await this.memberAccounts.prepareNewAccount({
       organizationId: command.organizationId,
       actorAdminId: command.actorAdminId,
-      email: command.email,
+      email,
       password: command.password,
       roleIds: command.roleIds,
     });
     return this.repository.provisionMember(
       command.organizationId,
       {
-        displayName: command.displayName,
-        phone: command.phone,
+        displayName,
+        phone,
         account,
         employeeId: command.employeeId,
       },

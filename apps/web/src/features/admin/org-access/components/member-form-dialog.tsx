@@ -91,6 +91,21 @@ function emptyCreateForm(): CreateFormState {
   };
 }
 
+function profileFromEmployee(employee: EmployeeListItem | undefined): Pick<
+  CreateFormState,
+  'displayName' | 'email' | 'phone' | 'employeeId'
+> {
+  if (!employee) {
+    return { displayName: '', email: '', phone: '', employeeId: '' };
+  }
+  return {
+    employeeId: employee.id,
+    displayName: employee.displayName,
+    email: employee.workEmail,
+    phone: employee.phone?.trim() ?? '',
+  };
+}
+
 function employeeCatalogGroups(
   employees: readonly EmployeeListItem[],
 ): readonly CatalogOptionGroup[] {
@@ -297,6 +312,48 @@ export function MemberFormDialog({
     ];
   }, [createForm.employeeId, linkableEmployees]);
 
+  const linkedProfileLocked = requiresEmployeeLink && Boolean(createForm.employeeId);
+  const showAccountFields = !requiresEmployeeLink || linkedProfileLocked;
+
+  const applyCreateRole = (roleId: string) => {
+    const nextIsEmployee = roleSelectionIsEmployeeRole(roleId, allRoles);
+    setCreateForm((current) => {
+      if (!nextIsEmployee) {
+        return {
+          ...current,
+          roleId,
+          ...profileFromEmployee(undefined),
+        };
+      }
+      if (!roleSelectionIsEmployeeRole(current.roleId, allRoles)) {
+        return {
+          ...current,
+          roleId,
+          ...profileFromEmployee(undefined),
+        };
+      }
+      return { ...current, roleId };
+    });
+    dismissFieldError('roleIds');
+    dismissFieldError('employeeId');
+    dismissFieldError('displayName');
+    dismissFieldError('email');
+    dismissFieldError('phone');
+    createLiveFields.touch('roleIds');
+  };
+
+  const applyCreateEmployee = (employeeId: string) => {
+    const employee = linkableEmployees.find((item) => item.id === employeeId);
+    setCreateForm((current) => ({
+      ...current,
+      ...profileFromEmployee(employee),
+    }));
+    dismissFieldError('employeeId');
+    dismissFieldError('displayName');
+    dismissFieldError('email');
+    dismissFieldError('phone');
+  };
+
   const submitCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     setServerErrors({});
@@ -396,231 +453,275 @@ export function MemberFormDialog({
             onSubmit={(event) => void submitCreate(event)}
           >
             <div className="grid gap-6">
-              <div className="grid gap-4">
-                <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                  Account information
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2 sm:col-span-2">
-                    <CrmFieldLabel htmlFor="member-create-name" required>
-                      Full name
-                    </CrmFieldLabel>
-                    <Input
-                      id="member-create-name"
-                      autoComplete="name"
-                      disabled={pending}
-                      value={createForm.displayName}
-                      className={cn(
-                        CRM_PIPELINE_FORM_FIELD_CLASS,
-                        formControlStateClass(createLiveFields.controlState('displayName')),
-                      )}
-                      onChange={(event) => {
-                        setCreateForm((c) => ({ ...c, displayName: event.target.value }));
-                        dismissFieldError('displayName');
-                      }}
-                    />
-                    <CrmInlineFieldError message={createFieldError('displayName')} reserveSpace={false} />
-                  </div>
-                  <div className="grid gap-2">
-                    <CrmFieldLabel htmlFor="member-create-email" required>
-                      Email address
-                    </CrmFieldLabel>
-                    <Input
-                      id="member-create-email"
-                      type="email"
-                      autoComplete="email"
-                      disabled={pending}
-                      value={createForm.email}
-                      className={cn(
-                        CRM_PIPELINE_FORM_FIELD_CLASS,
-                        formControlStateClass(createLiveFields.controlState('email')),
-                      )}
-                      onChange={(event) => {
-                        setCreateForm((c) => ({ ...c, email: event.target.value }));
-                        dismissFieldError('email');
-                      }}
-                    />
-                    <CrmInlineFieldError message={createFieldError('email')} reserveSpace={false} />
-                  </div>
-                  <div className="grid gap-2">
-                    <CrmFieldLabel htmlFor="member-create-phone" optional>
-                      Phone number
-                    </CrmFieldLabel>
-                    <Input
-                      id="member-create-phone"
-                      type="tel"
-                      disabled={pending}
-                      value={createForm.phone}
-                      placeholder="Optional"
-                      className={cn(
-                        CRM_PIPELINE_FORM_FIELD_CLASS,
-                        formControlStateClass(createLiveFields.controlState('phone')),
-                      )}
-                      onChange={(event) => {
-                        setCreateForm((c) => ({ ...c, phone: event.target.value }));
-                        dismissFieldError('phone');
-                      }}
-                    />
-                    <CrmInlineFieldError message={createFieldError('phone')} reserveSpace={false} />
-                  </div>
-                  <div className="grid gap-2">
-                    <CrmFieldLabel htmlFor="member-create-password" required>
-                      Password
-                    </CrmFieldLabel>
-                    <div className="relative">
-                      <Input
-                        id="member-create-password"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        disabled={pending}
-                        value={createForm.password}
-                        className={cn(
-                          CRM_PIPELINE_FORM_FIELD_CLASS,
-                          'pr-11',
-                          formControlStateClass(createLiveFields.controlState('password')),
-                        )}
-                        onChange={(event) => {
-                          setCreateForm((c) => ({ ...c, password: event.target.value }));
-                          dismissFieldError('password');
-                        }}
-                      />
-                      <PasswordToggle
-                        pressed={showPassword}
-                        onToggle={() => setShowPassword((v) => !v)}
-                        disabled={pending}
-                      />
-                    </div>
-                    <p className="text-muted-foreground text-xs">{PASSWORD_REQUIREMENTS}</p>
-                    <CrmInlineFieldError message={createFieldError('password')} reserveSpace={false} />
-                  </div>
-                  <div className="grid gap-2">
-                    <CrmFieldLabel htmlFor="member-create-confirm" required>
-                      Confirm password
-                    </CrmFieldLabel>
-                    <div className="relative">
-                      <Input
-                        id="member-create-confirm"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        disabled={pending}
-                        value={createForm.confirmPassword}
-                        className={cn(
-                          CRM_PIPELINE_FORM_FIELD_CLASS,
-                          'pr-11',
-                          formControlStateClass(createLiveFields.controlState('confirmPassword')),
-                        )}
-                        onChange={(event) => {
-                          setCreateForm((c) => ({ ...c, confirmPassword: event.target.value }));
-                          dismissFieldError('confirmPassword');
-                        }}
-                      />
-                      <PasswordToggle
-                        pressed={showConfirmPassword}
-                        onToggle={() => setShowConfirmPassword((v) => !v)}
-                        disabled={pending}
-                      />
-                    </div>
-                    <CrmInlineFieldError message={createFieldError('confirmPassword')} reserveSpace={false} />
-                  </div>
-                </div>
-              </div>
-
               <div className="grid gap-3">
-                <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                  Organization access
-                </p>
-                <div className="grid gap-2 sm:max-w-md">
-                  <CrmFieldLabel htmlFor="member-create-role" required>
-                    Assigned role
-                  </CrmFieldLabel>
-                  {grantableRoles.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">
-                      No assignable roles are available.
-                    </p>
-                  ) : (
-                    <Select
-                      value={createForm.roleId || undefined}
-                      disabled={pending}
-                      onValueChange={(roleId) => {
-                        const stillEmployee = roleSelectionIsEmployeeRole(roleId, allRoles);
-                        setCreateForm((c) => ({
-                          ...c,
-                          roleId,
-                          employeeId: stillEmployee ? c.employeeId : '',
-                        }));
-                        dismissFieldError('roleIds');
-                        if (!stillEmployee) dismissFieldError('employeeId');
-                        createLiveFields.touch('roleIds');
-                      }}
+                <CrmFieldLabel htmlFor="member-create-role" required>
+                  Select account role
+                </CrmFieldLabel>
+                {grantableRoles.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No assignable roles are available.
+                  </p>
+                ) : (
+                  <Select
+                    value={createForm.roleId || undefined}
+                    disabled={pending}
+                    onValueChange={applyCreateRole}
+                  >
+                    <SelectTrigger
+                      id="member-create-role"
+                      className={cn(
+                        CRM_PIPELINE_FORM_FIELD_CLASS,
+                        'w-full',
+                        formControlStateClass(createLiveFields.controlState('roleIds')),
+                      )}
                     >
-                      <SelectTrigger
-                        id="member-create-role"
-                        className={cn(
-                          CRM_PIPELINE_FORM_FIELD_CLASS,
-                          formControlStateClass(createLiveFields.controlState('roleIds')),
-                        )}
-                      >
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {grantableRoles.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <CrmInlineFieldError message={createFieldError('roleIds')} reserveSpace={false} />
-                </div>
-
-                {requiresEmployeeLink ? (
-                  <>
-                    <SearchableMultiSelect
-                      label="Select employee"
-                      searchable
-                      groups={employeeGroups}
-                      value={createEmployeeSelection}
-                      triggerPlaceholder={
-                        linkableEmployeesLoading
-                          ? 'Loading employees…'
-                          : 'Search and select an employee…'
-                      }
-                      placeholder="Search by name, code, or email…"
-                      emptyLabel={
-                        linkableEmployeesLoading
-                          ? 'Loading…'
-                          : 'No eligible employees without a sign-in account.'
-                      }
-                      disabled={pending || linkableEmployeesLoading}
-                      controlState={
-                        serverErrors.employeeId || apiFieldErrors.employeeId ? 'invalid' : 'neutral'
-                      }
-                      onChange={(next) => {
-                        const picked = next.length > 0 ? next[next.length - 1]! : null;
-                        setCreateForm((c) => ({
-                          ...c,
-                          employeeId: picked?.id ?? '',
-                        }));
-                        dismissFieldError('employeeId');
-                      }}
-                    />
-                    <CrmInlineFieldError
-                      message={
-                        serverErrors.employeeId ||
-                        apiFieldErrors.employeeId ||
-                        undefined
-                      }
-                      reserveSpace={false}
-                    />
-                  </>
-                ) : null}
-
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {grantableRoles.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <CrmInlineFieldError message={createFieldError('roleIds')} reserveSpace={false} />
                 <p className="text-muted-foreground text-xs leading-snug">
-                  Active roles you are allowed to assign are listed. Assign the Employee role to link an
-                  existing employee profile. Other roles create a standalone member account.
+                  Choose Employee to link an existing employee profile. Other roles create a standalone
+                  member account.
                 </p>
               </div>
+
+              {requiresEmployeeLink ? (
+                <div className="animate-in fade-in-0 slide-in-from-top-1 grid gap-2 duration-200">
+                  <SearchableMultiSelect
+                    className="w-full max-w-none"
+                    label="Select employee"
+                    labelNode={
+                      <span className="inline-flex min-w-0 items-center gap-0.5">
+                        <span className="truncate">Select employee</span>
+                        <span className="text-destructive shrink-0">*</span>
+                      </span>
+                    }
+                    searchable
+                    groups={employeeGroups}
+                    value={createEmployeeSelection}
+                    triggerPlaceholder={
+                      linkableEmployeesLoading
+                        ? 'Loading employees…'
+                        : 'Search and select an employee…'
+                    }
+                    placeholder="Search by name, code, or email…"
+                    emptyLabel={
+                      linkableEmployeesLoading
+                        ? 'Loading…'
+                        : 'No eligible employees without a sign-in account.'
+                    }
+                    disabled={pending || linkableEmployeesLoading}
+                    controlState={
+                      serverErrors.employeeId || apiFieldErrors.employeeId ? 'invalid' : 'neutral'
+                    }
+                    onChange={(next) => {
+                      const previousId = createForm.employeeId;
+                      const picked =
+                        next.find((item) => item.id !== previousId) ??
+                        (next.length === 1 ? next[0] : undefined);
+                      applyCreateEmployee(picked?.id ?? '');
+                    }}
+                  />
+                  <CrmInlineFieldError
+                    message={serverErrors.employeeId || apiFieldErrors.employeeId || undefined}
+                    reserveSpace={false}
+                  />
+                </div>
+              ) : null}
+
+              {createForm.roleId && showAccountFields ? (
+                <div className="animate-in fade-in-0 slide-in-from-top-1 grid gap-4 duration-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                      Account information
+                    </p>
+                    {linkedProfileLocked ? (
+                      <p className="text-muted-foreground text-xs">
+                        Linked from employee profile
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div
+                      className={cn(
+                        'grid gap-2',
+                        requiresEmployeeLink ? undefined : 'sm:col-span-2',
+                      )}
+                    >
+                      <CrmFieldLabel htmlFor="member-create-name" required>
+                        Full name
+                      </CrmFieldLabel>
+                      <Input
+                        id="member-create-name"
+                        autoComplete="name"
+                        readOnly={linkedProfileLocked}
+                        disabled={pending}
+                        value={createForm.displayName}
+                        className={cn(
+                          CRM_PIPELINE_FORM_FIELD_CLASS,
+                          linkedProfileLocked && 'bg-muted/40',
+                          formControlStateClass(createLiveFields.controlState('displayName')),
+                        )}
+                        onChange={(event) => {
+                          if (linkedProfileLocked) return;
+                          setCreateForm((c) => ({ ...c, displayName: event.target.value }));
+                          dismissFieldError('displayName');
+                        }}
+                      />
+                      <CrmInlineFieldError
+                        message={createFieldError('displayName')}
+                        reserveSpace={false}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <CrmFieldLabel htmlFor="member-create-email" required>
+                        Email address
+                      </CrmFieldLabel>
+                      <Input
+                        id="member-create-email"
+                        type="email"
+                        autoComplete="email"
+                        readOnly={linkedProfileLocked}
+                        disabled={pending}
+                        value={createForm.email}
+                        className={cn(
+                          CRM_PIPELINE_FORM_FIELD_CLASS,
+                          linkedProfileLocked && 'bg-muted/40',
+                          formControlStateClass(createLiveFields.controlState('email')),
+                        )}
+                        onChange={(event) => {
+                          if (linkedProfileLocked) return;
+                          setCreateForm((c) => ({ ...c, email: event.target.value }));
+                          dismissFieldError('email');
+                        }}
+                      />
+                      <CrmInlineFieldError
+                        message={createFieldError('email')}
+                        reserveSpace={false}
+                      />
+                    </div>
+                    {requiresEmployeeLink ? (
+                      createForm.phone.trim() ? (
+                        <div className="grid gap-2 sm:col-span-2">
+                          <CrmFieldLabel htmlFor="member-create-phone">Phone number</CrmFieldLabel>
+                          <Input
+                            id="member-create-phone"
+                            type="tel"
+                            readOnly
+                            disabled={pending}
+                            value={createForm.phone}
+                            className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'bg-muted/40')}
+                          />
+                        </div>
+                      ) : null
+                    ) : (
+                      <div className="grid gap-2">
+                        <CrmFieldLabel htmlFor="member-create-phone" optional>
+                          Phone number
+                        </CrmFieldLabel>
+                        <Input
+                          id="member-create-phone"
+                          type="tel"
+                          disabled={pending}
+                          value={createForm.phone}
+                          placeholder="Optional"
+                          className={cn(
+                            CRM_PIPELINE_FORM_FIELD_CLASS,
+                            formControlStateClass(createLiveFields.controlState('phone')),
+                          )}
+                          onChange={(event) => {
+                            setCreateForm((c) => ({ ...c, phone: event.target.value }));
+                            dismissFieldError('phone');
+                          }}
+                        />
+                        <CrmInlineFieldError
+                          message={createFieldError('phone')}
+                          reserveSpace={false}
+                        />
+                      </div>
+                    )}
+                    <div className="grid gap-2">
+                      <CrmFieldLabel htmlFor="member-create-password" required>
+                        Password
+                      </CrmFieldLabel>
+                      <div className="relative">
+                        <Input
+                          id="member-create-password"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          disabled={pending}
+                          value={createForm.password}
+                          className={cn(
+                            CRM_PIPELINE_FORM_FIELD_CLASS,
+                            'pr-11',
+                            formControlStateClass(createLiveFields.controlState('password')),
+                          )}
+                          onChange={(event) => {
+                            setCreateForm((c) => ({ ...c, password: event.target.value }));
+                            dismissFieldError('password');
+                          }}
+                        />
+                        <PasswordToggle
+                          pressed={showPassword}
+                          onToggle={() => setShowPassword((v) => !v)}
+                          disabled={pending}
+                        />
+                      </div>
+                      <p className="text-muted-foreground text-xs">{PASSWORD_REQUIREMENTS}</p>
+                      <CrmInlineFieldError
+                        message={createFieldError('password')}
+                        reserveSpace={false}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <CrmFieldLabel htmlFor="member-create-confirm" required>
+                        Confirm password
+                      </CrmFieldLabel>
+                      <div className="relative">
+                        <Input
+                          id="member-create-confirm"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          disabled={pending}
+                          value={createForm.confirmPassword}
+                          className={cn(
+                            CRM_PIPELINE_FORM_FIELD_CLASS,
+                            'pr-11',
+                            formControlStateClass(createLiveFields.controlState('confirmPassword')),
+                          )}
+                          onChange={(event) => {
+                            setCreateForm((c) => ({ ...c, confirmPassword: event.target.value }));
+                            dismissFieldError('confirmPassword');
+                          }}
+                        />
+                        <PasswordToggle
+                          pressed={showConfirmPassword}
+                          onToggle={() => setShowConfirmPassword((v) => !v)}
+                          disabled={pending}
+                        />
+                      </div>
+                      <CrmInlineFieldError
+                        message={createFieldError('confirmPassword')}
+                        reserveSpace={false}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {requiresEmployeeLink && !linkedProfileLocked && createForm.roleId ? (
+                <p className="text-muted-foreground animate-in fade-in-0 text-sm duration-200">
+                  Select an employee to prefill account details from their profile.
+                </p>
+              ) : null}
             </div>
           </form>
         ) : editForm && member ? (

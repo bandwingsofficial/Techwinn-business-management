@@ -194,6 +194,19 @@ export interface OrgAccessRepository {
   ): Promise<void>;
   /** Existing member of this organization with `email` and no linked employee record. */
   findLinkableMemberAdminId(organizationId: string, email: string): Promise<string | null>;
+  /**
+   * Employee eligible for a new sign-in account (active/on-leave, no platformAdminId).
+   * Used so provisioned account identity comes from HR data, not the client payload.
+   */
+  findLinkableEmployeeProfile(
+    organizationId: string,
+    employeeId: string,
+  ): Promise<{
+    readonly id: string;
+    readonly displayName: string;
+    readonly workEmail: string;
+    readonly phone: string;
+  } | null>;
   findMembershipByAdmin(organizationId: string, adminId: string): Promise<OrgMembershipRef | null>;
   provisionMember(
     organizationId: string,

@@ -187,6 +187,10 @@ export class PrismaOrgAccessRepository implements OrgAccessRepository {
     return this.members.findLinkableMemberAdminId(organizationId, email);
   }
 
+  findLinkableEmployeeProfile(organizationId: string, employeeId: string) {
+    return this.members.findLinkableEmployeeProfile(organizationId, employeeId);
+  }
+
   findMembershipByAdmin(organizationId: string, adminId: string): Promise<OrgMembershipRef | null> {
     return this.members.findMembershipByAdmin(organizationId, adminId);
   }

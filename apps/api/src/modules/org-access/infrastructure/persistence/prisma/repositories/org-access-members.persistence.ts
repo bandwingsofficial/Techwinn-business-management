@@ -486,6 +486,32 @@ export class OrgAccessMembersPersistence {
     return row ? { membershipId: row.id, status: row.status } : null;
   }
 
+  async findLinkableEmployeeProfile(
+    organizationId: string,
+    employeeId: string,
+  ): Promise<{
+    id: string;
+    displayName: string;
+    workEmail: string;
+    phone: string;
+  } | null> {
+    const employee = await this.prisma.employee.findFirst({
+      where: {
+        id: employeeId,
+        organizationId,
+        platformAdminId: null,
+        employmentStatus: { in: ['ACTIVE', 'ON_LEAVE'] },
+      },
+      select: {
+        id: true,
+        displayName: true,
+        workEmail: true,
+        phone: true,
+      },
+    });
+    return employee;
+  }
+
   async provisionMember(
     organizationId: string,
     input: {
