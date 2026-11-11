@@ -4,6 +4,7 @@ import { apiConfig } from './api-config';
 import { ApiError, isApiError } from './api-error';
 import { accessTokenStore } from './access-token-store';
 import { shouldNotifySessionEnded, shouldSuppressSessionEnded } from './session-ended';
+import { recordApiRequest } from './request-diagnostics';
 
 export { accessTokenStore } from './access-token-store';
 
@@ -229,6 +230,7 @@ async function retryAfterRefresh<T>(
 }
 
 export async function apiBinaryRequest(path: string, options: ApiRequestOptions = {}): Promise<Blob> {
+  recordApiRequest({ method: options.method ?? 'GET', path });
   await ensureAccessToken(options);
 
   const response = await send(path, { ...options, method: options.method ?? 'GET' });
@@ -253,6 +255,7 @@ export async function apiBinaryRequest(path: string, options: ApiRequestOptions 
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  recordApiRequest({ method: options.method ?? 'GET', path });
   await ensureAccessToken(options);
 
   const response = await send(path, options);

@@ -12,23 +12,34 @@ export function useDailyTasksPolling(
 ) {
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     if (!enabled) return;
     let timer: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
 
-    const tick = () => {
-      if (document.visibilityState !== 'visible') return;
-      void refreshRef.current();
+    const tick = async () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      try {
+        await refreshRef.current();
+      } finally {
+        inFlightRef.current = false;
+      }
     };
 
-    timer = setInterval(tick, intervalMs);
+    timer = setInterval(() => {
+      void tick();
+    }, intervalMs);
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refreshRef.current();
+      if (document.visibilityState === 'visible') void tick();
     };
     document.addEventListener('visibilitychange', onVisible);
 
     return () => {
+      cancelled = true;
       if (timer) clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };

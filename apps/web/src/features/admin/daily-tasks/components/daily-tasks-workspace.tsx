@@ -32,6 +32,7 @@ import {
   type DailyTasksPortal,
 } from '../utils/daily-tasks-organization-scope';
 import { localDateInputValue } from '../utils/local-date';
+import { sameWorkflowStages } from '../utils/workflow-stages-equal';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
 import {
   filterTasksByAssignment,
@@ -82,6 +83,8 @@ export function DailyTasksWorkspace({
   const toast = useAdminToast();
   const { dashboardBreadcrumb } = usePortalNavigation();
   const missingBoardTaskToast = useRef<string | null>(null);
+  const stagesRef = useRef<readonly DailyTaskWorkflowStage[]>([]);
+  const boardAbortRef = useRef<AbortController | null>(null);
   const { has } = useAdminAccess();
   const canAssignTasks = has('tasks.create') && has('tasks.assign');
   const canManageWorkflow = has('tasks.update') || has('daily_tasks.manage_workflow');
@@ -221,6 +224,10 @@ export function DailyTasksWorkspace({
   }, [searchParams]);
 
   const [stages, setStages] = useState<readonly DailyTaskWorkflowStage[]>([]);
+  stagesRef.current = stages;
+  const replaceStages = useCallback((next: readonly DailyTaskWorkflowStage[]) => {
+    setStages((previous) => (sameWorkflowStages(previous, next) ? previous : next));
+  }, []);
   const [employees, setEmployees] = useState<readonly { id: string; displayName: string }[]>([]);
   const [projects, setProjects] = useState<readonly { id: string; name: string }[]>([]);
 
@@ -296,21 +303,31 @@ export function DailyTasksWorkspace({
   );
 
   const loadBoard = useCallback(async () => {
+    boardAbortRef.current?.abort();
+    const controller = new AbortController();
+    boardAbortRef.current = controller;
     setBoardLoading(true);
     setBoardError(false);
     try {
       if (dataScope === 'own') {
+        const cachedStages = stagesRef.current;
         const [stageResponse, taskResponse] = await Promise.all([
-          stages.length > 0 ? Promise.resolve({ stages }) : fetchDailyTaskWorkflowStages(),
-          listMyDailyTasks({
-            ...filterQuery,
-            page: 1,
-            pageSize: 100,
-            sortBy: 'priority',
-            sortDir: 'desc',
-          }),
+          cachedStages.length > 0
+            ? Promise.resolve({ stages: cachedStages })
+            : fetchDailyTaskWorkflowStages(controller.signal),
+          listMyDailyTasks(
+            {
+              ...filterQuery,
+              page: 1,
+              pageSize: 100,
+              sortBy: 'priority',
+              sortDir: 'desc',
+            },
+            controller.signal,
+          ),
         ]);
-        if (stages.length === 0) setStages(stageResponse.stages);
+        if (controller.signal.aborted) return;
+        if (cachedStages.length === 0) replaceStages(stageResponse.stages);
         setBoard(
           buildMyTaskBoard({
             assignDate,
@@ -319,16 +336,18 @@ export function DailyTasksWorkspace({
           }),
         );
       } else {
-        const response = await fetchDailyTaskBoard(filterQuery);
+        const response = await fetchDailyTaskBoard(filterQuery, controller.signal);
+        if (controller.signal.aborted) return;
         setBoard(response);
-        setStages(response.stages);
+        replaceStages(response.stages);
       }
     } catch {
+      if (controller.signal.aborted) return;
       setBoardError(true);
     } finally {
-      setBoardLoading(false);
+      if (!controller.signal.aborted) setBoardLoading(false);
     }
-  }, [assignDate, dataScope, filterQuery, stages]);
+  }, [assignDate, dataScope, filterQuery, replaceStages]);
 
   const loadList = useCallback(async () => {
     setListLoading(true);
@@ -434,18 +453,33 @@ export function DailyTasksWorkspace({
   }, [calendarRawTasks, calendarStatusFilter, calendarAssignmentFilter]);
 
   useEffect(() => {
-    void fetchDailyTaskWorkflowStages().then((r) => setStages(r.stages));
-    if (dataScope !== 'team') return;
-    void listAssignableEmployees().then((r) =>
-      setEmployees(r.items.map((e) => ({ id: e.id, displayName: e.displayName }))),
-    );
-    void listProjects({ pageSize: 100, status: 'ACTIVE' }).then((r) =>
-      setProjects(r.items.map((p) => ({ id: p.id, name: p.name }))),
-    );
-  }, [dataScope]);
+    let cancelled = false;
+    void fetchDailyTaskWorkflowStages().then((r) => {
+      if (!cancelled) replaceStages(r.stages);
+    });
+    if (dataScope !== 'team') {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void listAssignableEmployees().then((r) => {
+      if (!cancelled) {
+        setEmployees(r.items.map((e) => ({ id: e.id, displayName: e.displayName })));
+      }
+    });
+    void listProjects({ pageSize: 100, status: 'ACTIVE' }).then((r) => {
+      if (!cancelled) {
+        setProjects(r.items.map((p) => ({ id: p.id, name: p.name })));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataScope, replaceStages]);
 
   useEffect(() => {
     if (view === 'kanban') void loadBoard();
+    return () => boardAbortRef.current?.abort();
   }, [view, loadBoard]);
 
   useEffect(() => {
@@ -460,13 +494,13 @@ export function DailyTasksWorkspace({
     setListPage(1);
   }, [filterQuery]);
 
-  const refreshAll = async () => {
+  const refreshAll = useCallback(async () => {
     await Promise.all([
       view === 'kanban' ? loadBoard() : Promise.resolve(),
       view === 'list' ? loadList() : Promise.resolve(),
       view === 'calendar' ? loadCalendarMonth() : Promise.resolve(),
     ]);
-  };
+  }, [loadBoard, loadCalendarMonth, loadList, view]);
 
   useDailyTasksPolling(refreshAll, true);
 
