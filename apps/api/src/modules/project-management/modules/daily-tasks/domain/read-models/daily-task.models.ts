@@ -27,6 +27,8 @@ export interface DailyTaskWorkflowStage {
   readonly colorToken: string;
   readonly isActive: boolean;
   readonly isCompletedStage: boolean;
+  /** Number of daily tasks currently assigned to this stage. */
+  readonly taskCount?: number;
 }
 
 export interface DailyTaskBoardColumnStage {

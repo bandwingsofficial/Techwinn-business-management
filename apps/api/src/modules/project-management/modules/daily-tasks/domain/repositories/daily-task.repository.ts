@@ -14,6 +14,7 @@ import type {
   DailyTaskBoardQuery,
   DailyTaskListQuery,
   DailyTaskWorkflowStageInput,
+  DailyTaskWorkflowStageReassignmentInput,
   MoveDailyTaskStageInput,
   MyDailyTasksQuery,
   RescheduleDailyTaskInput,
@@ -28,6 +29,7 @@ export interface DailyTaskRepository {
   replaceWorkflowStages(
     organizationId: string,
     stages: readonly DailyTaskWorkflowStageInput[],
+    reassignments?: readonly DailyTaskWorkflowStageReassignmentInput[],
   ): Promise<readonly DailyTaskWorkflowStage[]>;
   getBoard(
     organizationId: string,

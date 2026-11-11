@@ -1,6 +1,15 @@
 'use client';
 
-import { Flag, Folder, GitBranch, ListFilter, Plus, UserRound, Users } from 'lucide-react';
+import {
+  Flag,
+  Folder,
+  GitBranch,
+  ListFilter,
+  Plus,
+  UserRound,
+  Users,
+} from 'lucide-react';
+import { CrmEmptyState } from '@/features/admin/crm/components/crm-feedback';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -736,19 +745,39 @@ export function DailyTasksWorkspace({
               <>
                 <div aria-hidden className="table-header-edge" />
                 <div className="min-w-0 px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
-                  <DailyTaskKanbanBoard
-                    board={board}
-                    employeeMode={employeeMode}
-                    highlightTaskId={highlightTaskId}
-                    onRefresh={refreshAll}
-                    onOpenTask={(task) => openTask(task)}
-                    onEditTask={employeeMode ? (task) => openTask(task) : openEdit}
-                    onRescheduleTask={(task) => openTask(task, { focusReschedule: true })}
-                    onAssignTask={
-                      canAssignTasks ? (workflowStageId) => openAssign({ workflowStageId }) : undefined
-                    }
-                    onManageWorkflow={canManageWorkflow ? () => setWorkflowOpen(true) : undefined}
-                  />
+                  {board.stages.length === 0 ? (
+                    <div className="space-y-4 py-6">
+                      <CrmEmptyState
+                        title="No workflow stages configured"
+                        description="Create workflow stages to organize your team's daily tasks."
+                      />
+                      {canManageWorkflow ? (
+                        <div className="flex justify-center">
+                          <Button type="button" onClick={() => setWorkflowOpen(true)}>
+                            Manage Workflow Stages
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <DailyTaskKanbanBoard
+                      board={board}
+                      employeeMode={employeeMode}
+                      highlightTaskId={highlightTaskId}
+                      onRefresh={refreshAll}
+                      onOpenTask={(task) => openTask(task)}
+                      onEditTask={employeeMode ? (task) => openTask(task) : openEdit}
+                      onRescheduleTask={(task) => openTask(task, { focusReschedule: true })}
+                      onAssignTask={
+                        canAssignTasks
+                          ? (workflowStageId) => openAssign({ workflowStageId })
+                          : undefined
+                      }
+                      onManageWorkflow={
+                        canManageWorkflow ? () => setWorkflowOpen(true) : undefined
+                      }
+                    />
+                  )}
                 </div>
               </>
             ) : null

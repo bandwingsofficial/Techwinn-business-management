@@ -136,6 +136,7 @@ export class DailyTasksController {
     const stages = await this.updateWorkflowStages.execute({
       actor: toDailyTaskActor(ctx),
       stages: body.stages,
+      reassignments: body.reassignments,
     });
     return toDailyTaskWorkflowStagesResponse(stages);
   }

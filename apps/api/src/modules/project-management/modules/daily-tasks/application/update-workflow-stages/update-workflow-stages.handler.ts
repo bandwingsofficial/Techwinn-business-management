@@ -11,6 +11,10 @@ export class UpdateWorkflowStagesHandler {
   constructor(@Inject(DAILY_TASK_REPOSITORY) private readonly repository: DailyTaskRepository) {}
 
   execute(command: UpdateWorkflowStagesCommand): Promise<readonly DailyTaskWorkflowStage[]> {
-    return this.repository.replaceWorkflowStages(command.actor.organizationId, command.stages);
+    return this.repository.replaceWorkflowStages(
+      command.actor.organizationId,
+      command.stages,
+      command.reassignments,
+    );
   }
 }

@@ -1,4 +1,5 @@
 import type { DailyTaskWorkflowStagesResponse } from '#contracts';
+import { normalizeWorkflowStageColorToken } from '#validation';
 import type { DailyTaskWorkflowStage } from '../../../domain/read-models/daily-task.models.js';
 
 export function toDailyTaskWorkflowStagesResponse(
@@ -10,9 +11,10 @@ export function toDailyTaskWorkflowStagesResponse(
       stageKey: stage.stageKey,
       name: stage.name,
       sortOrder: stage.sortOrder,
-      colorToken: stage.colorToken,
+      colorToken: normalizeWorkflowStageColorToken(stage.colorToken),
       isActive: stage.isActive,
       isCompletedStage: stage.isCompletedStage,
+      ...(typeof stage.taskCount === 'number' ? { taskCount: stage.taskCount } : {}),
     })),
   };
 }

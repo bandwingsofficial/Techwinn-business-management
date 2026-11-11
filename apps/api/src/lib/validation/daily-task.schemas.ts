@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  isWorkflowStageColorHex,
+  normalizeWorkflowStageColorToken,
+} from './workflow-stage-color.js';
 
 const uuid = z.string().uuid();
 const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date (YYYY-MM-DD).');
@@ -17,23 +21,64 @@ export const dailyTaskCategorySchema = z.enum([
 ]);
 export const dailyTaskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 
+const workflowStageColorTokenSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .transform(normalizeWorkflowStageColorToken)
+  .refine(isWorkflowStageColorHex, {
+    message: 'Use a valid hex color (e.g. #2563eb) or a known color name.',
+  });
+
 export const dailyTaskWorkflowStageInputSchema = z
   .object({
     id: uuid.optional(),
     stageKey: z.string().trim().min(1).max(64),
     name: z.string().trim().min(1).max(120),
     sortOrder: z.number().int().min(0),
-    colorToken: z.string().trim().min(1).max(32),
+    colorToken: workflowStageColorTokenSchema,
     isActive: z.boolean(),
     isCompletedStage: z.boolean(),
   })
   .strict();
 
-export const updateDailyTaskWorkflowStagesRequestSchema = z
+export const dailyTaskWorkflowStageReassignmentSchema = z
   .object({
-    stages: z.array(dailyTaskWorkflowStageInputSchema).min(1),
+    fromStageId: uuid,
+    /** Target stage for tasks; null clears the assignment when no replacement stage remains. */
+    toStageId: uuid.nullable(),
   })
   .strict();
+
+export const updateDailyTaskWorkflowStagesRequestSchema = z
+  .object({
+    /** Empty array is allowed — organizations may run with zero workflow stages. */
+    stages: z.array(dailyTaskWorkflowStageInputSchema),
+    reassignments: z.array(dailyTaskWorkflowStageReassignmentSchema).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const incomingIds = new Set(
+      value.stages.map((stage) => stage.id).filter((id): id is string => Boolean(id)),
+    );
+    for (const reassignment of value.reassignments ?? []) {
+      if (reassignment.toStageId && !incomingIds.has(reassignment.toStageId)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['reassignments'],
+          message: 'Move tasks to a stage that will remain after saving.',
+        });
+      }
+      if (reassignment.toStageId && reassignment.toStageId === reassignment.fromStageId) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['reassignments'],
+          message: 'Choose a different stage for task reassignment.',
+        });
+      }
+    }
+  });
 
 export const createDailyTaskRequestSchema = z
   .object({

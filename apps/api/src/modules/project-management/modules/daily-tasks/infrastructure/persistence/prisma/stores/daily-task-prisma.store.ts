@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { EMPLOYEE_ROUTES } from '#contracts';
+import { normalizeWorkflowStageColorToken } from '#validation';
 import type {
   DailyTaskListItem,
   DailyTaskNoteItem,
@@ -60,11 +61,22 @@ export class DailyTaskPrismaStore {
   }
 
   async listWorkflowStages(organizationId: string) {
-    await this.ensureDefaultWorkflowStages(organizationId);
-    return this.prisma.dailyTaskWorkflowStage.findMany({
+    // Do not auto-recreate defaults — organizations may intentionally keep zero stages.
+    const rows = await this.prisma.dailyTaskWorkflowStage.findMany({
       where: { organizationId },
       orderBy: { sortOrder: 'asc' },
+      include: { _count: { select: { tasks: true } } },
     });
+    return rows.map((row) => ({
+      id: row.id,
+      stageKey: row.stageKey,
+      name: row.name,
+      sortOrder: row.sortOrder,
+      colorToken: normalizeWorkflowStageColorToken(row.colorToken),
+      isActive: row.isActive,
+      isCompletedStage: row.isCompletedStage,
+      taskCount: row._count.tasks,
+    }));
   }
 
   async replaceWorkflowStages(
@@ -78,30 +90,59 @@ export class DailyTaskPrismaStore {
       isActive: boolean;
       isCompletedStage: boolean;
     }[],
+    reassignments: readonly {
+      fromStageId: string;
+      toStageId: string | null;
+    }[] = [],
   ) {
-    await this.ensureDefaultWorkflowStages(organizationId);
     const existing = await this.prisma.dailyTaskWorkflowStage.findMany({
       where: { organizationId },
-      select: { id: true, stageKey: true },
+      select: { id: true, stageKey: true, name: true },
     });
     const existingIds = new Set(existing.map((row) => row.id));
     const incomingIds = new Set(stages.map((s) => s.id).filter(Boolean) as string[]);
-
     const removedStageIds = [...existingIds].filter((id) => !incomingIds.has(id));
+    const reassignmentByFrom = new Map(
+      reassignments.map((entry) => [entry.fromStageId, entry.toStageId] as const),
+    );
+
     if (removedStageIds.length > 0) {
       const inUseByStage = await this.prisma.dailyTask.groupBy({
         by: ['workflowStageId'],
         where: { organizationId, workflowStageId: { in: removedStageIds } },
         _count: { _all: true },
       });
-      if (inUseByStage.some((row) => row._count._all > 0)) {
-        throw new DailyTaskConflictError(
-          'Cannot remove a workflow stage that still has tasks assigned.',
-        );
+      for (const row of inUseByStage) {
+        if (!row.workflowStageId || row._count._all <= 0) continue;
+        if (!reassignmentByFrom.has(row.workflowStageId)) {
+          const stageName =
+            existing.find((stage) => stage.id === row.workflowStageId)?.name ?? 'that stage';
+          throw new DailyTaskConflictError(
+            `Cannot remove “${stageName}” while tasks are assigned. Choose another stage for those tasks, or clear their stage assignment.`,
+          );
+        }
+        const target = reassignmentByFrom.get(row.workflowStageId) ?? null;
+        if (target && !incomingIds.has(target) && !existingIds.has(target)) {
+          throw new DailyTaskValidationError('Select a valid workflow stage for task reassignment.');
+        }
+        if (target && removedStageIds.includes(target)) {
+          throw new DailyTaskValidationError(
+            'Cannot move tasks into a workflow stage that is also being removed.',
+          );
+        }
       }
     }
 
     await this.prisma.$transaction(async (tx) => {
+      for (const fromStageId of removedStageIds) {
+        if (!reassignmentByFrom.has(fromStageId)) continue;
+        const toStageId = reassignmentByFrom.get(fromStageId) ?? null;
+        await tx.dailyTask.updateMany({
+          where: { organizationId, workflowStageId: fromStageId },
+          data: { workflowStageId: toStageId },
+        });
+      }
+
       for (const stage of stages) {
         if (stage.id && existingIds.has(stage.id)) {
           await tx.dailyTaskWorkflowStage.update({
@@ -129,6 +170,13 @@ export class DailyTaskPrismaStore {
             },
           });
         }
+      }
+
+      if (removedStageIds.length > 0) {
+        // Tasks must already be reassigned or cleared above (Restrict FK).
+        await tx.dailyTaskWorkflowStage.deleteMany({
+          where: { organizationId, id: { in: removedStageIds } },
+        });
       }
     });
 
@@ -260,7 +308,6 @@ export class DailyTaskPrismaStore {
     clientToday?: string,
     noteAttach?: TaskNoteAttachOptions,
   ) {
-    await this.ensureDefaultWorkflowStages(organizationId);
     const workflowStages = await this.listWorkflowStages(organizationId);
     const activeStages = workflowStages.filter((stage) => stage.isActive);
     const fallbackStageId =

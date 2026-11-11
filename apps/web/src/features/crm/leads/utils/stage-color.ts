@@ -10,6 +10,21 @@ const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 const NEUTRAL_STAGE_HEX = STAGE_COLOR_PRESETS[6]; // slate fallback
 
+/** Legacy named tokens (daily-task workflow, older CRM rows) → preset HEX. */
+const LEGACY_STAGE_COLOR_NAMES: Record<string, string> = {
+  slate: '#64748b',
+  blue: '#2563eb',
+  purple: '#7c3aed',
+  violet: '#7c3aed',
+  pink: '#db2777',
+  rose: '#db2777',
+  orange: '#ea580c',
+  amber: '#ea580c',
+  green: '#16a34a',
+  emerald: '#16a34a',
+  cyan: '#0891b2',
+};
+
 function clampByte(value: number): number {
   return Math.min(255, Math.max(0, Math.round(value)));
 }
@@ -40,10 +55,12 @@ export function mixStageColorWithWhite(stageColor: string, colorWeight: number):
   );
 }
 
-/** Normalize API/stored hex colors so Select values match preset options. */
+/** Normalize API/stored hex or legacy color names so Select values match presets. */
 export function normalizeStageColor(color: string | null | undefined): string {
   const trimmed = (color ?? '').trim();
   if (HEX_COLOR.test(trimmed)) return trimmed.toLowerCase();
+  const mapped = LEGACY_STAGE_COLOR_NAMES[trimmed.toLowerCase()];
+  if (mapped) return mapped;
   return NEUTRAL_STAGE_HEX;
 }
 

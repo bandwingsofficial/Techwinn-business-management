@@ -24,6 +24,7 @@ export * from './employee-salary';
 export * from './stored-object';
 export * from './org-access.schemas';
 export * from './daily-task.schemas';
+export * from './workflow-stage-color';
 export * from './task-calendar.schemas';
 export * from './whatsapp.schemas';
 export * from './attendance.schemas';

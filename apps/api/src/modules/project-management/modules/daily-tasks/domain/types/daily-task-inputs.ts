@@ -14,6 +14,11 @@ export type DailyTaskWorkflowStageInput = {
   readonly isCompletedStage: boolean;
 };
 
+export type DailyTaskWorkflowStageReassignmentInput = {
+  readonly fromStageId: string;
+  readonly toStageId: string | null;
+};
+
 export type CreateDailyTaskInput = {
   readonly type: DailyTaskType;
   readonly title: string;

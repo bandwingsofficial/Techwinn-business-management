@@ -1262,7 +1262,7 @@ model DailyTaskWorkflowStage {
   stageKey         String   @map("stage_key") @db.VarChar(64)
   name             String   @db.VarChar(120)
   sortOrder        Int      @map("sort_order")
-  colorToken       String   @default("slate") @map("color_token") @db.VarChar(32)
+  colorToken       String   @default("#64748b") @map("color_token") @db.VarChar(32)
   isActive         Boolean  @default(true) @map("is_active")
   isCompletedStage Boolean  @default(false) @map("is_completed_stage")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
