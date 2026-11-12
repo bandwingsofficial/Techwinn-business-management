@@ -5,6 +5,7 @@ export * from './service-packages.js';
 export * from './platform-auth.js';
 export * from './projects.js';
 export * from './project-tasks.js';
+export * from './project-task-action-permissions.js';
 export * from './employees.js';
 export * from './media.js';
 export * from './permissions.js';

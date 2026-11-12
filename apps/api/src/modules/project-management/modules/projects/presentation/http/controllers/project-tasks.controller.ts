@@ -80,7 +80,7 @@ export class ProjectTasksController {
     private readonly reorderPhases: ReorderProjectPhasesHandler,
   ) {}
 
-  @RequirePermissions('tasks.read')
+  @RequirePermissions('tasks.read', 'projects.read')
   @Get('projects')
   @ApiOperation({ summary: 'List projects for task management' })
   @ApiOkResponse({ schema: toOpenApiSchema(projectTaskSummaryListResponseSchema) })
@@ -96,7 +96,7 @@ export class ProjectTasksController {
     return toProjectTaskSummaryListResponse(result);
   }
 
-  @RequirePermissions('tasks.read')
+  @RequirePermissions('tasks.read', 'projects.read')
   @Get('projects/:projectId/board')
   @ApiOperation({ summary: 'Get project task board' })
   @ApiOkResponse({ schema: toOpenApiSchema(projectTaskBoardResponseSchema) })
@@ -115,7 +115,7 @@ export class ProjectTasksController {
     return toProjectTaskBoardResponse(board);
   }
 
-  @RequirePermissions('tasks.update')
+  @RequirePermissions('tasks.update', 'projects.update')
   @Post('projects/:projectId/phases/reorder')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reorder project plan phases' })
@@ -134,7 +134,7 @@ export class ProjectTasksController {
     return toProjectTaskBoardResponse(board);
   }
 
-  @RequirePermissions('tasks.update')
+  @RequirePermissions('tasks.create')
   @Post('projects/:projectId/tasks')
   @ApiOperation({ summary: 'Create project task' })
   async create(
@@ -153,7 +153,8 @@ export class ProjectTasksController {
     return toProjectTask(task);
   }
 
-  @RequirePermissions('tasks.update')
+  /** Field-level checks in the handler: details/status → tasks.update; assignee → tasks.assign. */
+  @RequirePermissions('tasks.update', 'tasks.assign')
   @Patch('projects/:projectId/tasks/:taskId')
   @ApiOperation({ summary: 'Update project task' })
   async update(

@@ -353,14 +353,14 @@ export function ProjectTaskKanbanBoard({
   showPhaseTimelineHint?: boolean;
   columnVariant?: 'default' | 'plan' | 'pipeline';
   cardVariant?: 'default' | 'plan' | 'pipeline';
-  onPersistMove: (input: {
+  onPersistMove?: (input: {
     taskId: string;
     phaseId: string;
     beforeTaskId: string | null;
   }) => Promise<void>;
   onView: (taskId: string) => void;
-  onEdit: (taskId: string) => void;
-  onDelete: (taskId: string) => void;
+  onEdit?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
   onTaskStatusChange?: (taskId: string, status: ProjectTaskStatus) => void | Promise<void>;
   onAddInPhase: (phaseId: string) => void;
   onManagePhases?: () => void;
@@ -587,6 +587,10 @@ export function ProjectTaskKanbanBoard({
     const samePhase = task.phaseId === overContainer;
     if (samePhase && priorOrder.join(',') === orderedIds.join(',')) return;
 
+    if (!onPersistMove) {
+      setItems(buildKanbanTaskItems(phaseIds, tasks));
+      return;
+    }
     try {
       await onPersistMove({
         taskId: String(active.id),
@@ -679,8 +683,8 @@ export function ProjectTaskKanbanBoard({
                         disabled={dndOff || dragKind === 'phase'}
                         hideCardMenu={readOnlyView}
                         onView={() => onView(taskId)}
-                        onEdit={() => onEdit(taskId)}
-                        onDelete={() => onDelete(taskId)}
+                        onEdit={onEdit ? () => onEdit(taskId) : undefined}
+                        onDelete={onDelete ? () => onDelete(taskId) : undefined}
                         onStatusChange={
                           cardVariant === 'pipeline' && onTaskStatusChange
                             ? (status) => void onTaskStatusChange(taskId, status)

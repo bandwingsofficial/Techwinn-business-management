@@ -18,6 +18,8 @@ import { useAdminToast } from '@/features/admin/components/toast';
 import { CrmErrorAlert, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
 import { describeCrmError } from '@/features/admin/crm/utils/errors';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { PROJECT_TASK_ACTION_PERMISSIONS } from '@techwin/contracts';
 import {
   changeProjectStatus,
   deleteProject as deleteProjectApi,
@@ -53,6 +55,13 @@ import { ProjectWorkspaceShell } from './project-workspace-shell';
 
 export function ProjectPlanningPage({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const { has } = usePermissions();
+  const canCreateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.create);
+  const canUpdateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.update);
+  const canAssignTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.assign);
+  const canDeleteTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.delete);
+  const canUpdateProject = has('projects.update');
+  const canDeleteProject = has('projects.delete');
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
 
@@ -290,9 +299,13 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
         project={project}
         breadcrumbTail="Plan"
         actionsDisabled={actionsBusy || readOnly}
-        onToggleActive={(target) => setStatusToggleTarget(target)}
-        onEditProject={() => setProjectFormOpen(true)}
-        onDeleteProject={(target) => setDeleteProjectTarget(target)}
+        onToggleActive={
+          canUpdateProject ? (target) => setStatusToggleTarget(target) : undefined
+        }
+        onEditProject={canUpdateProject ? () => setProjectFormOpen(true) : undefined}
+        onDeleteProject={
+          canDeleteProject ? (target) => setDeleteProjectTarget(target) : undefined
+        }
       >
         {readOnly ? (
           <ProjectPlanLockNotice
@@ -312,7 +325,7 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
                 Manage project phases and tasks. Drag and drop tasks to update status.
               </p>
             </div>
-            {!readOnly ? (
+            {!readOnly && canUpdateProject ? (
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button
                   type="button"
@@ -344,22 +357,36 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
           columnVariant="plan"
           cardVariant="plan"
           disabled={readOnly}
-          dragDisabled={actionsBusy}
-          onPersistMove={persistMove}
+          dragDisabled={actionsBusy || !canUpdateTasks}
+          readOnlyView={readOnly || (!canUpdateTasks && !canCreateTasks && !canDeleteTasks)}
+          onPersistMove={canUpdateTasks ? persistMove : undefined}
           onView={openEdit}
-          onEdit={openEdit}
-          onDelete={(taskId) => {
-            if (readOnly) return;
-            const task = tasks.find((t) => t.id === taskId);
-            if (task) setDeleteTarget(task);
-          }}
-          onAddInPhase={readOnly ? () => {} : (phaseId) => openCreate(phaseId)}
-          onManagePhases={readOnly ? undefined : () => setManagePhasesOpen(true)}
-          onDeletePhase={readOnly ? undefined : (phaseId) => setDeletePhaseId(phaseId)}
-          onRenamePhase={readOnly ? undefined : renamePhase}
+          onEdit={canUpdateTasks || canAssignTasks ? openEdit : undefined}
+          onDelete={
+            readOnly || !canDeleteTasks
+              ? undefined
+              : (taskId) => {
+                  const task = tasks.find((t) => t.id === taskId);
+                  if (task) setDeleteTarget(task);
+                }
+          }
+          onAddInPhase={
+            readOnly || !canCreateTasks ? () => {} : (phaseId) => openCreate(phaseId)
+          }
+          onManagePhases={
+            readOnly || !canUpdateProject ? undefined : () => setManagePhasesOpen(true)
+          }
+          onDeletePhase={
+            readOnly || !canUpdateProject ? undefined : (phaseId) => setDeletePhaseId(phaseId)
+          }
+          onRenamePhase={readOnly || !canUpdateProject ? undefined : renamePhase}
           renameDisabled={actionsBusy}
-          onAddPhase={readOnly ? undefined : () => setAddPhaseOpen(true)}
-          onPersistPhaseReorder={readOnly ? undefined : reorderPhasesOnBoard}
+          onAddPhase={
+            readOnly || !canUpdateProject ? undefined : () => setAddPhaseOpen(true)
+          }
+          onPersistPhaseReorder={
+            readOnly || !canUpdateProject ? undefined : reorderPhasesOnBoard
+          }
         />
       </ProjectWorkspaceShell>
 
@@ -371,6 +398,8 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
             phases={phases}
             editingTask={editingTask}
             defaultPhaseId={defaultPhaseId}
+            canUpdateDetails={canUpdateTasks}
+            canAssign={canAssignTasks}
             onSubmit={handleSaveTask}
           />
           <ProjectManagePhasesDialog

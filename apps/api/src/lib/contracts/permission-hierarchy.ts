@@ -184,6 +184,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
               'projects.update',
               'projects.delete',
               'tasks.read',
+              'tasks.create',
               'tasks.update',
               'tasks.delete',
               'tasks.assign',

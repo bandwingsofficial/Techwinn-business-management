@@ -171,7 +171,7 @@ function TaskCardActionsMenu({
 }: {
   onView: () => void;
   onEdit?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   hideEdit?: boolean;
   triggerClassName?: string;
   iconSize?: string;
@@ -202,16 +202,18 @@ function TaskCardActionsMenu({
             <Eye className="size-3.5" aria-hidden="true" />
             View
           </DropdownMenuItem>
-          {hideEdit ? null : (
+          {hideEdit || !onEdit ? null : (
             <DropdownMenuItem onSelect={onEdit}>
               <Pencil className="size-3.5" aria-hidden="true" />
               Edit
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            Delete
-          </DropdownMenuItem>
+          {onDelete ? (
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Delete
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -237,8 +239,8 @@ export function ProjectTaskKanbanCard({
   className?: string;
   hideCardMenu?: boolean;
   onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onStatusChange?: (status: ProjectTaskStatus) => void;
   statusControlDisabled?: boolean;
 }) {
@@ -508,14 +510,18 @@ export function ProjectTaskKanbanCard({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[8rem]">
-                  <DropdownMenuItem onSelect={onEdit}>
-                    <Pencil className="size-3.5" aria-hidden="true" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                    Delete
-                  </DropdownMenuItem>
+                  {onEdit ? (
+                    <DropdownMenuItem onSelect={onEdit}>
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                      Edit
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onDelete ? (
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      Delete
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -558,8 +564,8 @@ export function SortableProjectTaskKanbanCard({
   disabled?: boolean;
   hideCardMenu?: boolean;
   onView: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onStatusChange?: (status: ProjectTaskStatus) => void;
   statusControlDisabled?: boolean;
   highlighted?: boolean;

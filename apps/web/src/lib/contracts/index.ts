@@ -5,6 +5,7 @@ export * from './service-packages';
 export * from './platform-auth';
 export * from './projects';
 export * from './project-tasks';
+export * from './project-task-action-permissions';
 export * from './employees';
 export * from './media';
 export * from './permissions';

@@ -121,6 +121,8 @@ export function ProjectTaskFormDialog({
   editingTask,
   defaultPhaseId,
   mode = 'plan',
+  canUpdateDetails = true,
+  canAssign = true,
   onSubmit,
 }: {
   open: boolean;
@@ -129,6 +131,10 @@ export function ProjectTaskFormDialog({
   editingTask: ProjectTask | null;
   defaultPhaseId?: string;
   mode?: ProjectTaskFormMode;
+  /** When false, detail/status fields stay read-only (needs `tasks.update`). */
+  canUpdateDetails?: boolean;
+  /** When false, assignee stays read-only (needs `tasks.assign`). */
+  canAssign?: boolean;
   onSubmit: (payload: ReturnType<typeof formToPayload>) => Promise<void>;
 }) {
   const toast = useAdminToast();
@@ -148,7 +154,9 @@ export function ProjectTaskFormDialog({
 
   const executionOnly = mode === 'execution';
   const planOnly = mode === 'plan';
-  const viewOnly = mode === 'readonly';
+  const viewOnly = mode === 'readonly' || (!canUpdateDetails && !canAssign && Boolean(editingTask));
+  const detailsLocked = viewOnly || !canUpdateDetails;
+  const assigneeLocked = viewOnly || !canAssign;
   const title = viewOnly
     ? 'Task details'
     : editingTask
@@ -235,7 +243,7 @@ export function ProjectTaskFormDialog({
               <Input
                 id="task-title"
                 value={form.title}
-                disabled={executionOnly || viewOnly || pending}
+                disabled={executionOnly || detailsLocked || pending}
                 aria-invalid={Boolean(fieldErrors.title)}
                 className={cn(
                   CRM_PIPELINE_FORM_FIELD_CLASS,
@@ -252,7 +260,7 @@ export function ProjectTaskFormDialog({
               </CrmFieldLabel>
               <Select
                 value={form.phaseId}
-                disabled={executionOnly || viewOnly || pending}
+                disabled={executionOnly || detailsLocked || pending}
                 onValueChange={(value) => setForm((c) => ({ ...c, phaseId: value }))}
               >
                 <SelectTrigger
@@ -288,7 +296,7 @@ export function ProjectTaskFormDialog({
                 </CrmFieldLabel>
                 <Select
                   value={form.priority}
-                  disabled={executionOnly || viewOnly || pending}
+                  disabled={executionOnly || detailsLocked || pending}
                   onValueChange={(value) =>
                     setForm((c) => ({ ...c, priority: value as FormState['priority'] }))
                   }
@@ -312,7 +320,7 @@ export function ProjectTaskFormDialog({
                   </CrmFieldLabel>
                   <Select
                     value={form.status}
-                    disabled={viewOnly || pending}
+                    disabled={detailsLocked || pending}
                     onValueChange={(value) =>
                       setForm((c) => ({ ...c, status: value as FormState['status'] }))
                     }
@@ -339,7 +347,7 @@ export function ProjectTaskFormDialog({
               <EmployeeAssigneeSelect
                 id="task-assignee"
                 value={form.assigneeAdminId}
-                disabled={viewOnly || pending}
+                disabled={assigneeLocked || pending}
                 invalid={Boolean(fieldErrors.assigneeAdminId)}
                 onChange={(assigneeAdminId) => setForm((c) => ({ ...c, assigneeAdminId }))}
               />
@@ -361,7 +369,7 @@ export function ProjectTaskFormDialog({
                     value={form.startDate}
                     min={selectedPhase?.startDate}
                     max={selectedPhase?.expectedEndDate}
-                    disabled={executionOnly || viewOnly || pending}
+                    disabled={executionOnly || detailsLocked || pending}
                     aria-invalid={Boolean(fieldErrors.startDate)}
                     className={cn(
                       CRM_PIPELINE_FORM_FIELD_CLASS,
@@ -381,7 +389,7 @@ export function ProjectTaskFormDialog({
                     value={form.dueDate}
                     min={selectedPhase?.startDate}
                     max={selectedPhase?.expectedEndDate}
-                    disabled={executionOnly || viewOnly || pending}
+                    disabled={executionOnly || detailsLocked || pending}
                     aria-invalid={Boolean(fieldErrors.dueDate)}
                     className={cn(
                       CRM_PIPELINE_FORM_FIELD_CLASS,
@@ -402,7 +410,7 @@ export function ProjectTaskFormDialog({
                 id="task-description"
                 rows={3}
                 value={form.description}
-                disabled={executionOnly || viewOnly || pending}
+                disabled={executionOnly || detailsLocked || pending}
                 className={CRM_PIPELINE_FORM_TEXTAREA_CLASS}
                 onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))}
               />
@@ -416,7 +424,7 @@ export function ProjectTaskFormDialog({
                 id="task-labels"
                 placeholder="Comma-separated labels"
                 value={form.labelsText}
-                disabled={viewOnly || pending}
+                disabled={detailsLocked || pending}
                 className={CRM_PIPELINE_FORM_FIELD_CLASS}
                 onChange={(e) => setForm((c) => ({ ...c, labelsText: e.target.value }))}
               />

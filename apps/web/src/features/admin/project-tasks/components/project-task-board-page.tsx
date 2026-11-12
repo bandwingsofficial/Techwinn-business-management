@@ -18,6 +18,8 @@ import { useAdminToast } from '@/features/admin/components/toast';
 import { CrmErrorAlert, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
 import { describeCrmError } from '@/features/admin/crm/utils/errors';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { PROJECT_TASK_ACTION_PERMISSIONS } from '@techwin/contracts';
 import {
   changeProjectStatus,
   completeProject,
@@ -51,6 +53,13 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const toast = useAdminToast();
+  const { has } = usePermissions();
+  const canCreateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.create);
+  const canUpdateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.update);
+  const canAssignTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.assign);
+  const canDeleteTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.delete);
+  const canUpdateProject = has('projects.update');
+  const canDeleteProject = has('projects.delete');
   const { pending, run } = useAsyncAction();
   const [completeOpen, setCompleteOpen] = useState(false);
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -165,8 +174,19 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const openEdit = (taskId: string) => {
+    if (!canUpdateTasks && !canAssignTasks) {
+      openView(taskId);
+      return;
+    }
+    const task = tasks.find((t) => t.id === taskId) ?? null;
+    setViewOnlyTask(false);
+    setEditingTask(task);
+    setFormOpen(true);
+  };
+
   const changeTaskStatus = async (taskId: string, status: ProjectTaskStatus) => {
-    if (readOnly) return;
+    if (readOnly || !canUpdateTasks) return;
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
     try {
@@ -185,7 +205,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
     phaseId: string;
     beforeTaskId: string | null;
   }) => {
-    if (readOnly) return;
+    if (readOnly || !canUpdateTasks) return;
     try {
       await run(() =>
         moveProjectTask(projectId, input.taskId, {
@@ -201,6 +221,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   };
 
   const confirmCompleteProject = async () => {
+    if (!canUpdateProject) return;
     try {
       await run(() => completeProject(projectId));
       toast.success('Project marked completed.');
@@ -214,9 +235,11 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   const handleSave = async (payload: Parameters<typeof createProjectTask>[1]) => {
     if (readOnly) return;
     if (editingTask) {
+      if (!canUpdateTasks && !canAssignTasks) return;
       await updateProjectTask(projectId, editingTask.id, payload);
       toast.success('Task updated.');
     } else {
+      if (!canCreateTasks) return;
       await createProjectTask(projectId, payload);
       toast.success('Task created.');
     }
@@ -224,7 +247,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !canDeleteTasks) return;
     try {
       await run(() => deleteProjectTask(projectId, deleteTarget.id));
       toast.success('Task deleted.');
@@ -236,6 +259,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   };
 
   const toggleActive = async (target: ProjectActionTarget) => {
+    if (!canUpdateProject) return;
     const nextStatus = target.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
       await run(() => changeProjectStatus(target.id, { status: nextStatus }));
@@ -254,7 +278,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   };
 
   const confirmDeleteProject = async () => {
-    if (!deleteProjectTarget) return;
+    if (!deleteProjectTarget || !canDeleteProject) return;
     const target = deleteProjectTarget;
     try {
       await run(() => deleteProjectApi(target.id));
@@ -291,9 +315,13 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
         project={project}
         breadcrumbTail="Production"
         actionsDisabled={actionsBusy || readOnly}
-        onToggleActive={(target) => setStatusToggleTarget(target)}
-        onEditProject={() => setProjectFormOpen(true)}
-        onDeleteProject={(target) => setDeleteProjectTarget(target)}
+        onToggleActive={
+          canUpdateProject ? (target) => setStatusToggleTarget(target) : undefined
+        }
+        onEditProject={canUpdateProject ? () => setProjectFormOpen(true) : undefined}
+        onDeleteProject={
+          canDeleteProject ? (target) => setDeleteProjectTarget(target) : undefined
+        }
       >
         <div className="-mx-4 mb-4 sm:-mx-5">
           <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
@@ -314,7 +342,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
                 <FileText className="size-4" aria-hidden="true" />
                 View Plan
               </Button>
-              {boardProject.executionLifecycle === 'IN_PRODUCTION' ? (
+              {boardProject.executionLifecycle === 'IN_PRODUCTION' && canUpdateProject ? (
                 <Button
                   type="button"
                   size="sm"
@@ -342,20 +370,29 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
           cardVariant="pipeline"
           showPhaseTimelineHint={lifecycle === 'IN_PRODUCTION'}
           disabled={actionsBusy || readOnly}
-          dragDisabled={actionsBusy}
-          onPersistMove={persistMove}
+          dragDisabled={actionsBusy || !canUpdateTasks}
+          readOnlyView={readOnly || (!canUpdateTasks && !canCreateTasks && !canDeleteTasks)}
+          onPersistMove={canUpdateTasks ? persistMove : undefined}
           onView={openView}
-          onEdit={openView}
+          onEdit={
+            canUpdateTasks || canAssignTasks
+              ? openEdit
+              : undefined
+          }
           onDelete={
-            readOnly
-              ? () => {}
+            readOnly || !canDeleteTasks
+              ? undefined
               : (taskId) => {
                   const task = tasks.find((t) => t.id === taskId);
                   if (task) setDeleteTarget(task);
                 }
           }
-          onAddInPhase={readOnly ? () => {} : (phaseId) => openCreate(phaseId)}
-          onTaskStatusChange={readOnly ? undefined : changeTaskStatus}
+          onAddInPhase={
+            readOnly || !canCreateTasks ? () => {} : (phaseId) => openCreate(phaseId)
+          }
+          onTaskStatusChange={
+            readOnly || !canUpdateTasks ? undefined : changeTaskStatus
+          }
         />
       </ProjectWorkspaceShell>
 
@@ -384,6 +421,8 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
         editingTask={editingTask}
         defaultPhaseId={defaultPhaseId}
         mode={taskFormMode}
+        canUpdateDetails={canUpdateTasks}
+        canAssign={canAssignTasks}
         onSubmit={handleSave}
       />
       <AlertDialog open={completeOpen} onOpenChange={setCompleteOpen}>
