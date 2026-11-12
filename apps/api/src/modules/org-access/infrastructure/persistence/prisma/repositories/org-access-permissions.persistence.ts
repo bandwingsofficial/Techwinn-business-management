@@ -121,11 +121,11 @@ export class OrgAccessPermissionsPersistence {
             update: {},
           });
         }
+        // Do not merge Employee/Member defaults here — that re-adds removed permissions
+        // after Role Management saves. Immutable Owner/Admin stay catalog-aligned.
         await mergeSystemRoleDefaultPermissions(tx, organizationId, [
           SYSTEM_ROLE_KEYS.owner,
           SYSTEM_ROLE_KEYS.admin,
-          SYSTEM_ROLE_KEYS.employee,
-          SYSTEM_ROLE_KEYS.member,
         ]);
         await ensureOwnerMembershipRole(tx, organizationId, adminId);
         await ensureLinkedEmployeeMembershipRole(tx, organizationId, adminId);

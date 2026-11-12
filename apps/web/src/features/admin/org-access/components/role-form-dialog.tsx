@@ -207,8 +207,27 @@ export function RoleFormDialog({
     }
 
     try {
-      await run(() => updateOrgRole(roleId, metadataParsed.data));
-      await run(() => setOrgRolePermissions(roleId, permissionsParsed.data));
+      const saved = await run(async () => {
+        await updateOrgRole(roleId, metadataParsed.data);
+        return setOrgRolePermissions(roleId, permissionsParsed.data);
+      });
+      if (!saved) return;
+
+      const expected = new Set(permissionsParsed.data.permissionKeys);
+      const actual = new Set(saved.permissionKeys);
+      const missing = [...expected].filter((key) => !actual.has(key));
+      const extra = [...actual].filter((key) => !expected.has(key));
+      if (missing.length > 0 || extra.length > 0) {
+        toast.error(
+          'Role save did not persist the selected permissions. Refresh and try again.',
+        );
+        setForm((current) => ({
+          ...current,
+          permissionKeys: new Set(saved.permissionKeys),
+        }));
+        return;
+      }
+
       toast.success('Role saved.');
       invalidateMyPermissionsCache();
       await refreshMyPermissions();
@@ -358,16 +377,27 @@ export function RoleFormDialog({
                   readOnly={effectiveReadOnly || pending}
                   grantable={grantablePermissions}
                   onToggle={(key, checked) => {
-                    setForm((current) => {
-                      const next = new Set(current.permissionKeys);
-                      if (checked) next.add(key);
-                      else next.delete(key);
-                      return { ...current, permissionKeys: next };
-                    });
+                    // Matrix primarily uses onReplaceSelection; keep this path consistent.
+                    setForm((current) => ({
+                      ...current,
+                      permissionKeys: new Set(
+                        checked
+                          ? ensureViewPermissionPrerequisites([
+                              ...current.permissionKeys,
+                              key,
+                            ])
+                          : [...current.permissionKeys].filter((entry) => entry !== key),
+                      ),
+                    }));
                     clearFormFieldError(setFieldErrors, 'permissionKeys');
                   }}
                   onReplaceSelection={(keys) => {
-                    setForm((current) => ({ ...current, permissionKeys: new Set(keys) }));
+                    setForm((current) => ({
+                      ...current,
+                      permissionKeys: new Set(
+                        ensureViewPermissionPrerequisites(keys),
+                      ),
+                    }));
                     clearFormFieldError(setFieldErrors, 'permissionKeys');
                   }}
                 />

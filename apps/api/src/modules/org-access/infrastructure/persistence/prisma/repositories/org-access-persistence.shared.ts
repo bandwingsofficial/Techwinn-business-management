@@ -192,17 +192,26 @@ async function upsertSystemRoleTemplate(
       },
     });
     keyToId.set(template.key, roleId);
-  } else {
-    await tx.organizationRole.update({
-      where: { id: roleId },
-      data: {
-        name: template.name,
-        description: template.description,
-        isSystem: true,
-      },
-    });
+    // New system roles start from the template. Editable system roles (Employee, Sales, …)
+    // must keep administrator customizations after creation — never wipe on later bootstraps.
+    await syncSystemRolePermissions(tx, roleId, template.permissions);
+    return;
   }
-  await syncSystemRolePermissions(tx, roleId, template.permissions);
+
+  await tx.organizationRole.update({
+    where: { id: roleId },
+    data: {
+      name: template.name,
+      description: template.description,
+      isSystem: true,
+    },
+  });
+
+  // Owner/Admin are immutable in Role Management; keep them aligned with the catalog.
+  // All other system roles are editable — only merge missing defaults elsewhere.
+  if (IMMUTABLE_ORG_ROLE_KEYS.has(template.key)) {
+    await syncSystemRolePermissions(tx, roleId, template.permissions);
+  }
 }
 
 /** Creates every default system role when the organization has none yet (initial tenant setup). */
@@ -283,12 +292,13 @@ export async function ensureOrganizationRoleBootstrap(
     return map;
   }
   const map = await ensureProtectedSystemRoles(tx, organizationId);
+  // Ensure the Employee role row exists without resetting its permissions.
   await ensureSystemRoleByKey(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
+  // Only immutable roles receive catalog merges on every request. Editable system
+  // roles (Employee, Member, …) keep administrator-saved permission sets intact.
   await mergeSystemRoleDefaultPermissions(tx, organizationId, [
     SYSTEM_ROLE_KEYS.owner,
     SYSTEM_ROLE_KEYS.admin,
-    SYSTEM_ROLE_KEYS.employee,
-    SYSTEM_ROLE_KEYS.member,
   ]);
   return map;
 }
