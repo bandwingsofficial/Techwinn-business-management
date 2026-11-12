@@ -2,7 +2,13 @@ import { EMPLOYEE_ROUTES } from '#contracts';
 import type { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import type { DailyTaskListItem } from '../../../../domain/read-models/daily-task.models.js';
 
-export const dateOnlyFromDb = (value: Date): string => value.toISOString().slice(0, 10);
+/** Format Prisma `@db.Date` values as YYYY-MM-DD using UTC parts (no local TZ shift). */
+export const dateOnlyFromDb = (value: Date): string => {
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(value.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export type DailyTaskListRow = Prisma.DailyTaskGetPayload<{
   include: {

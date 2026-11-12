@@ -93,7 +93,8 @@ export function defaultFormState(): AttendanceSettingsFormState {
     dayRows: WEEKDAY_UI_ROWS.map(({ day, label }) => ({
       day,
       label,
-      isWorking: day >= 1 && day <= 5,
+      // Default: Monday–Saturday working, Sunday weekly off.
+      isWorking: day !== 0,
       start: { ...officeStart },
       end: { ...officeEnd },
     })),

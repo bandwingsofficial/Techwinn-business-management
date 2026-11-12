@@ -58,10 +58,12 @@ export function TaskCalendarTaskDetailsModal({
   task,
   open,
   onOpenChange,
+  dailyTasksBasePath = '/admin/daily-tasks',
 }: {
   task: TaskCalendarTaskDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  dailyTasksBasePath?: string;
 }) {
   const router = useRouter();
   if (!task) return null;
@@ -78,7 +80,7 @@ export function TaskCalendarTaskDetailsModal({
 
   const primaryHref =
     task.navigation.kind === 'daily_task'
-      ? `/admin/daily-tasks?date=${encodeURIComponent(task.assignDate)}&view=kanban&taskId=${encodeURIComponent(task.navigation.dailyTaskId)}&focus=board`
+      ? `${dailyTasksBasePath}?date=${encodeURIComponent(task.assignDate)}&view=kanban&taskId=${encodeURIComponent(task.navigation.dailyTaskId)}&focus=board`
       : `/admin/project-tasks/${task.navigation.projectId}?taskId=${encodeURIComponent(task.navigation.projectTaskId)}&focus=board`;
 
   return (

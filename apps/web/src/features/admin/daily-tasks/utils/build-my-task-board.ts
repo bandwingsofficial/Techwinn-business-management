@@ -4,14 +4,26 @@ import type {
   DailyTaskWorkflowStage,
 } from '../types';
 
+function resolveColumnStageId(
+  workflowStageId: string | null | undefined,
+  activeStageIds: ReadonlySet<string>,
+  fallbackStageId: string | null,
+): string | null {
+  if (workflowStageId && activeStageIds.has(workflowStageId)) return workflowStageId;
+  return fallbackStageId;
+}
+
 export function buildMyTaskBoard(input: {
   assignDate: string;
   stages: readonly DailyTaskWorkflowStage[];
   tasks: readonly DailyTaskListItem[];
 }): DailyTaskBoardResponse {
   const activeStages = input.stages.filter((stage) => stage.isActive);
+  const activeStageIds = new Set(activeStages.map((stage) => stage.id));
   const fallbackStageId =
     activeStages.find((stage) => stage.stageKey === 'todo')?.id ?? activeStages[0]?.id ?? null;
+
+  const dateTasks = input.tasks.filter((task) => task.assignDate === input.assignDate);
 
   const columns = activeStages.map((stage) => ({
     stage: {
@@ -23,15 +35,16 @@ export function buildMyTaskBoard(input: {
       stageKey: stage.stageKey,
       isCompletedStage: stage.isCompletedStage,
     },
-    tasks: input.tasks.filter(
-      (task) => (task.workflowStageId ?? fallbackStageId) === stage.id,
+    tasks: dateTasks.filter(
+      (task) =>
+        resolveColumnStageId(task.workflowStageId, activeStageIds, fallbackStageId) === stage.id,
     ),
   }));
 
   const todo = columns.find((c) => c.stage.stageKey === 'todo')?.tasks.length ?? 0;
   const inProgress = columns.find((c) => c.stage.stageKey === 'in_progress')?.tasks.length ?? 0;
   const review = columns.find((c) => c.stage.stageKey === 'review')?.tasks.length ?? 0;
-  const completed = input.tasks.filter((t) => t.completedAt).length;
+  const completed = dateTasks.filter((t) => t.completedAt).length;
 
   return {
     assignDate: input.assignDate,
@@ -43,12 +56,12 @@ export function buildMyTaskBoard(input: {
     projectBoards: [],
     projectTasksOverview: [],
     metrics: {
-      total: input.tasks.length,
+      total: dateTasks.length,
       todo,
       inProgress,
       review,
       completed,
-      overdue: input.tasks.filter((t) => t.isOverdue).length,
+      overdue: dateTasks.filter((t) => t.isOverdue).length,
     },
   };
 }

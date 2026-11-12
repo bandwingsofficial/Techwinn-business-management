@@ -311,10 +311,14 @@ export function DailyTasksWorkspace({
     [assignDate, clientToday, search, typeFilter, employeeId, projectId, priorityFilter],
   );
 
+  const boardRequestIdRef = useRef(0);
   const loadBoard = useCallback(async () => {
     boardAbortRef.current?.abort();
     const controller = new AbortController();
     boardAbortRef.current = controller;
+    const requestId = boardRequestIdRef.current + 1;
+    boardRequestIdRef.current = requestId;
+    const requestAssignDate = assignDate;
     setBoardLoading(true);
     setBoardError(false);
     try {
@@ -328,33 +332,35 @@ export function DailyTasksWorkspace({
             {
               ...filterQuery,
               page: 1,
-              pageSize: 100,
+              pageSize: 500,
               sortBy: 'priority',
               sortDir: 'desc',
             },
             controller.signal,
           ),
         ]);
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
         if (cachedStages.length === 0) replaceStages(stageResponse.stages);
         setBoard(
           buildMyTaskBoard({
-            assignDate,
+            assignDate: requestAssignDate,
             stages: stageResponse.stages,
             tasks: taskResponse.items,
           }),
         );
       } else {
         const response = await fetchDailyTaskBoard(filterQuery, controller.signal);
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
         setBoard(response);
         replaceStages(response.stages);
       }
     } catch {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
       setBoardError(true);
     } finally {
-      if (!controller.signal.aborted) setBoardLoading(false);
+      if (!controller.signal.aborted && boardRequestIdRef.current === requestId) {
+        setBoardLoading(false);
+      }
     }
   }, [assignDate, dataScope, filterQuery, replaceStages]);
 

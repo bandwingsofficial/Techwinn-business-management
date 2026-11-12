@@ -50,17 +50,20 @@ export function markAsFromDayEvents(
   dayKind: string,
   events: readonly { eventType: OrgCalendarEventType }[],
 ): OrgCalendarMarkAs {
+  // Effective day kind wins so schedule working overrides map back to "Working day".
+  if (dayKind === 'SPECIAL_WORKING') return 'WORKING';
+  if (dayKind === 'HALF_DAY') return 'HALF_WORKING_DAY';
+  if (dayKind === 'WEEKLY_OFF') return 'WEEKLY_OFF';
+  if (dayKind === 'NON_WORKING') return 'WORKING';
+
   const classification = events.find((e) =>
     ORG_CALENDAR_CLASSIFICATION_EVENT_TYPES.includes(e.eventType),
   );
   if (classification) {
+    if (classification.eventType === 'SPECIAL_WORKING_DAY') return 'WORKING';
     const match = ORG_CALENDAR_MARK_AS_OPTIONS.find((o) => o.eventType === classification.eventType);
     if (match) return match.value;
   }
-  if (dayKind === 'HALF_DAY') return 'HALF_WORKING_DAY';
-  if (dayKind === 'SPECIAL_WORKING') return 'SPECIAL_WORKING_DAY';
-  if (dayKind === 'WEEKLY_OFF') return 'WEEKLY_OFF';
-  if (dayKind === 'NON_WORKING') return 'WORKING';
   if (dayKind === 'HOLIDAY' || dayKind === 'OFFICE_CLOSURE') return 'PUBLIC_HOLIDAY';
   return 'WORKING';
 }

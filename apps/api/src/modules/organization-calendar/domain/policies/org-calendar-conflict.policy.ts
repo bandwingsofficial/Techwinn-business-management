@@ -24,6 +24,10 @@ export function assertNoCalendarConflicts(
   },
   existing: readonly OrgCalendarEventRecord[],
   excludeId?: string,
+  options?: {
+    /** Date classification replace intentionally overrides holiday / weekly-off peers. */
+    readonly allowClassificationOverride?: boolean;
+  },
 ): void {
   const peers = existing.filter((e) => e.isActive && e.id !== excludeId);
   for (const other of peers) {
@@ -38,6 +42,9 @@ export function assertNoCalendarConflicts(
       throw new OrgCalendarConflictError(
         'An event with the same title, type, and start date already exists.',
       );
+    }
+    if (options?.allowClassificationOverride) {
+      continue;
     }
     const candidateSpecial = candidate.eventType === 'SPECIAL_WORKING_DAY';
     const candidateHoliday = HOLIDAY_LIKE.has(candidate.eventType);

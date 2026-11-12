@@ -276,7 +276,12 @@ export function TaskCalendarPage({
         </div>
       </section>
 
-      <TaskCalendarTaskDetailsModal task={detailTask} open={detailOpen} onOpenChange={setDetailOpen} />
+      <TaskCalendarTaskDetailsModal
+        task={detailTask}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        dailyTasksBasePath={dailyTasksHref}
+      />
     </div>
   );
 }

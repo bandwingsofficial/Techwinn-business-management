@@ -16,7 +16,12 @@ import type {
 import { normalizeListPage, normalizeListPageSize } from '../../../../shared/application/list-page.js';
 
 const parseDateOnly = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
-const dateOnly = (value: Date): string => value.toISOString().slice(0, 10);
+const dateOnly = (value: Date): string => {
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(value.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const projectTaskCalendarInclude = {
   project: { select: { id: true, name: true, projectNumber: true } },

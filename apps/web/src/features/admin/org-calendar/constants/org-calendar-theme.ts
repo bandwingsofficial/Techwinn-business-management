@@ -87,16 +87,7 @@ const CARD_STYLES: Record<OrgCalendarCardVariant, Omit<OrgCalendarCardStyle, 'va
   },
 };
 
-function weekdayFromDateKey(dateKey: string): number {
-  const parts = dateKey.split('-').map(Number);
-  const y = parts[0] ?? 2000;
-  const m = parts[1] ?? 1;
-  const d = parts[2] ?? 1;
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-function statusLabelForKind(kind: OrgCalendarDayKind, dateKey: string): string {
-  if (kind === 'WEEKLY_OFF' && weekdayFromDateKey(dateKey) === 0) return 'Sunday';
+function statusLabelForKind(kind: OrgCalendarDayKind, _dateKey: string): string {
   switch (kind) {
     case 'WORKING':
       return 'Working day';
@@ -107,7 +98,7 @@ function statusLabelForKind(kind: OrgCalendarDayKind, dateKey: string): string {
     case 'OFFICE_CLOSURE':
       return 'Office closure';
     case 'SPECIAL_WORKING':
-      return 'Special working';
+      return 'Working day';
     case 'HALF_DAY':
       return 'Half day';
     case 'NON_WORKING':
@@ -128,8 +119,10 @@ export function resolveOrgCalendarCardStyle(
   let variant: OrgCalendarCardVariant = 'working';
 
   if (kind === 'HOLIDAY' || kind === 'OFFICE_CLOSURE') variant = 'holiday';
-  else if (kind === 'SPECIAL_WORKING') variant = 'specialWorking';
-  else if (kind === 'HALF_DAY') variant = 'halfDay';
+  else if (kind === 'SPECIAL_WORKING') {
+    // Date overrides that force a working day follow normal working/upcoming colours.
+    variant = isFuture ? 'upcomingWorking' : 'working';
+  } else if (kind === 'HALF_DAY') variant = 'halfDay';
   else if (kind === 'WEEKLY_OFF') variant = 'sundayOff';
   else if (kind === 'NON_WORKING') variant = 'nonWorking';
   else if (kind === 'WORKING' && isFuture) variant = 'upcomingWorking';

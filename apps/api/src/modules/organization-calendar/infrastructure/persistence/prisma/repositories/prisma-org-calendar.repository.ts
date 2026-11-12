@@ -16,6 +16,7 @@ import {
   classifyDayFromEvents,
   eventAppliesToEmployee,
   eventsOnDate,
+  presentationEventsForDay,
   resolveScheduleDayFlags,
   toAttendanceDayKind,
   type ScheduleDayFlags,
@@ -312,7 +313,11 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
       const schedule =
         scheduleByDate.get(dateKey) ?? ({ scheduleWeeklyOff: false, scheduleNonWorking: false } satisfies ScheduleDayFlags);
       const dayKind = classifyDayFromEvents(dateEvents, schedule);
-      days.push({ date: dateKey, dayKind, events: dateEvents });
+      days.push({
+        date: dateKey,
+        dayKind,
+        events: presentationEventsForDay(dayKind, dateEvents),
+      });
     }
     return { from, to, days };
   }
@@ -351,8 +356,9 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
     organizationId: string,
     startDate: string,
     endDate: string,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<OrgCalendarEventItem[]> {
-    const rows = await this.loadRawEvents(organizationId, startDate, endDate, { activeOnly: true });
+    const rows = await this.loadRawEvents(organizationId, startDate, endDate, { activeOnly: true }, db);
     return expandAnnualOccurrences(rows, startDate, endDate);
   }
 
@@ -365,6 +371,7 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
       search?: string;
       activeOnly?: boolean;
     },
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<OrgCalendarEventItem[]> {
     const where: Prisma.OrganizationCalendarEventWhereInput = {
       organizationId,
@@ -383,11 +390,11 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
         { description: { contains: opts.search, mode: 'insensitive' } },
       ];
     }
-    const direct = await this.prisma.organizationCalendarEvent.findMany({
+    const direct = await db.organizationCalendarEvent.findMany({
       where,
       orderBy: [{ startDate: 'asc' }, { title: 'asc' }],
     });
-    const annual = await this.prisma.organizationCalendarEvent.findMany({
+    const annual = await db.organizationCalendarEvent.findMany({
       where: {
         organizationId,
         recurrence: 'ANNUAL',
@@ -436,6 +443,28 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
     create: OrgCalendarEventWriteInput | null,
   ): Promise<OrgCalendarMonthDay> {
     const date = parseDateOnly(dateKey);
+    const scheduleByDate = await this.loadScheduleDayFlagsMap(organizationId, dateKey, dateKey);
+    const schedule =
+      scheduleByDate.get(dateKey) ??
+      ({ scheduleWeeklyOff: false, scheduleNonWorking: false } satisfies ScheduleDayFlags);
+
+    // One current status override per date: schedule weekly offs need no WEEKLY_OFF event.
+    let payload = create;
+    if (payload?.eventType === 'WEEKLY_OFF' && schedule.scheduleWeeklyOff) {
+      payload = null;
+    }
+    if (payload && (payload.eventType === 'WEEKLY_OFF' || payload.eventType === 'SPECIAL_WORKING_DAY')) {
+      payload = {
+        ...payload,
+        title:
+          payload.eventType === 'SPECIAL_WORKING_DAY' ? 'Working day' : 'Weekly off',
+        description: '',
+        startDate: dateKey,
+        endDate: dateKey,
+        recurrence: 'NONE',
+      };
+    }
+
     await this.prisma.$transaction(async (tx) => {
       const overlapping = await tx.organizationCalendarEvent.findMany({
         where: {
@@ -445,19 +474,28 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
           endDate: { gte: date },
         },
       });
+      const removedIds = new Set(overlapping.map((row) => row.id));
       if (overlapping.length > 0) {
         await tx.organizationCalendarEvent.deleteMany({
           where: {
             organizationId,
-            id: { in: overlapping.map((row) => row.id) },
+            id: { in: [...removedIds] },
           },
         });
       }
-      if (create) {
-        const peers = await this.loadExpandedForConflict(organizationId, create.startDate, create.endDate);
-        assertNoCalendarConflicts(create, peers);
+      if (payload) {
+        const peers = await this.loadExpandedForConflict(
+          organizationId,
+          payload.startDate,
+          payload.endDate,
+          tx,
+        );
+        const remainingPeers = peers.filter((peer) => !removedIds.has(peer.id));
+        assertNoCalendarConflicts(payload, remainingPeers, undefined, {
+          allowClassificationOverride: true,
+        });
         await tx.organizationCalendarEvent.create({
-          data: this.toCreateData(organizationId, adminId, create),
+          data: this.toCreateData(organizationId, adminId, payload),
         });
       }
     });

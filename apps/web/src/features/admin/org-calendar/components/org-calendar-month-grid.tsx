@@ -8,9 +8,27 @@ import {
   attendanceCalendarTodayRingClass,
   resolveAttendanceCalendarDayCardStyle,
 } from '@/features/admin/attendance/constants/attendance-calendar-theme';
+import { ORG_CALENDAR_CLASSIFICATION_EVENT_TYPES } from '../constants/org-calendar-mark-as';
 import { resolveOrgCalendarDayStatusLabel } from '../utils/org-calendar-day-label';
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const STATUS_OVERRIDE_EVENT_TYPES = new Set([
+  'SPECIAL_WORKING_DAY',
+  'WEEKLY_OFF',
+  'HALF_WORKING_DAY',
+]);
+
+/** Secondary cell lines are for named holidays/events — never a second status. */
+function cellDisplayEvents(day: OrgCalendarMonthDay | undefined) {
+  const events = day?.events ?? [];
+  const kind = day?.dayKind;
+  return events.filter((event) => {
+    if (STATUS_OVERRIDE_EVENT_TYPES.has(event.eventType)) return false;
+    if (!ORG_CALENDAR_CLASSIFICATION_EVENT_TYPES.includes(event.eventType)) return true;
+    return kind === 'HOLIDAY' || kind === 'OFFICE_CLOSURE';
+  });
+}
 
 export function OrgCalendarMonthGrid({
   year,
@@ -52,7 +70,7 @@ export function OrgCalendarMonthGrid({
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {weeks.flat().map((cell) => {
           const day = daysByDate.get(cell.dateKey);
-          const events = day?.events ?? [];
+          const displayEvents = cellDisplayEvents(day);
           const card = resolveAttendanceCalendarDayCardStyle({
             dateKey: cell.dateKey,
             organizationDayKind: day?.dayKind,
@@ -63,9 +81,9 @@ export function OrgCalendarMonthGrid({
           const isToday = cell.dateKey === orgTodayKey;
           const isSelected = cell.dateKey === selectedDate;
           const dayNum = Number(cell.dateKey.slice(8, 10));
-          const visible = events.slice(0, 2);
-          const more = events.length - visible.length;
-          const primaryTitle = events[0]?.title;
+          const visible = displayEvents.slice(0, 2);
+          const more = displayEvents.length - visible.length;
+          const primaryTitle = displayEvents[0]?.title;
           const selectable = canSelectDate ? canSelectDate(cell.dateKey, day) : true;
           const disabledTitle = !selectable
             ? (disabledDateTitle?.(cell.dateKey, day) ??

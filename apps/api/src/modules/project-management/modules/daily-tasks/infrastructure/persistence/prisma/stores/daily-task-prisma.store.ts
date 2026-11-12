@@ -17,6 +17,7 @@ import { assertCreateDailyTaskBusinessRules } from '../../../../domain/policies/
 import { assertDailyTaskNoteText, normalizeDailyTaskNoteText } from '../../../../domain/policies/daily-task-note-text.policy.js';
 import { assertRescheduleChangesAssignDate } from '../../../../domain/policies/daily-task-reschedule.policy.js';
 import { assertUpdateDailyTaskInput } from '../../../../domain/policies/daily-task-update.policy.js';
+import { resolveDailyTaskBoardColumnStageId } from '../../../../domain/services/daily-task-board-column.service.js';
 import { computeDailyTaskBoardMetrics } from '../../../../domain/services/daily-task-board-metrics.service.js';
 import { parseIsoDateOnly } from '../../../../domain/value-objects/daily-task-date.js';
 import {
@@ -233,73 +234,64 @@ export class DailyTaskPrismaStore {
       : null;
     const calendarEnd = filters.calendarRangeEnd ? parseDateOnly(filters.calendarRangeEnd) : null;
 
-    const where: Prisma.DailyTaskWhereInput = {
-      organizationId,
-      ...(filters.assignDate ? { assignDate: parseDateOnly(filters.assignDate) } : {}),
-      ...(!hasCalendarRange && (filters.assignDateFrom || filters.assignDateTo)
-        ? {
-            assignDate: {
-              ...(filters.assignDateFrom ? { gte: parseDateOnly(filters.assignDateFrom) } : {}),
-              ...(filters.assignDateTo ? { lte: parseDateOnly(filters.assignDateTo) } : {}),
-            },
-          }
-        : {}),
-      ...(hasCalendarRange && calendarStart && calendarEnd
-        ? {
-            OR: [
-              {
-                AND: [
-                  { assignDate: { lte: calendarEnd } },
-                  {
-                    OR: [
-                      { dueDate: { gte: calendarStart } },
-                      { dueDate: null },
-                    ],
-                  },
-                ],
-              },
-            ],
-          }
-        : {}),
-      ...(filters.type ? { type: filters.type } : {}),
-      ...(filters.projectId ? { projectId: filters.projectId } : {}),
-      ...(filters.priority ? { priority: filters.priority } : {}),
-      ...(filters.workflowStageId ? { workflowStageId: filters.workflowStageId } : {}),
-      ...(filters.projectPhaseId ? { projectPhaseId: filters.projectPhaseId } : {}),
-      ...(filters.category ? { category: filters.category } : {}),
-      ...(filters.completedOnly ? { completedAt: { not: null } } : {}),
-      ...(filters.search?.trim()
-        ? {
-            OR: [
-              { title: { contains: filters.search.trim(), mode: 'insensitive' } },
-              { description: { contains: filters.search.trim(), mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-      ...(filters.employeeId
-        ? { assignees: { some: { employeeId: filters.employeeId } } }
-        : {}),
-      ...(filters.employeeIdsForMyTasks?.length
-        ? { assignees: { some: { employeeId: { in: [...filters.employeeIdsForMyTasks] } } } }
-        : {}),
-    };
+    const clauses: Prisma.DailyTaskWhereInput[] = [{ organizationId }];
 
+    if (filters.assignDate) {
+      clauses.push({ assignDate: parseDateOnly(filters.assignDate) });
+    } else if (!hasCalendarRange && (filters.assignDateFrom || filters.assignDateTo)) {
+      clauses.push({
+        assignDate: {
+          ...(filters.assignDateFrom ? { gte: parseDateOnly(filters.assignDateFrom) } : {}),
+          ...(filters.assignDateTo ? { lte: parseDateOnly(filters.assignDateTo) } : {}),
+        },
+      });
+    } else if (hasCalendarRange && calendarStart && calendarEnd) {
+      // Legacy span filter kept for compatibility; Task Calendar uses assignDateFrom/To.
+      clauses.push({
+        AND: [
+          { assignDate: { lte: calendarEnd } },
+          {
+            OR: [{ dueDate: { gte: calendarStart } }, { dueDate: null }],
+          },
+        ],
+      });
+    }
+
+    if (filters.type) clauses.push({ type: filters.type });
+    if (filters.projectId) clauses.push({ projectId: filters.projectId });
+    if (filters.priority) clauses.push({ priority: filters.priority });
+    if (filters.workflowStageId) clauses.push({ workflowStageId: filters.workflowStageId });
+    if (filters.projectPhaseId) clauses.push({ projectPhaseId: filters.projectPhaseId });
+    if (filters.category) clauses.push({ category: filters.category });
+    if (filters.completedOnly) clauses.push({ completedAt: { not: null } });
+    if (filters.search?.trim()) {
+      const q = filters.search.trim();
+      clauses.push({
+        OR: [
+          { title: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+        ],
+      });
+    }
+    if (filters.employeeId) {
+      clauses.push({ assignees: { some: { employeeId: filters.employeeId } } });
+    }
+    if (filters.employeeIdsForMyTasks?.length) {
+      clauses.push({
+        assignees: { some: { employeeId: { in: [...filters.employeeIdsForMyTasks] } } },
+      });
+    }
     if (filters.overdueOnly && filters.clientToday) {
-      where.completedAt = null;
-      const overdueClause: Prisma.DailyTaskWhereInput = {
+      clauses.push({ completedAt: null });
+      clauses.push({
         OR: [
           { assignDate: { lt: parseDateOnly(filters.clientToday) } },
           { dueDate: { lt: parseDateOnly(filters.clientToday) } },
         ],
-      };
-      const existingAnd = where.AND;
-      where.AND = [
-        ...(Array.isArray(existingAnd) ? existingAnd : existingAnd ? [existingAnd] : []),
-        overdueClause,
-      ];
+      });
     }
 
-    return where;
+    return { AND: clauses };
   }
 
   async getBoard(
@@ -310,6 +302,7 @@ export class DailyTaskPrismaStore {
   ) {
     const workflowStages = await this.listWorkflowStages(organizationId);
     const activeStages = workflowStages.filter((stage) => stage.isActive);
+    const activeStageIds = new Set(activeStages.map((stage) => stage.id));
     const fallbackStageId =
       activeStages.find((stage) => stage.stageKey === 'todo')?.id ?? activeStages[0]?.id ?? null;
 
@@ -335,7 +328,7 @@ export class DailyTaskPrismaStore {
       items = [...(await this.attachTaskNoteSummaries(organizationId, items, noteAttach))];
     }
     const columnForTask = (item: DailyTaskListItem) =>
-      item.workflowStageId ?? fallbackStageId;
+      resolveDailyTaskBoardColumnStageId(item.workflowStageId, activeStageIds, fallbackStageId);
 
     const columns = activeStages.map((stage) => ({
       stage: {

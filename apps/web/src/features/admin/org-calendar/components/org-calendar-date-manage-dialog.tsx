@@ -62,9 +62,10 @@ import {
   type OrgCalendarMarkAs,
 } from '../constants/org-calendar-mark-as';
 import { resolveOrgCalendarCardStyle } from '../constants/org-calendar-theme';
-import { labelForEventType, ORG_CALENDAR_DAY_KIND_LABEL } from '../constants/org-calendar-event-types';
+import { labelForEventType } from '../constants/org-calendar-event-types';
 import { localTodayKey } from '@/features/admin/attendance/utils/calendar-month';
 import type { AttendanceSettingsResponse } from '@techwin/contracts';
+import { resolveOrgCalendarDayStatusLabel } from '../utils/org-calendar-day-label';
 import {
   buildScheduleWorkingOverridePayload,
   orgWeekdayIndex,
@@ -259,10 +260,14 @@ export function OrgCalendarDateManageDialog({
     const isHalf = markAs === 'HALF_WORKING_DAY';
     const isSpecial = markAs === 'SPECIAL_WORKING_DAY';
     const usesTimes = isHalf || isSpecial;
+    // Never reuse a previous override title (e.g. "Working day") for weekly-off saves.
+    const resolvedTitle = isHolidayMarkAs(markAs)
+      ? title.trim() || defaultTitleForMarkAs(markAs)
+      : defaultTitleForMarkAs(markAs);
 
     return {
-      title: title.trim() || defaultTitleForMarkAs(markAs),
-      description: description.trim(),
+      title: resolvedTitle,
+      description: isHolidayMarkAs(markAs) ? description.trim() : '',
       eventType,
       startDate: dateKey,
       endDate: dateKey,
@@ -282,13 +287,33 @@ export function OrgCalendarDateManageDialog({
     | ReturnType<typeof buildScheduleWorkingOverridePayload>
     | null {
     if (!dateKey) return null;
-    if (markAs !== 'WORKING') {
-      return buildPayload();
+
+    if (markAs === 'WORKING') {
+      const scheduleOff = attendanceSettings
+        ? scheduleMarksDateOff(dateKey, attendanceSettings)
+        : false;
+      const needsWorkingOverride =
+        scheduleOff ||
+        dayKind === 'WEEKLY_OFF' ||
+        dayKind === 'NON_WORKING' ||
+        dayKind === 'HOLIDAY' ||
+        dayKind === 'OFFICE_CLOSURE' ||
+        dayKind === 'SPECIAL_WORKING';
+      if (needsWorkingOverride) {
+        return buildScheduleWorkingOverridePayload(dateKey);
+      }
+      return null;
     }
-    if (attendanceSettings && scheduleMarksDateOff(dateKey, attendanceSettings)) {
-      return buildScheduleWorkingOverridePayload(dateKey);
+
+    if (markAs === 'WEEKLY_OFF' && attendanceSettings) {
+      const weekday = orgWeekdayIndex(dateKey, attendanceSettings.timeZone);
+      // Clear date overrides and fall back to the organisation weekly schedule.
+      if (attendanceSettings.weeklyOffDays.includes(weekday)) {
+        return null;
+      }
     }
-    return null;
+
+    return buildPayload();
   }
 
   async function commitSave() {
@@ -302,21 +327,23 @@ export function OrgCalendarDateManageDialog({
         setFieldErrors({ title: 'Enter a holiday title.' });
         return;
       }
-      if (!replaceEvent) return;
-      if (replaceEvent.isFullDay === false) {
-        if (replaceEvent.startTimeMinutes == null || replaceEvent.endTimeMinutes == null) {
-          setFieldErrors({ startTimeMinutes: 'Enter start and end times.' });
+      // null replaceEvent clears the date override (e.g. Sunday → schedule weekly off).
+      if (replaceEvent) {
+        if (replaceEvent.isFullDay === false) {
+          if (replaceEvent.startTimeMinutes == null || replaceEvent.endTimeMinutes == null) {
+            setFieldErrors({ startTimeMinutes: 'Enter start and end times.' });
+            return;
+          }
+          if (replaceEvent.endTimeMinutes <= replaceEvent.startTimeMinutes) {
+            setFieldErrors({ endTimeMinutes: 'End time must be after start time.' });
+            return;
+          }
+        }
+        const parsed = createOrgCalendarEventRequestSchema.safeParse(replaceEvent);
+        if (!parsed.success) {
+          setFieldErrors(zodIssuesToFieldMap(parsed.error));
           return;
         }
-        if (replaceEvent.endTimeMinutes <= replaceEvent.startTimeMinutes) {
-          setFieldErrors({ endTimeMinutes: 'End time must be after start time.' });
-          return;
-        }
-      }
-      const parsed = createOrgCalendarEventRequestSchema.safeParse(replaceEvent);
-      if (!parsed.success) {
-        setFieldErrors(zodIssuesToFieldMap(parsed.error));
-        return;
       }
     }
 
@@ -440,7 +467,7 @@ export function OrgCalendarDateManageDialog({
                 cardStyle.text,
               )}
             >
-              {ORG_CALENDAR_DAY_KIND_LABEL[day?.dayKind ?? 'WORKING'] ?? cardStyle.statusLabel}
+              {resolveOrgCalendarDayStatusLabel(day) || cardStyle.statusLabel}
             </span>
           ) : null}
         </DialogHeader>

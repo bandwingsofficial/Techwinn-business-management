@@ -112,11 +112,12 @@ export class ListCalendarTasksHandler {
     const projectTaskStatusFilter =
       includeProject && projectStatusParsed.success ? projectStatusParsed.data : undefined;
 
+    // Canonical daily-task placement is assignDate (same exact-date rule as Kanban/list).
     const dailyQuery: DailyTaskListQuery = {
       page: 1,
-      pageSize: 100,
-      calendarRangeStart: range.startDate,
-      calendarRangeEnd: range.endDate,
+      pageSize: 500,
+      assignDateFrom: range.startDate,
+      assignDateTo: range.endDate,
       search: query.search?.trim() || undefined,
       type: query.type,
       employeeId: query.employeeId,
@@ -127,8 +128,8 @@ export class ListCalendarTasksHandler {
       category: query.category,
       completedOnly: query.completedOnly,
       overdueOnly: query.overdueOnly,
-      sortBy: query.sortBy,
-      sortDir: query.sortDir,
+      sortBy: query.sortBy ?? 'assignDate',
+      sortDir: query.sortDir ?? 'asc',
     };
 
     const [dailyItems, projectRows] = await Promise.all([
