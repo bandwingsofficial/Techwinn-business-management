@@ -22,7 +22,6 @@ import { listProjects } from '@/features/admin/projects/api/projects';
 import { listAllDailyTasksInRange } from '../api/list-all-daily-tasks';
 import { listAllMyDailyTasksInRange } from '../api/list-my-daily-tasks-in-range';
 import {
-  fetchDailyTaskBoard,
   fetchDailyTaskWorkflowStages,
   listDailyTasks,
   listMyDailyTasks,
@@ -36,6 +35,7 @@ import type {
 import { useDailyTasksPolling } from '../hooks/use-daily-tasks-polling';
 import { buildMyTaskBoard } from '../utils/build-my-task-board';
 import {
+  canViewOrganizationDailyTasks,
   resolveDailyTasksDataScope,
   type DailyTasksDataScope,
   type DailyTasksPortal,
@@ -94,16 +94,21 @@ export function DailyTasksWorkspace({
   const missingBoardTaskToast = useRef<string | null>(null);
   const stagesRef = useRef<readonly DailyTaskWorkflowStage[]>([]);
   const boardAbortRef = useRef<AbortController | null>(null);
-  const { has } = useAdminAccess();
+  const { has, hasAny } = useAdminAccess();
   const canAssignTasks = has('tasks.create') && has('tasks.assign');
   const canManageWorkflow = has('tasks.update') || has('daily_tasks.manage_workflow');
+  const canViewOrganizationTasks = useMemo(
+    () => canViewOrganizationDailyTasks(has, hasAny),
+    [has, hasAny],
+  );
   const dataScope = useMemo((): DailyTasksDataScope => {
     return resolveDailyTasksDataScope({
       portal,
       workspaceParam: searchParams.get('workspace'),
       explicitScope: defaultDataScope,
+      canViewOrganizationTasks,
     });
-  }, [defaultDataScope, portal, searchParams]);
+  }, [canViewOrganizationTasks, defaultDataScope, portal, searchParams]);
   const resolvedTitle =
     title ?? (dataScope === 'own' ? 'My Daily Tasks' : 'Daily Task Management');
   const resolvedDescription =
@@ -322,38 +327,56 @@ export function DailyTasksWorkspace({
     setBoardLoading(true);
     setBoardError(false);
     try {
-      if (dataScope === 'own') {
-        const cachedStages = stagesRef.current;
-        const [stageResponse, taskResponse] = await Promise.all([
-          cachedStages.length > 0
-            ? Promise.resolve({ stages: cachedStages })
-            : fetchDailyTaskWorkflowStages(controller.signal),
-          listMyDailyTasks(
-            {
-              ...filterQuery,
-              page: 1,
-              pageSize: 500,
-              sortBy: 'priority',
-              sortDir: 'desc',
-            },
-            controller.signal,
-          ),
-        ]);
-        if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
-        if (cachedStages.length === 0) replaceStages(stageResponse.stages);
-        setBoard(
-          buildMyTaskBoard({
-            assignDate: requestAssignDate,
-            stages: stageResponse.stages,
-            tasks: taskResponse.items,
-          }),
-        );
-      } else {
-        const response = await fetchDailyTaskBoard(filterQuery, controller.signal);
-        if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
-        setBoard(response);
-        replaceStages(response.stages);
-      }
+      // Org Kanban uses organization list (assignDate) + shared column mapping — never `/my`.
+      // Self-service uses `/my`. Both share buildMyTaskBoard so inactive stages still appear.
+      const cachedStages = stagesRef.current;
+      const listCall =
+        dataScope === 'own'
+          ? listMyDailyTasks(
+              {
+                assignDate: filterQuery.assignDate,
+                clientToday: filterQuery.clientToday,
+                search: filterQuery.search,
+                type: filterQuery.type,
+                priority: filterQuery.priority,
+                page: 1,
+                pageSize: 500,
+                sortBy: 'priority',
+                sortDir: 'desc',
+              },
+              controller.signal,
+            )
+          : listDailyTasks(
+              {
+                assignDate: filterQuery.assignDate,
+                clientToday: filterQuery.clientToday,
+                search: filterQuery.search,
+                type: filterQuery.type,
+                employeeId: filterQuery.employeeId,
+                projectId: filterQuery.projectId,
+                priority: filterQuery.priority,
+                page: 1,
+                pageSize: 500,
+                sortBy: 'priority',
+                sortDir: 'desc',
+              },
+              controller.signal,
+            );
+      const [stageResponse, taskResponse] = await Promise.all([
+        cachedStages.length > 0
+          ? Promise.resolve({ stages: cachedStages })
+          : fetchDailyTaskWorkflowStages(controller.signal),
+        listCall,
+      ]);
+      if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
+      if (cachedStages.length === 0) replaceStages(stageResponse.stages);
+      setBoard(
+        buildMyTaskBoard({
+          assignDate: requestAssignDate,
+          stages: stageResponse.stages,
+          tasks: taskResponse.items,
+        }),
+      );
     } catch {
       if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
       setBoardError(true);

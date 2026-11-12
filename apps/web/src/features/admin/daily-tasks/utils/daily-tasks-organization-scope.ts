@@ -30,14 +30,22 @@ export type DailyTasksDataScope = 'team' | 'own';
 
 export type DailyTasksPortal = 'admin' | 'employee';
 
+/**
+ * Resolves Kanban/list data scope from portal, URL, and trusted org-task visibility.
+ * Organization viewers use the org list/board APIs — never `/daily-tasks/my` —
+ * unless they explicitly open `?workspace=my`.
+ */
 export function resolveDailyTasksDataScope(input: {
   readonly portal: DailyTasksPortal;
   readonly workspaceParam: string | null;
   readonly explicitScope?: DailyTasksDataScope;
+  readonly canViewOrganizationTasks: boolean;
 }): DailyTasksDataScope {
   if (input.portal === 'employee') return 'own';
-  if (input.explicitScope) return input.explicitScope;
   if (input.workspaceParam === 'my') return 'own';
-  if (input.workspaceParam === 'team') return 'team';
-  return 'team';
+  if (input.explicitScope) return input.explicitScope;
+  if (input.workspaceParam === 'team') {
+    return input.canViewOrganizationTasks ? 'team' : 'own';
+  }
+  return input.canViewOrganizationTasks ? 'team' : 'own';
 }
