@@ -192,10 +192,13 @@ export const dailyTaskBoardQuerySchema = z
   })
   .strict();
 
+/** Max page size for daily-task list/my board fetches (calendar + Kanban day loads). */
+const DAILY_TASK_LIST_PAGE_SIZE_MAX = 500;
+
 export const dailyTaskListQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).optional(),
-    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    pageSize: z.coerce.number().int().min(1).max(DAILY_TASK_LIST_PAGE_SIZE_MAX).optional(),
     clientToday: dateOnly.optional(),
     search: z.string().max(200).optional(),
     assignDate: dateOnly.optional(),
@@ -221,13 +224,14 @@ export const myDailyTasksQuerySchema = z
     assignDate: dateOnly.optional(),
     assignDateFrom: dateOnly.optional(),
     assignDateTo: dateOnly.optional(),
+    clientToday: dateOnly.optional(),
     search: z.string().max(200).optional(),
     type: dailyTaskTypeSchema.optional(),
     priority: dailyTaskPrioritySchema.optional(),
     workflowStageId: uuid.optional(),
     projectId: uuid.optional(),
     page: z.coerce.number().int().min(1).optional(),
-    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    pageSize: z.coerce.number().int().min(1).max(DAILY_TASK_LIST_PAGE_SIZE_MAX).optional(),
     sortBy: z.enum(['assignDate', 'dueDate', 'priority', 'title', 'updatedAt']).optional(),
     sortDir: z.enum(['asc', 'desc']).optional(),
   })
@@ -306,6 +310,7 @@ export function parseMyDailyTasksQuery(input: unknown): z.infer<typeof myDailyTa
     'assignDate',
     'assignDateFrom',
     'assignDateTo',
+    'clientToday',
     'search',
     'type',
     'priority',
