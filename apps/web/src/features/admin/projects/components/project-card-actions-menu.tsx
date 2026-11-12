@@ -30,11 +30,15 @@ export function ProjectCardActionsMenu({
   disabled?: boolean;
   editDisabled?: boolean;
   variant?: 'default' | 'kanban';
-  onToggleActive: (project: ProjectActionTarget) => void;
-  onEdit: (id: string) => void;
-  onDelete: (project: ProjectActionTarget) => void;
+  onToggleActive?: (project: ProjectActionTarget) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (project: ProjectActionTarget) => void;
 }) {
   const isActive = project.status === 'ACTIVE';
+  const showToggle = Boolean(onToggleActive);
+  const showEdit = Boolean(onEdit);
+  const showDelete = Boolean(onDelete);
+  if (!showToggle && !showEdit && !showDelete) return null;
 
   const MenuIcon = variant === 'kanban' ? MoreHorizontal : MoreVertical;
 
@@ -63,29 +67,34 @@ export function ProjectCardActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[10rem]">
-          <DropdownMenuItem
-            disabled={disabled}
-            onSelect={() => onToggleActive(project)}
-          >
-            <Power className="size-3.5" aria-hidden="true" />
-            {isActive ? 'Deactivate' : 'Activate'}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={disabled || editDisabled}
-            onSelect={() => onEdit(project.id)}
-          >
-            <Pencil className="size-3.5" aria-hidden="true" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            disabled={disabled}
-            onSelect={() => onDelete(project)}
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            Delete
-          </DropdownMenuItem>
+          {showToggle ? (
+            <DropdownMenuItem disabled={disabled} onSelect={() => onToggleActive?.(project)}>
+              <Power className="size-3.5" aria-hidden="true" />
+              {isActive ? 'Deactivate' : 'Activate'}
+            </DropdownMenuItem>
+          ) : null}
+          {showEdit ? (
+            <DropdownMenuItem
+              disabled={disabled || editDisabled}
+              onSelect={() => onEdit?.(project.id)}
+            >
+              <Pencil className="size-3.5" aria-hidden="true" />
+              Edit
+            </DropdownMenuItem>
+          ) : null}
+          {showDelete ? (
+            <>
+              {showToggle || showEdit ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                disabled={disabled}
+                onSelect={() => onDelete?.(project)}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

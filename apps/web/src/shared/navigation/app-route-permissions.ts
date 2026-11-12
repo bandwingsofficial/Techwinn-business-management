@@ -6,12 +6,16 @@ import {
   type MembershipAccessContext,
 } from '@/features/auth/membership/membership-access';
 
-/** Organization task boards — require org-scope view, not merely `tasks.read` (Employee self-service). */
-const ORGANIZATION_TASK_BOARD_ROUTES: ReadonlySet<string> = new Set([
+/**
+ * Organization daily-task boards — require org-scope view, not merely `tasks.read`
+ * (Employee self-service uses `/employee/daily-tasks`).
+ * `/admin/project-tasks` is intentionally excluded: `projects.read` / `tasks.read` via
+ * {@link APP_ROUTE_PERMISSIONS} controls Projects & Tasks View independently.
+ */
+const ORGANIZATION_DAILY_TASK_BOARD_ROUTES: ReadonlySet<string> = new Set([
   '/admin/daily-tasks',
   '/admin/task-calendar',
   '/admin/my-tasks',
-  '/admin/project-tasks',
 ]);
 
 /** Unified route → permission map for all authenticated app paths (`/admin` and `/employee`). */
@@ -134,10 +138,10 @@ export function canAccessAppPath(
     if (!canUseEmployeeSelfService(access)) return false;
   }
 
-  const matchedBoardRoute = [...ORGANIZATION_TASK_BOARD_ROUTES].find(
+  const matchedDailyBoardRoute = [...ORGANIZATION_DAILY_TASK_BOARD_ROUTES].find(
     (route) => path === route || path.startsWith(`${route}/`),
   );
-  if (matchedBoardRoute) {
+  if (matchedDailyBoardRoute) {
     return canViewOrganizationDailyTasks(
       (key) => permissions.has(key),
       (...keys) => keys.some((key) => permissions.has(key)),

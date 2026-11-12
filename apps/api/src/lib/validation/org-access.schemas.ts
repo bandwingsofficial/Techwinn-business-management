@@ -1,3 +1,4 @@
+import { PERMISSION_KEYS, type PermissionKey } from '#contracts';
 import { z } from 'zod';
 import {
   coalesceOptionalPhoneField,
@@ -7,62 +8,10 @@ import {
 import { platformNewPasswordSchema } from './platform-auth.schemas.js';
 
 const uuid = z.string().uuid();
-const permissionKeySchema = z.enum([
-  'users.read',
-  'users.create',
-  'users.update',
-  'users.deactivate',
-  'users.manage_roles',
-  'users.reset_password',
-  'roles.read',
-  'roles.create',
-  'roles.update',
-  'roles.delete',
-  'permissions.read',
-  'memberships.invite',
-  'memberships.manage',
-  'employees.read',
-  'employees.create',
-  'employees.update',
-  'employees.compensation.read',
-  'employees.compensation.manage',
-  'media.read',
-  'media.upload',
-  'media.delete',
-  'leads.read',
-  'leads.create',
-  'leads.update',
-  'leads.delete',
-  'clients.read',
-  'clients.create',
-  'clients.update',
-  'clients.delete',
-  'projects.read',
-  'projects.create',
-  'projects.update',
-  'projects.delete',
-  'tasks.read',
-  'tasks.create',
-  'tasks.update',
-  'tasks.delete',
-  'tasks.assign',
-  'whatsapp.read',
-  'whatsapp.view_all',
-  'whatsapp.reply',
-  'whatsapp.assign',
-  'whatsapp.channels.manage',
-  'whatsapp.templates.manage',
-  'whatsapp.broadcasts.manage',
-  'finance.read',
-  'finance.manage',
-  'expenses.read',
-  'expenses.create',
-  'expenses.update',
-  'expenses.approve',
-  'expenses.delete',
-  'settings.read',
-  'settings.manage',
-]);
+/** Must stay aligned with the full permission catalog — truncated enums drop HR/task keys on save. */
+const permissionKeySchema = z.enum(
+  PERMISSION_KEYS as unknown as [PermissionKey, ...PermissionKey[]],
+);
 
 export const organizationMembershipStatusSchema = z.enum([
   'ACTIVE',
@@ -154,7 +103,7 @@ export const createRoleRequestSchema = z
       .max(64)
       .regex(/^[a-z][a-z0-9_]*$/, 'Use lowercase letters, numbers, and underscores.'),
     description: z.string().max(500).optional(),
-    permissionKeys: z.array(permissionKeySchema).min(1),
+    permissionKeys: z.array(permissionKeySchema),
   })
   .strict();
 

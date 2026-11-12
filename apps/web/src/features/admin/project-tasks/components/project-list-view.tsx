@@ -52,9 +52,9 @@ export function ProjectListView({
   total: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
-  onToggleActive: (project: ProjectActionTarget) => void;
-  onEdit: (id: string) => void;
-  onDelete: (project: ProjectActionTarget) => void;
+  onToggleActive?: (project: ProjectActionTarget) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (project: ProjectActionTarget) => void;
   onClearFilters: () => void;
   onRetry: () => void;
 }) {
@@ -188,45 +188,51 @@ export function ProjectListView({
                     <FolderKanban className="size-4 stroke-[2]" aria-hidden="true" />
                   </Link>
                 </TableIconButton>
-                <TableIconButton
-                  label={
-                    project.status === 'ACTIVE'
-                      ? `Deactivate ${project.name}`
-                      : `Activate ${project.name}`
-                  }
-                  tone="default"
-                  className={
-                    project.status === 'ACTIVE'
-                      ? 'text-red-800 hover:bg-red-800/10 hover:text-red-900'
-                      : 'text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900'
-                  }
-                  disabled={actionsDisabled}
-                  onClick={() => onToggleActive(target)}
-                >
-                  {project.status === 'ACTIVE' ? (
-                    <ToggleRight className="size-4 stroke-[2]" aria-hidden="true" />
-                  ) : (
-                    <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
-                  )}
-                </TableIconButton>
-                <TableIconButton
-                  label={`Edit ${project.name}`}
-                  tone="default"
-                  className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
-                  disabled={actionsDisabled || editLocked}
-                  onClick={() => onEdit(project.id)}
-                >
-                  <SquarePen className="size-4" aria-hidden="true" />
-                </TableIconButton>
-                <TableIconButton
-                  label={`Delete ${project.name}`}
-                  tone="default"
-                  className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black"
-                  disabled={actionsDisabled}
-                  onClick={() => onDelete(target)}
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </TableIconButton>
+                {onToggleActive ? (
+                  <TableIconButton
+                    label={
+                      project.status === 'ACTIVE'
+                        ? `Deactivate ${project.name}`
+                        : `Activate ${project.name}`
+                    }
+                    tone="default"
+                    className={
+                      project.status === 'ACTIVE'
+                        ? 'text-red-800 hover:bg-red-800/10 hover:text-red-900'
+                        : 'text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900'
+                    }
+                    disabled={actionsDisabled}
+                    onClick={() => onToggleActive(target)}
+                  >
+                    {project.status === 'ACTIVE' ? (
+                      <ToggleRight className="size-4 stroke-[2]" aria-hidden="true" />
+                    ) : (
+                      <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
+                    )}
+                  </TableIconButton>
+                ) : null}
+                {onEdit ? (
+                  <TableIconButton
+                    label={`Edit ${project.name}`}
+                    tone="default"
+                    className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+                    disabled={actionsDisabled || editLocked}
+                    onClick={() => onEdit(project.id)}
+                  >
+                    <SquarePen className="size-4" aria-hidden="true" />
+                  </TableIconButton>
+                ) : null}
+                {onDelete ? (
+                  <TableIconButton
+                    label={`Delete ${project.name}`}
+                    tone="default"
+                    className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black"
+                    disabled={actionsDisabled}
+                    onClick={() => onDelete(target)}
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </TableIconButton>
+                ) : null}
               </div>
             </TableCell>
           </TableRow>

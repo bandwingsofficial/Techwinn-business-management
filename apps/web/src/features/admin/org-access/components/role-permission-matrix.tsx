@@ -2,6 +2,8 @@
 
 import {
   PERMISSION_HIERARCHY,
+  applyPermissionKeyChange,
+  applyPermissionKeysChecked,
   permissionDefinitionForKey,
   type PermissionHierarchyModule,
   type PermissionHierarchyPage,
@@ -239,13 +241,13 @@ export function RolePermissionMatrix({
   };
 
   const setKeysChecked = (keys: readonly PermissionKey[], checked: boolean) => {
-    replaceKeys((draft) => {
-      for (const key of keys) {
-        if (grantable && !grantable.has(key)) continue;
-        if (checked) draft.add(key);
-        else draft.delete(key);
-      }
-    });
+    if (readOnly) return;
+    onReplaceSelection(applyPermissionKeysChecked(selected, keys, checked, grantable));
+  };
+
+  const toggleKey = (key: PermissionKey, checked: boolean) => {
+    if (readOnly) return;
+    onReplaceSelection(applyPermissionKeyChange(selected, key, checked, grantable));
   };
 
   const clearAllGrantable = () => {
@@ -415,13 +417,16 @@ export function RolePermissionMatrix({
                                         disabled={
                                           readOnly || (grantable ? !grantable.has(key) : false)
                                         }
-                                        onCheckedChange={(value) => onToggle(key, value === true)}
+                                        onCheckedChange={(value) => toggleKey(key, value === true)}
                                         aria-label={`${def.action}: ${def.description}`}
                                       />
                                       <span className="grid min-w-0 gap-0.5">
                                         <span className="text-sm font-medium">{def.action}</span>
                                         <span className="text-muted-foreground text-xs leading-snug">
                                           {def.description}
+                                          {def.action !== 'View' && !def.action.startsWith('View ')
+                                            ? ' Requires View for this page.'
+                                            : ''}
                                           {grantable && !grantable.has(key)
                                             ? ' (not grantable with your access)'
                                             : ''}

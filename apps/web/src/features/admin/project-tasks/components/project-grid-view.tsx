@@ -16,9 +16,9 @@ export function ProjectGridView({
 }: {
   items: readonly ProjectTaskSummaryItem[];
   actionsDisabled?: boolean;
-  onToggleActive: (project: ProjectActionTarget) => void;
-  onEdit: (id: string) => void;
-  onDelete: (project: ProjectActionTarget) => void;
+  onToggleActive?: (project: ProjectActionTarget) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (project: ProjectActionTarget) => void;
   onLifecycleChange?: () => void;
   className?: string;
 }) {

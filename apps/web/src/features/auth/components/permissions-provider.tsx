@@ -21,7 +21,10 @@ import { Button } from '@/components/ui/button';
 import { WorkspaceShellSkeleton } from '@/components/loading/skeletons';
 import { getMyPermissions } from '@/features/admin/org-access/api/org-access';
 import { describeOrgAccessError } from '@/features/admin/org-access/utils/errors';
-import { invalidateMyPermissionsCache } from '@/features/admin/org-access/my-permissions-cache';
+import {
+  invalidateMyPermissionsCache,
+  subscribeMyPermissionsInvalidation,
+} from '@/features/admin/org-access/my-permissions-cache';
 import { useAuthenticatedAdmin } from '@/features/admin/auth/hooks/use-admin-session';
 import { readPostAuthBootstrap } from '@/features/admin/auth/utils/post-auth-bootstrap';
 import { loginPath } from '@/features/admin/auth/utils/auth-errors';
@@ -192,6 +195,23 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       loadGenerationRef.current += 1;
       controller.abort();
     };
+  }, [runPermissionLoad]);
+
+  useEffect(() => {
+    return subscribeMyPermissionsInvalidation(() => {
+      const generation = ++loadGenerationRef.current;
+      void runPermissionLoad({ generation, silent: true });
+    });
+  }, [runPermissionLoad]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const generation = ++loadGenerationRef.current;
+      void runPermissionLoad({ generation, silent: true });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [runPermissionLoad]);
 
   const value = useMemo((): PermissionsContextValue | null => {

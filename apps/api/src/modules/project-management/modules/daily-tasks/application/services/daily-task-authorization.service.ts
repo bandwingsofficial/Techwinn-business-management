@@ -62,8 +62,9 @@ export class DailyTaskAuthorizationService {
     if (this.canManageOrganizationTasks(actor, effective)) return true;
     if (!effective.has('tasks.read')) return false;
     if (ORGANIZATION_TASK_COLLABORATOR_KEYS.some((key) => effective.has(key))) return true;
-    // Project-module collaborators may use projects.read, but Employee self-service
-    // accounts also receive projects.read — keep those on self-scope.
+    // Projects View + Tasks View unlocks org boards even when the account also has
+    // employee self-service keys (e.g. Employee role granted projects.read).
+    if (effective.has('projects.read')) return true;
     if (
       effective.has('attendance.view_own') ||
       effective.has('leave.requests.read_own') ||
@@ -71,7 +72,7 @@ export class DailyTaskAuthorizationService {
     ) {
       return false;
     }
-    return effective.has('projects.read');
+    return false;
   }
 
   async assertOrganizationTaskAccess(actor: OrgAccessActor): Promise<void> {

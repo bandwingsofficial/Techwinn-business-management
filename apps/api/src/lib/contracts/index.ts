@@ -9,6 +9,7 @@ export * from './employees.js';
 export * from './media.js';
 export * from './permissions.js';
 export * from './permission-hierarchy.js';
+export * from './permission-view-dependencies.js';
 export * from './org-access.js';
 export * from './daily-tasks.js';
 export * from './org-task-calendar.js';

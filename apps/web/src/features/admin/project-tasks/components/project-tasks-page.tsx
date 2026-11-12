@@ -34,6 +34,7 @@ import { CRM_PIPELINE_SEARCH_INPUT_CLASS } from '@/features/admin/crm/constants'
 import { CrmErrorAlert, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { CrmToolbarHeader } from '@/features/admin/crm/components/crm-toolbar-header';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
+import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
 import { ProjectDeleteDialog } from '@/features/admin/projects/components/project-delete-dialog';
 import { ProjectFormDialog } from '@/features/admin/projects/components/project-form-dialog';
 import { useProjectListActions } from '@/features/admin/projects/hooks/use-project-list-actions';
@@ -71,6 +72,10 @@ const CONTROL_H = 'h-9';
 export function ProjectTasksPage() {
   const searchParams = useSearchParams();
   const { pending } = useAsyncAction();
+  const { has } = useAdminAccess();
+  const canCreateProject = has('projects.create');
+  const canUpdateProject = has('projects.update');
+  const canDeleteProject = has('projects.delete');
   const [viewMode, setViewMode] = useState<ProjectManagementViewMode>(DEFAULT_PROJECT_MANAGEMENT_VIEW);
   const [items, setItems] = useState<readonly ProjectTaskSummaryItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -319,18 +324,20 @@ export function ProjectTasksPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             <ProjectViewSwitcher value={viewMode} onChange={setViewMode} />
-            <Button
-              type="button"
-              className={cn(
-                CONTROL_H,
-                'shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900',
-              )}
-              onClick={openCreate}
-              disabled={actionsBusy}
-            >
-              <Plus aria-hidden="true" />
-              New Project
-            </Button>
+            {canCreateProject ? (
+              <Button
+                type="button"
+                className={cn(
+                  CONTROL_H,
+                  'shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900',
+                )}
+                onClick={openCreate}
+                disabled={actionsBusy}
+              >
+                <Plus aria-hidden="true" />
+                New Project
+              </Button>
+            ) : null}
           </>
         }
         bottomRow={
@@ -396,9 +403,9 @@ export function ProjectTasksPage() {
             <ProjectGridView
               items={items}
               actionsDisabled={actionsBusy}
-              onToggleActive={requestToggleActive}
-              onEdit={openEdit}
-              onDelete={setDeleteTarget}
+              onToggleActive={canUpdateProject ? requestToggleActive : undefined}
+              onEdit={canUpdateProject ? openEdit : undefined}
+              onDelete={canDeleteProject ? setDeleteTarget : undefined}
               onLifecycleChange={() => void load()}
               className={actionsBusy ? 'opacity-80' : undefined}
             />
@@ -419,9 +426,9 @@ export function ProjectTasksPage() {
             setPageSize(size);
             setPage(1);
           }}
-          onToggleActive={requestToggleActive}
-          onEdit={openEdit}
-          onDelete={setDeleteTarget}
+          onToggleActive={canUpdateProject ? requestToggleActive : undefined}
+          onEdit={canUpdateProject ? openEdit : undefined}
+          onDelete={canDeleteProject ? setDeleteTarget : undefined}
           onClearFilters={clearFilters}
           onRetry={() => void load()}
         />

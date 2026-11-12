@@ -9,6 +9,7 @@ export * from './employees';
 export * from './media';
 export * from './permissions';
 export * from './permission-hierarchy';
+export * from './permission-view-dependencies';
 export * from './org-access';
 export * from './daily-tasks';
 export * from './org-task-calendar';

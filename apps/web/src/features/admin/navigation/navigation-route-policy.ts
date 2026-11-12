@@ -36,12 +36,15 @@ const EMPLOYEE_TASK_DUPLICATES: ReadonlySet<string> = new Set([
   '/employee/task-calendar',
 ]);
 
-/** Organization task routes hidden for self-service task accounts. */
+/**
+ * Organization daily-task board routes hidden for self-service task accounts.
+ * `/admin/project-tasks` is intentionally excluded — Projects & Tasks View
+ * (`projects.read` / `tasks.read`) controls that page independently.
+ */
 const ADMIN_TASK_DUPLICATES: ReadonlySet<string> = new Set([
   '/admin/daily-tasks',
   '/admin/task-calendar',
   '/admin/my-tasks',
-  '/admin/project-tasks',
 ]);
 
 function hasOrganizationTaskView(permissions: ReadonlySet<PermissionKey>): boolean {

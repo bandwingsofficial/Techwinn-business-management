@@ -1,4 +1,4 @@
-import { type PermissionKey } from '#contracts';
+import { ensureViewPermissionPrerequisites, type PermissionKey } from '#contracts';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
@@ -72,10 +72,9 @@ export class OrgAccessRolesPersistence {
     },
     actorAdminId: string,
   ): Promise<OrgRoleRecord> {
-    const permissionKeys = uniquePermissionKeys(input.permissionKeys);
-    if (permissionKeys.length === 0) {
-      throw new OrgAccessValidationError('Select at least one permission.');
-    }
+    const permissionKeys = uniquePermissionKeys(
+      ensureViewPermissionPrerequisites(input.permissionKeys),
+    );
     await assertActorHoldsPermissions(
       this.prisma,
       this.permissions.resolveEffectivePermissions,
@@ -97,9 +96,12 @@ export class OrgAccessRolesPersistence {
             description: input.description.trim(),
             isSystem: false,
             status: 'ACTIVE',
-            permissions: {
-              create: permissionKeys.map((permissionKey) => ({ permissionKey })),
-            },
+            permissions:
+              permissionKeys.length > 0
+                ? {
+                    create: permissionKeys.map((permissionKey) => ({ permissionKey })),
+                  }
+                : undefined,
           },
           include: roleInclude(),
         });
@@ -108,7 +110,7 @@ export class OrgAccessRolesPersistence {
           type: 'ROLE_CREATED',
           entityType: 'role',
           entityId: created.id,
-          metadata: { key: created.key },
+          metadata: { key: created.key, permissionKeys },
         });
         return created;
       });
@@ -178,7 +180,9 @@ export class OrgAccessRolesPersistence {
   ): Promise<OrgRoleRecord> {
     const role = await loadRoleOrThrow(this.prisma, organizationId, roleId);
     assertOrgRoleMutable(role, 'modify');
-    const normalized = uniquePermissionKeys(permissionKeys);
+    const normalized = uniquePermissionKeys(
+      ensureViewPermissionPrerequisites(permissionKeys),
+    );
     await assertActorHoldsPermissions(
       this.prisma,
       this.permissions.resolveEffectivePermissions,

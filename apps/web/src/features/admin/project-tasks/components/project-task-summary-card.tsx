@@ -58,9 +58,9 @@ export function ProjectTaskSummaryCard({
   project: ProjectTaskSummaryItem;
   className?: string;
   actionsDisabled?: boolean;
-  onToggleActive: (project: ProjectActionTarget) => void;
-  onEdit: (id: string) => void;
-  onDelete: (project: ProjectActionTarget) => void;
+  onToggleActive?: (project: ProjectActionTarget) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (project: ProjectActionTarget) => void;
   onLifecycleChange?: () => void;
 }) {
   const toast = useAdminToast();

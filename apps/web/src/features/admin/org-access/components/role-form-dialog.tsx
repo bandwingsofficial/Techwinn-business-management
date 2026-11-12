@@ -1,6 +1,9 @@
 'use client';
 
-import type { PermissionKey } from '@techwin/contracts';
+import {
+  ensureViewPermissionPrerequisites,
+  type PermissionKey,
+} from '@techwin/contracts';
 import {
   createRoleRequestSchema,
   setRolePermissionsRequestSchema,
@@ -13,6 +16,7 @@ import {
 } from '@/shared/form/zod-field-error';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -99,6 +103,7 @@ export function RoleFormDialog({
 }) {
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
+  const { refresh: refreshMyPermissions } = usePermissions();
   const isCreate = roleId === null;
 
   const [form, setForm] = useState<RoleFormState>(() => emptyForm());
@@ -141,7 +146,10 @@ export function RoleFormDialog({
       .finally(() => setLoadingRole(false));
   }, [open, roleId, isCreate, resetCreate, toast]);
 
-  const permissionKeys = useMemo(() => [...form.permissionKeys], [form.permissionKeys]);
+  const permissionKeys = useMemo(
+    () => ensureViewPermissionPrerequisites([...form.permissionKeys]),
+    [form.permissionKeys],
+  );
 
   const onSubmit = async () => {
     if (effectiveReadOnly) {
@@ -159,6 +167,7 @@ export function RoleFormDialog({
       });
       if (!parsed.success) {
         setFieldErrors(zodErrorToFieldMap(parsed.error));
+        toast.error('Fix the highlighted fields before saving.');
         focusFirstInvalidField();
         return;
       }
@@ -166,6 +175,7 @@ export function RoleFormDialog({
         await run(() => createOrgRole(parsed.data));
         toast.success('Role created.');
         invalidateMyPermissionsCache();
+        await refreshMyPermissions();
         onOpenChange(false);
         await onSaved();
       } catch (failure) {
@@ -183,6 +193,7 @@ export function RoleFormDialog({
     });
     if (!metadataParsed.success) {
       setFieldErrors(zodErrorToFieldMap(metadataParsed.error));
+      toast.error('Fix the highlighted fields before saving.');
       focusFirstInvalidField();
       return;
     }
@@ -190,11 +201,7 @@ export function RoleFormDialog({
     const permissionsParsed = setRolePermissionsRequestSchema.safeParse({ permissionKeys });
     if (!permissionsParsed.success) {
       setFieldErrors(zodErrorToFieldMap(permissionsParsed.error));
-      focusFirstInvalidField();
-      return;
-    }
-    if (permissionKeys.length === 0) {
-      setFieldErrors({ permissionKeys: 'Select at least one permission.' });
+      toast.error('One or more selected permissions are invalid and cannot be saved.');
       focusFirstInvalidField();
       return;
     }
@@ -204,6 +211,7 @@ export function RoleFormDialog({
       await run(() => setOrgRolePermissions(roleId, permissionsParsed.data));
       toast.success('Role saved.');
       invalidateMyPermissionsCache();
+      await refreshMyPermissions();
       onOpenChange(false);
       await onSaved();
     } catch (failure) {
