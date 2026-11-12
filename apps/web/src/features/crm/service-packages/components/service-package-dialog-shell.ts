@@ -1,6 +1,18 @@
 import { cn } from '@/shared/lib/utils';
 import { CRM_PIPELINE_FORM_DIALOG_CLASS } from '@/features/admin/crm/constants';
 
+/**
+ * Shared form-modal layout used by packages, quotations, clients, and attendance settings.
+ *
+ * Architecture:
+ * - Container: flex column, max-height calc(100dvh - 48px), overflow hidden, min-height 0
+ * - Header / footer: shrink-0 (stay visible)
+ * - Body: flex 1 1 auto + min-height 0 + overflow-y auto (scrolls; never collapses under max-height)
+ *
+ * Do not use `flex-1` / `basis-0` for the body when the parent only has max-height
+ * (not a definite height)—the flex item base size becomes 0 and the form clips.
+ */
+
 /** Radix close control styling (matches Pipeline / Lead modals). */
 const DIALOG_CLOSE_BUTTON_CLASS =
   '[&>button]:text-foreground [&>button]:top-5 [&>button]:right-5 [&>button]:size-9 [&>button]:rounded-lg [&>button]:border [&>button]:border-input [&>button]:bg-card [&>button]:shadow-none [&>button]:hover:bg-muted/50';
@@ -12,7 +24,7 @@ const SERVICE_PACKAGE_MODAL_WIDTH_CLASS =
 const SERVICE_PACKAGE_MODAL_VIEWPORT_CLASS = cn(
   CRM_PIPELINE_FORM_DIALOG_CLASS,
   SERVICE_PACKAGE_MODAL_WIDTH_CLASS,
-  'max-h-[calc(100dvh-2rem)] overscroll-contain',
+  'max-h-[calc(100dvh-48px)] min-h-0 overscroll-contain',
   DIALOG_CLOSE_BUTTON_CLASS,
 );
 
@@ -22,17 +34,24 @@ export const SERVICE_PACKAGE_DETAILS_DIALOG_CLASS = SERVICE_PACKAGE_MODAL_VIEWPO
 /** Create / edit package form — same shell as details. */
 export const SERVICE_PACKAGE_FORM_DIALOG_CLASS = SERVICE_PACKAGE_MODAL_VIEWPORT_CLASS;
 
-/** Inline flex + max-height (DialogContent defaults to grid; flex middle must scroll). */
+/**
+ * Force flex column on DialogContent (default is grid) and cap height to the viewport.
+ * Inline style wins over conflicting utility/display rules from the base DialogContent.
+ */
 export const SERVICE_PACKAGE_MODAL_DIALOG_STYLE = {
   display: 'flex',
   flexDirection: 'column',
-  maxHeight: 'min(92vh, calc(100dvh - 2rem))',
+  maxHeight: 'calc(100dvh - 48px)',
+  minHeight: 0,
   overflow: 'hidden',
 } as const;
 
-/** Scroll region for form and details modals (flex middle). */
+/**
+ * Scroll region for form and details modals (flex middle).
+ * `flex-auto` = flex: 1 1 auto — content-sized base, shrinks under max-height, then scrolls.
+ */
 export const SERVICE_PACKAGE_FORM_DIALOG_SCROLL_CLASS =
-  'min-h-0 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-contain px-6 py-3';
+  'min-h-0 flex-auto overflow-x-hidden overflow-y-auto overscroll-contain px-6 py-3';
 
 /** @deprecated Use SERVICE_PACKAGE_FORM_DIALOG_SCROLL_CLASS */
 export const SERVICE_PACKAGE_DIALOG_SCROLL_CLASS = SERVICE_PACKAGE_FORM_DIALOG_SCROLL_CLASS;

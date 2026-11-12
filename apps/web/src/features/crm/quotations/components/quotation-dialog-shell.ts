@@ -41,7 +41,8 @@ export const QUOTATION_SEND_MODAL_SPLIT_CLASS =
 export const QUOTATION_SEND_MODAL_DIALOG_STYLE = {
   display: 'flex',
   flexDirection: 'column',
-  maxHeight: 'min(92vh, calc(100dvh - 2rem))',
+  maxHeight: 'calc(100dvh - 48px)',
+  minHeight: 0,
   overflow: 'hidden',
   width: 'min(calc(100vw - 2rem), 1100px)',
   maxWidth: 'min(calc(100vw - 2rem), 1100px)',
@@ -50,12 +51,13 @@ export const QUOTATION_SEND_MODAL_DIALOG_STYLE = {
 export const QUOTATION_MODAL_DIALOG_STYLE = {
   display: 'flex',
   flexDirection: 'column',
-  maxHeight: 'min(92vh, calc(100dvh - 2rem))',
+  maxHeight: 'calc(100dvh - 48px)',
+  minHeight: 0,
   overflow: 'hidden',
 } as const;
 
 export const QUOTATION_MODAL_SCROLL_CLASS =
-  'min-h-0 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-contain px-6 py-3';
+  'min-h-0 flex-auto overflow-x-hidden overflow-y-auto overscroll-contain px-6 py-3';
 
 /** Send modal — left preview pane (vertical scroll only; clip horizontal overflow). */
 export const QUOTATION_SEND_MODAL_PREVIEW_PANE_CLASS =

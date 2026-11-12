@@ -208,7 +208,7 @@ export function AttendanceEditRecordDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
+        <div className="min-h-0 flex-auto overflow-x-hidden overflow-y-auto overscroll-contain px-6 py-2">
           {loading || !detail || !form ? (
             <div className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />

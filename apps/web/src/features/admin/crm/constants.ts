@@ -4,15 +4,15 @@ export const DEFAULT_LEAD_CURRENCY = 'INR' as const;
 
 /** Shared centered lead create/edit dialog sizing */
 export const CRM_LEAD_DIALOG_CLASS =
-  'flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-[900px] flex-col gap-0 overflow-hidden p-0 sm:w-[min(900px,calc(100vw-2rem))] sm:min-w-[760px]';
+  'flex max-h-[calc(100dvh-48px)] min-h-0 w-[calc(100vw-2rem)] max-w-[900px] flex-col gap-0 overflow-hidden p-0 sm:w-[min(900px,calc(100vw-2rem))] sm:min-w-[760px]';
 
 /** Wide quotation create/edit dialog — overrides DialogContent default max-w-lg / sm:max-w-lg */
 export const CRM_PROPOSAL_FORM_DIALOG_CLASS =
-  'flex max-h-[92vh] w-[calc(100vw-24px)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:w-[min(1000px,calc(100vw-64px))] sm:max-w-none';
+  'flex max-h-[calc(100dvh-48px)] min-h-0 w-[calc(100vw-24px)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:w-[min(1000px,calc(100vw-64px))] sm:max-w-none';
 
 /** Pipeline create/edit dialog with inline stage editor */
 export const CRM_PIPELINE_FORM_DIALOG_CLASS =
-  'flex max-h-[92vh] w-[calc(100vw-2rem)] max-w-[720px] flex-col gap-0 overflow-hidden p-0 sm:w-[min(720px,calc(100vw-2rem))]';
+  'flex max-h-[calc(100dvh-48px)] min-h-0 w-[calc(100vw-2rem)] max-w-[720px] flex-col gap-0 overflow-hidden p-0 sm:w-[min(720px,calc(100vw-2rem))]';
 
 /** Close control on the shared dialog content, as used by the pipeline form. */
 export const CRM_PIPELINE_DIALOG_CLOSE_CLASS =
@@ -28,7 +28,9 @@ export const CRM_PIPELINE_DIALOG_HEADER_CLASS = 'shrink-0 space-y-0 px-6 pt-6 pb
 export const CRM_PIPELINE_DIALOG_TITLE_CLASS =
   'text-foreground pr-10 text-xl font-semibold tracking-tight';
 
-export const CRM_PIPELINE_DIALOG_BODY_CLASS = 'min-h-0 flex-1 overflow-y-auto px-6 py-2';
+/** flex-auto (1 1 auto): content-sized base so the body does not collapse under max-height-only parents. */
+export const CRM_PIPELINE_DIALOG_BODY_CLASS =
+  'min-h-0 flex-auto overflow-x-hidden overflow-y-auto overscroll-contain px-6 py-2';
 
 export const CRM_PIPELINE_DIALOG_FOOTER_CLASS =
   'shrink-0 gap-2 border-t border-border/60 px-6 py-4 sm:justify-end';
