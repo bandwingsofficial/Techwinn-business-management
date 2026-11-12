@@ -15,6 +15,7 @@ export type DailyTaskListRow = Prisma.DailyTaskGetPayload<{
     workflowStage: true;
     projectPhase: true;
     project: { select: { id: true; name: true } };
+    createdBy: { select: { displayName: true } };
     assignees: {
       include: {
         employee: {
@@ -87,6 +88,7 @@ export function toDailyTaskListItem(row: DailyTaskListRow, clientToday?: string)
     unreadEmployeeNoteCount: 0,
     orgTaskNotes: null,
     myTaskNotes: null,
+    createdByDisplayName: row.createdBy?.displayName ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

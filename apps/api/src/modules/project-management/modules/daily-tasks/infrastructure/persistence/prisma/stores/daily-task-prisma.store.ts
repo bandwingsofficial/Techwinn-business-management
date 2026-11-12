@@ -189,6 +189,7 @@ export class DailyTaskPrismaStore {
       workflowStage: true,
       projectPhase: true,
       project: { select: { id: true, name: true } },
+      createdBy: { select: { displayName: true } },
       assignees: {
         include: {
           employee: {
@@ -523,7 +524,11 @@ export class DailyTaskPrismaStore {
           dailyTaskId: taskId,
           actorAdminId: adminId,
           eventType: 'CREATED',
-          metadata: { assignDate: input.assignDate, type: input.type },
+          metadata: {
+            assignDate: input.assignDate,
+            type: input.type,
+            employeeIds: input.employeeIds,
+          },
         },
       });
 
@@ -609,6 +614,13 @@ export class DailyTaskPrismaStore {
         },
       });
 
+      const previousAssignees = input.employeeIds
+        ? await tx.dailyTaskAssignee.findMany({
+            where: { dailyTaskId: taskId },
+            select: { employeeId: true },
+          })
+        : [];
+
       if (input.employeeIds) {
         await tx.dailyTaskAssignee.deleteMany({ where: { dailyTaskId: taskId } });
         await tx.dailyTaskAssignee.createMany({
@@ -626,8 +638,26 @@ export class DailyTaskPrismaStore {
             dailyTaskId: taskId,
             actorAdminId: adminId,
             eventType: 'ASSIGNEES_CHANGED',
+            metadata: {
+              fromEmployeeIds: previousAssignees.map((row) => row.employeeId),
+              toEmployeeIds: input.employeeIds,
+            },
           },
         });
+      }
+
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      if (input.dueDate !== undefined) {
+        changes.dueDate = {
+          from: existing.dueDate ? dateOnlyFromDb(existing.dueDate) : null,
+          to: input.dueDate,
+        };
+      }
+      if (input.priority !== undefined && input.priority !== existing.priority) {
+        changes.priority = { from: existing.priority, to: input.priority };
+      }
+      if (input.title !== undefined && input.title.trim() !== existing.title) {
+        changes.title = { from: existing.title, to: input.title.trim() };
       }
 
       await tx.dailyTaskActivity.create({
@@ -637,6 +667,7 @@ export class DailyTaskPrismaStore {
           dailyTaskId: taskId,
           actorAdminId: adminId,
           eventType: 'UPDATED',
+          metadata: Object.keys(changes).length > 0 ? { changes } : null,
         },
       });
 
@@ -758,6 +789,12 @@ export class DailyTaskPrismaStore {
           ? 'COMPLETED'
           : 'STAGE_CHANGED'
         : 'UPDATED';
+      const previousStage = sourceStageId
+        ? await tx.dailyTaskWorkflowStage.findFirst({
+            where: { id: sourceStageId, organizationId },
+            select: { name: true, stageKey: true },
+          })
+        : null;
       await tx.dailyTaskActivity.create({
         data: {
           id: randomUUID(),
@@ -768,6 +805,10 @@ export class DailyTaskPrismaStore {
           metadata: {
             workflowStageId: stage.id,
             stageKey: stage.stageKey,
+            stageName: stage.name,
+            fromWorkflowStageId: sourceStageId,
+            fromStageKey: previousStage?.stageKey ?? null,
+            fromStageName: previousStage?.name ?? null,
             beforeTaskId: input.beforeTaskId ?? null,
             reorderedOnly: !stageChanged,
           },

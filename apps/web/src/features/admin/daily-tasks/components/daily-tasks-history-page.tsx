@@ -11,10 +11,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CrmPageHeader } from '@/features/admin/crm/components/crm-feedback';
-import { fetchDailyTaskWorkflowStages, listDailyTasks } from '../api/daily-tasks';
-import type { DailyTaskListItem, DailyTaskListResponse, DailyTaskWorkflowStage } from '../types';
+import { listDailyTasks } from '../api/daily-tasks';
+import type { DailyTaskListItem, DailyTaskListResponse } from '../types';
 import { localDateInputValue } from '../utils/local-date';
-import { DailyTaskDetailDrawer } from './daily-task-detail-drawer';
+import { DailyTaskDetailsDialog } from './daily-task-details-dialog';
 import { DailyTaskListView } from './daily-task-list-view';
 
 export function DailyTasksHistoryPage() {
@@ -32,7 +32,6 @@ export function DailyTasksHistoryPage() {
   const [data, setData] = useState<DailyTaskListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [stages, setStages] = useState<readonly DailyTaskWorkflowStage[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -58,10 +57,6 @@ export function DailyTasksHistoryPage() {
       setLoading(false);
     }
   }, [from, to, clientToday, search, typeFilter, page, pageSize]);
-
-  useEffect(() => {
-    void fetchDailyTaskWorkflowStages().then((r) => setStages(r.stages));
-  }, []);
 
   useEffect(() => {
     void load();
@@ -120,10 +115,9 @@ export function DailyTasksHistoryPage() {
         onRetry={() => void load()}
         onOpenTask={onOpenTask}
       />
-      <DailyTaskDetailDrawer
+      <DailyTaskDetailsDialog
         taskId={detailId}
         open={detailOpen}
-        stages={stages}
         onOpenChange={setDetailOpen}
         onChanged={load}
       />

@@ -10,7 +10,7 @@ import { cn } from '@/shared/lib/utils';
 import { fetchDailyTaskWorkflowStages, listMyDailyTasks } from '../api/daily-tasks';
 import type { DailyTaskListItem, DailyTaskListResponse, DailyTaskWorkflowStage } from '../types';
 import { localDateInputValue } from '../utils/local-date';
-import { DailyTaskDetailDrawer } from './daily-task-detail-drawer';
+import { DailyTaskDetailsDialog } from './daily-task-details-dialog';
 import { priorityBadgeClass } from '../utils/stage-colors';
 import { moveDailyTaskStage } from '../api/daily-tasks';
 import { useAdminToast } from '@/features/admin/components/toast';
@@ -129,10 +129,10 @@ export function MyDailyTasksPage() {
           ))}
         </ul>
       )}
-      <DailyTaskDetailDrawer
+      <DailyTaskDetailsDialog
         taskId={detailId}
         open={detailOpen}
-        stages={stages}
+        employeeMode
         onOpenChange={setDetailOpen}
         onChanged={load}
       />

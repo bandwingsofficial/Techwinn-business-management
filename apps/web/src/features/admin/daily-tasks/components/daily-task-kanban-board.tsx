@@ -149,7 +149,6 @@ export function DailyTaskKanbanBoard({
   onRefresh,
   onOpenTask,
   onEditTask,
-  onRescheduleTask,
   onAssignTask,
   onManageWorkflow,
   employeeMode = false,
@@ -160,7 +159,6 @@ export function DailyTaskKanbanBoard({
   onRefresh: () => void | Promise<void>;
   onOpenTask: (task: DailyTaskListItem) => void;
   onEditTask: (task: DailyTaskListItem) => void;
-  onRescheduleTask: (task: DailyTaskListItem) => void;
   onAssignTask?: (workflowStageId: string) => void;
   onManageWorkflow?: () => void;
   employeeMode?: boolean;
@@ -464,7 +462,6 @@ export function DailyTaskKanbanBoard({
                           dragDisabled={!canUpdateStatus || pendingTaskIds.has(taskId)}
                           onOpen={onOpenTask}
                           onEdit={onEditTask}
-                          onReschedule={onRescheduleTask}
                           onChanged={onRefresh}
                         />
                       );

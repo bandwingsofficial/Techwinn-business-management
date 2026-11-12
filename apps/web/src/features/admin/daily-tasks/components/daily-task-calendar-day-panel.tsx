@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Pencil, Eye, CalendarClock, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Eye, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,6 @@ function TaskRow({
   task,
   onView,
   onEdit,
-  onReschedule,
   onDelete,
   canEdit,
   canDelete,
@@ -74,7 +73,6 @@ function TaskRow({
   task: DailyTaskListItem;
   onView: () => void;
   onEdit?: () => void;
-  onReschedule?: () => void;
   onDelete?: () => void;
   canEdit: boolean;
   canDelete: boolean;
@@ -134,12 +132,6 @@ function TaskRow({
             Edit
           </Button>
         ) : null}
-        {canEdit && onReschedule ? (
-          <Button type="button" variant="outline" size="sm" className="h-8" onClick={onReschedule}>
-            <CalendarClock className="size-3.5" aria-hidden />
-            Reschedule
-          </Button>
-        ) : null}
         {canDelete && onDelete ? (
           <Button type="button" variant="outline" size="sm" className="h-8 text-rose-700" onClick={onDelete}>
             <Trash2 className="size-3.5" aria-hidden />
@@ -158,7 +150,6 @@ export function DailyTaskCalendarDayPanel({
   onOpenChange,
   onViewTask,
   onEditTask,
-  onRescheduleTask,
   onDeleteTask,
   onCreateTask,
   canAssign,
@@ -171,7 +162,6 @@ export function DailyTaskCalendarDayPanel({
   onOpenChange: (open: boolean) => void;
   onViewTask: (task: DailyTaskListItem) => void;
   onEditTask?: (task: DailyTaskListItem) => void;
-  onRescheduleTask?: (task: DailyTaskListItem) => void;
   onDeleteTask?: (task: DailyTaskListItem) => void;
   onCreateTask?: (date: string) => void;
   canAssign: boolean;
@@ -250,7 +240,6 @@ export function DailyTaskCalendarDayPanel({
                             task={task}
                             onView={() => onViewTask(task)}
                             onEdit={onEditTask ? () => onEditTask(task) : undefined}
-                            onReschedule={onRescheduleTask ? () => onRescheduleTask(task) : undefined}
                             onDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
                             canEdit={canAssign}
                             canDelete={canDelete}
@@ -270,7 +259,6 @@ export function DailyTaskCalendarDayPanel({
                             task={task}
                             onView={() => onViewTask(task)}
                             onEdit={onEditTask ? () => onEditTask(task) : undefined}
-                            onReschedule={onRescheduleTask ? () => onRescheduleTask(task) : undefined}
                             onDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
                             canEdit={canAssign}
                             canDelete={canDelete}
@@ -294,7 +282,6 @@ export function DailyTaskCalendarDayPanel({
                             task={task}
                             onView={() => onViewTask(task)}
                             onEdit={onEditTask ? () => onEditTask(task) : undefined}
-                            onReschedule={onRescheduleTask ? () => onRescheduleTask(task) : undefined}
                             onDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
                             canEdit={canAssign}
                             canDelete={canDelete}
@@ -320,8 +307,7 @@ export function DailyTaskCalendarDayPanel({
                               task={task}
                               onView={() => onViewTask(task)}
                               onEdit={onEditTask ? () => onEditTask(task) : undefined}
-                              onReschedule={onRescheduleTask ? () => onRescheduleTask(task) : undefined}
-                              onDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
+                                onDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
                               canEdit={canAssign}
                               canDelete={canDelete}
                               employeeMode={employeeMode}

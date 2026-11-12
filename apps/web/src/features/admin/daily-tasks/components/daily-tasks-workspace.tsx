@@ -60,7 +60,7 @@ import {
   type DailyTaskSortBy,
   type DailyTaskSortDir,
 } from './daily-task-sort';
-import { DailyTaskDetailDrawer } from './daily-task-detail-drawer';
+import { DailyTaskDetailsDialog } from './daily-task-details-dialog';
 import { DailyTaskKanbanBoard } from './daily-task-kanban-board';
 import { DailyTaskListView } from './daily-task-list-view';
 import { DailyTaskToolbar, DailyTaskToolbarSearch } from './daily-task-toolbar';
@@ -301,7 +301,6 @@ export function DailyTasksWorkspace({
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [detailRescheduleFocus, setDetailRescheduleFocus] = useState(false);
 
   const filterQuery = useMemo(
     () => ({
@@ -556,9 +555,8 @@ export function DailyTasksWorkspace({
     setAssignOpen(true);
   };
 
-  const openTask = (task: DailyTaskListItem, options?: { focusReschedule?: boolean }) => {
+  const openTask = (task: DailyTaskListItem) => {
     setDetailId(task.id);
-    setDetailRescheduleFocus(Boolean(options?.focusReschedule));
     setDetailOpen(true);
     const params = new URLSearchParams(searchParams.toString());
     params.delete('focus');
@@ -796,7 +794,6 @@ export function DailyTasksWorkspace({
                       onRefresh={refreshAll}
                       onOpenTask={(task) => openTask(task)}
                       onEditTask={employeeMode ? (task) => openTask(task) : openEdit}
-                      onRescheduleTask={(task) => openTask(task, { focusReschedule: true })}
                       onAssignTask={
                         canAssignTasks
                           ? (workflowStageId) => openAssign({ workflowStageId })
@@ -865,10 +862,9 @@ export function DailyTasksWorkspace({
         onCreated={refreshAll}
       />
       <DailyTaskWorkflowDialog open={workflowOpen} onOpenChange={setWorkflowOpen} onSaved={refreshAll} />
-      <DailyTaskDetailDrawer
+      <DailyTaskDetailsDialog
         taskId={detailId}
         open={detailOpen}
-        stages={stages}
         employeeMode={employeeMode}
         onOpenChange={(open) => {
           setDetailOpen(open);
@@ -881,7 +877,6 @@ export function DailyTasksWorkspace({
           }
         }}
         onChanged={refreshAll}
-        focusReschedule={detailRescheduleFocus}
       />
     </div>
   );

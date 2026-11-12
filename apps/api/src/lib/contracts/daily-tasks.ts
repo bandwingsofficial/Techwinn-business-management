@@ -155,6 +155,7 @@ export interface DailyTaskListItem {
   readonly unreadEmployeeNoteCount: number;
   readonly orgTaskNotes: DailyTaskNotesCardSummary | null;
   readonly myTaskNotes: DailyTaskNotesCardSummary | null;
+  readonly createdByDisplayName: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

@@ -2,17 +2,19 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useEffect, useRef, type PointerEvent } from 'react';
-import {
-  Calendar,
-  CalendarClock,
-  Eye,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  UserRound,
-} from 'lucide-react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { Calendar, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,24 +77,21 @@ function TaskKanbanCardActions({
   taskTitle,
   onView,
   onEdit,
-  onReassign,
-  onReschedule,
   onDelete,
   employeeMode = false,
 }: {
   taskTitle: string;
   onView: () => void;
   onEdit: () => void;
-  onReassign: () => void;
-  onReschedule: () => void;
   onDelete: () => void;
   employeeMode?: boolean;
 }) {
   const { has } = usePermissions();
   if (employeeMode) return null;
+  const canRead = has('tasks.read');
   const canUpdate = has('tasks.update');
-  const canReassign = canUpdate && has('tasks.assign');
   const canDelete = has('tasks.delete');
+  if (!canRead && !canUpdate && !canDelete) return null;
   return (
     <div onPointerDown={stopCardPointer} onClick={(event) => event.stopPropagation()}>
       <DropdownMenu>
@@ -109,31 +108,21 @@ function TaskKanbanCardActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[10rem]">
-          <DropdownMenuItem onSelect={onView}>
-            <Eye className="size-3.5" aria-hidden="true" />
-            View Details
-          </DropdownMenuItem>
+          {canRead ? (
+            <DropdownMenuItem onSelect={onView}>
+              <Eye className="size-3.5" aria-hidden="true" />
+              View Details
+            </DropdownMenuItem>
+          ) : null}
           {canUpdate ? (
             <DropdownMenuItem onSelect={onEdit}>
               <Pencil className="size-3.5" aria-hidden="true" />
               Edit
             </DropdownMenuItem>
           ) : null}
-          {canReassign ? (
-            <DropdownMenuItem onSelect={onReassign}>
-              <UserRound className="size-3.5" aria-hidden="true" />
-              Reassign
-            </DropdownMenuItem>
-          ) : null}
-          {canUpdate ? (
-            <DropdownMenuItem onSelect={onReschedule}>
-              <CalendarClock className="size-3.5" aria-hidden="true" />
-              Reschedule
-            </DropdownMenuItem>
-          ) : null}
           {canDelete ? (
             <>
-              <DropdownMenuSeparator />
+              {canRead || canUpdate ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
                 <Trash2 className="size-3.5" aria-hidden="true" />
                 Delete
@@ -152,7 +141,6 @@ export function DailyTaskKanbanCardSurface({
   className,
   onOpen,
   onEdit,
-  onReschedule,
   onDelete,
   employeeMode = false,
   onNotesChanged,
@@ -162,7 +150,6 @@ export function DailyTaskKanbanCardSurface({
   className?: string;
   onOpen: () => void;
   onEdit: () => void;
-  onReschedule: () => void;
   onDelete: () => void;
   employeeMode?: boolean;
   onNotesChanged?: () => void | Promise<void>;
@@ -192,8 +179,6 @@ export function DailyTaskKanbanCardSurface({
                 taskTitle={task.title}
                 onView={onOpen}
                 onEdit={onEdit}
-                onReassign={onEdit}
-                onReschedule={onReschedule}
                 onDelete={onDelete}
                 employeeMode={employeeMode}
               />
@@ -292,7 +277,6 @@ export function DailyTaskKanbanCard({
   columnStageName,
   onOpen,
   onEdit,
-  onReschedule,
   onChanged,
   dragging = false,
   employeeMode = false,
@@ -303,7 +287,6 @@ export function DailyTaskKanbanCard({
   columnStageName?: string;
   onOpen: (task: DailyTaskListItem) => void;
   onEdit?: (task: DailyTaskListItem) => void;
-  onReschedule?: (task: DailyTaskListItem) => void;
   onChanged?: () => void | Promise<void>;
   dragging?: boolean;
   employeeMode?: boolean;
@@ -312,6 +295,8 @@ export function DailyTaskKanbanCard({
 }) {
   const toast = useAdminToast();
   const highlightRef = useRef<HTMLDivElement | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: task.id,
     data: { task, stageId: task.workflowStageId },
@@ -325,48 +310,77 @@ export function DailyTaskKanbanCard({
     highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
   }, [highlighted]);
 
-  const onDelete = async () => {
+  const onConfirmDelete = async () => {
     if (employeeMode) return;
-    if (!window.confirm('Delete this task? This cannot be undone.')) return;
+    setDeleting(true);
     try {
       await deleteDailyTask(task.id);
       toast.success('Task deleted.');
+      setDeleteOpen(false);
       await onChanged?.();
     } catch {
       toast.error('Could not delete task.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
-    <div
-      ref={(node) => {
-        highlightRef.current = node;
-        setNodeRef(node);
-      }}
-      style={style}
-      data-task-id={task.id}
-      className={cn(
-        'relative touch-none rounded-lg',
-        (isDragging || dragging) && 'z-20',
-        highlighted && 'z-10 ring-2 ring-primary ring-offset-2 ring-offset-background',
-      )}
-      {...attributes}
-      {...listeners}
-    >
-      <DailyTaskKanbanCardSurface
-        task={task}
-        columnStageName={columnStageName}
-        employeeMode={employeeMode}
+    <>
+      <div
+        ref={(node) => {
+          highlightRef.current = node;
+          setNodeRef(node);
+        }}
+        style={style}
+        data-task-id={task.id}
         className={cn(
-          'cursor-grab active:cursor-grabbing',
-          (isDragging || dragging) && 'opacity-40 shadow-none',
+          'relative touch-none rounded-lg',
+          (isDragging || dragging) && 'z-20',
+          highlighted && 'z-10 ring-2 ring-primary ring-offset-2 ring-offset-background',
         )}
-        onOpen={() => onOpen(task)}
-        onEdit={() => (onEdit ?? onOpen)(task)}
-        onReschedule={() => (onReschedule ?? onOpen)(task)}
-        onDelete={() => void onDelete()}
-        onNotesChanged={onChanged ? () => void onChanged() : undefined}
-      />
-    </div>
+        {...attributes}
+        {...listeners}
+      >
+        <DailyTaskKanbanCardSurface
+          task={task}
+          columnStageName={columnStageName}
+          employeeMode={employeeMode}
+          className={cn(
+            'cursor-grab active:cursor-grabbing',
+            (isDragging || dragging) && 'opacity-40 shadow-none',
+          )}
+          onOpen={() => onOpen(task)}
+          onEdit={() => (onEdit ?? onOpen)(task)}
+          onDelete={() => setDeleteOpen(true)}
+          onNotesChanged={onChanged ? () => void onChanged() : undefined}
+        />
+      </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete &ldquo;{task.title.trim() || 'Untitled task'}&rdquo; permanently? This cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void onConfirmDelete();
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
