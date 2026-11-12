@@ -5,6 +5,16 @@ import { Dialog as SheetPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib/utils';
 
+/** Same app-wide policy as Dialog: no backdrop / Escape dismiss. */
+function preventDismiss<E extends { preventDefault: () => void }>(
+  handler?: (event: E) => void,
+): (event: E) => void {
+  return (event) => {
+    event.preventDefault();
+    handler?.(event);
+  };
+}
+
 function Sheet(props: ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
 }
@@ -21,6 +31,10 @@ function SheetContent({
   className,
   children,
   side = 'left',
+  onPointerDownOutside,
+  onInteractOutside,
+  onFocusOutside,
+  onEscapeKeyDown,
   ...props
 }: ComponentProps<typeof SheetPrimitive.Content> & { side?: 'left' | 'right' }) {
   return (
@@ -38,6 +52,10 @@ function SheetContent({
             : 'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right right-0 border-l',
           className,
         )}
+        onPointerDownOutside={preventDismiss(onPointerDownOutside)}
+        onInteractOutside={preventDismiss(onInteractOutside)}
+        onFocusOutside={preventDismiss(onFocusOutside)}
+        onEscapeKeyDown={preventDismiss(onEscapeKeyDown)}
         {...props}
       >
         {children}

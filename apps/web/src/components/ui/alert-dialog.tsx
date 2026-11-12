@@ -37,6 +37,23 @@ function AlertDialogContent({
   className,
   ...props
 }: ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  // Radix AlertDialog already blocks backdrop dismiss. Escape still closes unless prevented.
+  // Typed Content props omit dismiss handlers in this radix-ui version, so apply via cast.
+  const dismissGuards = {
+    onEscapeKeyDown: (event: { preventDefault: () => void }) => {
+      event.preventDefault();
+    },
+    onPointerDownOutside: (event: { preventDefault: () => void }) => {
+      event.preventDefault();
+    },
+    onFocusOutside: (event: { preventDefault: () => void }) => {
+      event.preventDefault();
+    },
+    onInteractOutside: (event: { preventDefault: () => void }) => {
+      event.preventDefault();
+    },
+  };
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -47,6 +64,7 @@ function AlertDialogContent({
           className,
         )}
         {...props}
+        {...(dismissGuards as Partial<ComponentProps<typeof AlertDialogPrimitive.Content>>)}
       />
     </AlertDialogPortal>
   );
