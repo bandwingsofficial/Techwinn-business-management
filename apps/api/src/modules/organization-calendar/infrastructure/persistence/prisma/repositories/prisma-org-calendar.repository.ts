@@ -16,7 +16,9 @@ import {
   classifyDayFromEvents,
   eventAppliesToEmployee,
   eventsOnDate,
+  pickScheduleForCalendarDate,
   presentationEventsForDay,
+  readScheduleWeekdayArray,
   resolveScheduleDayFlags,
   toAttendanceDayKind,
   type ScheduleDayFlags,
@@ -28,6 +30,7 @@ import type {
   OrgCalendarMonthQuery,
 } from '../../../../domain/types/org-calendar.types.js';
 import {
+  calendarDateKey,
   formatDateOnly as formatZonedDateOnly,
   getZonedParts,
 } from '../../../../../attendance/domain/services/attendance-time.service.js';
@@ -40,11 +43,6 @@ import {
   parseDateOnly,
   toOrgCalendarEventItem,
 } from '../mappers/org-calendar.mapper.js';
-
-function readNumberArray(value: unknown): number[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((v): v is number => typeof v === 'number');
-}
 
 const HOLIDAY_FILTER_TYPES = [
   'PUBLIC_HOLIDAY',
@@ -245,17 +243,14 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
     attendanceDate: string,
     employeeId?: string,
   ): Promise<'WORKING' | 'WEEKLY_OFF' | 'HOLIDAY'> {
-    const scheduleRow = await this.prisma.attendanceSchedule.findFirst({
-      where: { organizationId, effectiveFrom: { lte: parseDateOnly(attendanceDate) } },
-      orderBy: { effectiveFrom: 'desc' },
-    });
-    const scheduleFlags: ScheduleDayFlags = scheduleRow
-      ? resolveScheduleDayFlags(
-          readNumberArray(scheduleRow.weeklyOffDays),
-          readNumberArray(scheduleRow.workingDays),
-          getZonedParts(calendarDateAnchor(attendanceDate), scheduleRow.timeZone).weekday,
-        )
-      : { scheduleWeeklyOff: false, scheduleNonWorking: false };
+    const scheduleByDate = await this.loadScheduleDayFlagsMap(
+      organizationId,
+      attendanceDate,
+      attendanceDate,
+    );
+    const scheduleFlags =
+      scheduleByDate.get(attendanceDate) ??
+      ({ scheduleWeeklyOff: false, scheduleNonWorking: false } satisfies ScheduleDayFlags);
     return this.resolveAttendanceDayKind(organizationId, attendanceDate, scheduleFlags, employeeId);
   }
 
@@ -327,14 +322,22 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
     from: string,
     to: string,
   ): Promise<Map<string, ScheduleDayFlags>> {
-    const schedules = await this.prisma.attendanceSchedule.findMany({
-      where: { organizationId, effectiveFrom: { lte: parseDateOnly(to) } },
+    // Load every schedule for the org so dates before the first effectiveFrom still
+    // resolve weekly offs from the earliest saved working schedule (no silent all-working).
+    const rows = await this.prisma.attendanceSchedule.findMany({
+      where: { organizationId },
       orderBy: { effectiveFrom: 'desc' },
     });
+    const schedules = rows.map((row) => ({
+      effectiveFromKey: calendarDateKey(row.effectiveFrom),
+      timeZone: row.timeZone,
+      weeklyOffDays: readScheduleWeekdayArray(row.weeklyOffDays),
+      workingDays: readScheduleWeekdayArray(row.workingDays),
+    }));
     const map = new Map<string, ScheduleDayFlags>();
     for (let d = parseDateOnly(from); d <= parseDateOnly(to); d.setUTCDate(d.getUTCDate() + 1)) {
       const dateKey = d.toISOString().slice(0, 10);
-      const schedule = schedules.find((s) => s.effectiveFrom <= parseDateOnly(dateKey));
+      const schedule = pickScheduleForCalendarDate(schedules, dateKey);
       if (!schedule) {
         map.set(dateKey, { scheduleWeeklyOff: false, scheduleNonWorking: false });
         continue;
@@ -342,11 +345,7 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
       const parts = getZonedParts(calendarDateAnchor(dateKey), schedule.timeZone);
       map.set(
         dateKey,
-        resolveScheduleDayFlags(
-          readNumberArray(schedule.weeklyOffDays),
-          readNumberArray(schedule.workingDays),
-          parts.weekday,
-        ),
+        resolveScheduleDayFlags(schedule.weeklyOffDays, schedule.workingDays, parts.weekday),
       );
     }
     return map;

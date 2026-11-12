@@ -40,6 +40,11 @@ function daysInCalendarMonth(monthKey: string): number {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
+/**
+ * Single bucket per date from resolved `dayKind` (no double-counting).
+ * Holidays that land on a weekly-off weekday remain holidays because
+ * classification precedence already chose HOLIDAY over WEEKLY_OFF.
+ */
 export function computeOrgCalendarMonthSummary(input: {
   monthKey: string;
   days: readonly OrgCalendarMonthDay[];

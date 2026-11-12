@@ -144,7 +144,7 @@ export function OrgCalendarMonthGrid({
                   >
                     {dayNum}
                   </span>
-                  <p className="mt-0.5 line-clamp-1 pr-5 text-[9px] font-semibold uppercase tracking-wide opacity-90 sm:mt-1 sm:text-[10px]">
+                  <p className="mt-0.5 pr-5 text-[10px] font-semibold leading-tight tracking-tight opacity-90 sm:mt-1 sm:text-[11px]">
                     {statusLabel}
                   </p>
                   <div className="mt-auto flex flex-col gap-0.5 pt-1">

@@ -80,22 +80,40 @@ export function OrgCalendarOverviewPanel({
 
   const [scheduleLine, setScheduleLine] = useState<string | null>(null);
   const [weeklyOffLine, setWeeklyOffLine] = useState<string | null>(null);
+  const [scheduleStatus, setScheduleStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
   useEffect(() => {
     let cancelled = false;
-    void fetchAttendanceSettings().then((res) => {
-      if (cancelled || !res.current) return;
-      const working = res.current.workingDays
-        .map((d) => WEEKDAY_UI_ROWS.find((r) => r.day === d)?.label)
-        .filter(Boolean)
-        .join(', ');
-      const off = res.current.weeklyOffDays
-        .map((d) => WEEKDAY_UI_ROWS.find((r) => r.day === d)?.label)
-        .filter(Boolean)
-        .join(', ');
-      setScheduleLine(working || 'Not configured');
-      setWeeklyOffLine(off || 'Not configured');
-    });
+    setScheduleStatus('loading');
+    setScheduleLine(null);
+    setWeeklyOffLine(null);
+    void fetchAttendanceSettings()
+      .then((res) => {
+        if (cancelled) return;
+        if (!res.current) {
+          setScheduleLine('Not configured');
+          setWeeklyOffLine('Not configured');
+          setScheduleStatus('ready');
+          return;
+        }
+        const working = res.current.workingDays
+          .map((d) => WEEKDAY_UI_ROWS.find((r) => r.day === d)?.label)
+          .filter(Boolean)
+          .join(', ');
+        const off = res.current.weeklyOffDays
+          .map((d) => WEEKDAY_UI_ROWS.find((r) => r.day === d)?.label)
+          .filter(Boolean)
+          .join(', ');
+        setScheduleLine(working || 'Not configured');
+        setWeeklyOffLine(off || 'Not configured');
+        setScheduleStatus('ready');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setScheduleLine('Unable to load schedule');
+        setWeeklyOffLine('Unable to load schedule');
+        setScheduleStatus('error');
+      });
     return () => {
       cancelled = true;
     };
@@ -139,11 +157,11 @@ export function OrgCalendarOverviewPanel({
             <div className="rounded-md border border-[#E8E8EF] bg-[#FAFBFD] px-3 py-2 text-xs text-[#475569]">
               <p>
                 <span className="font-semibold text-[#334155]">Working weekdays: </span>
-                {scheduleLine ?? '…'}
+                {scheduleStatus === 'loading' ? 'Loading…' : (scheduleLine ?? 'Not configured')}
               </p>
               <p className="mt-1">
                 <span className="font-semibold text-[#334155]">Weekly off days: </span>
-                {weeklyOffLine ?? '…'}
+                {scheduleStatus === 'loading' ? 'Loading…' : (weeklyOffLine ?? 'Not configured')}
               </p>
             </div>
           </SectionBlock>

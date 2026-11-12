@@ -246,7 +246,18 @@ export function toDeviceItem(row: AttendanceDevice): AttendanceDeviceItem {
 
 function parseNumberArray(value: Prisma.JsonValue): number[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((v): v is number => typeof v === 'number');
+  const out: number[] = [];
+  for (const entry of value) {
+    if (typeof entry === 'number' && Number.isFinite(entry)) {
+      out.push(entry);
+      continue;
+    }
+    if (typeof entry === 'string' && entry.trim() !== '') {
+      const parsed = Number(entry);
+      if (Number.isFinite(parsed)) out.push(parsed);
+    }
+  }
+  return out;
 }
 
 function parseStringArray(value: Prisma.JsonValue | null): string[] {

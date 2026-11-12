@@ -29,6 +29,50 @@ export function resolveScheduleDayFlags(
   return { scheduleWeeklyOff: false, scheduleNonWorking: false };
 }
 
+/**
+ * Pick the attendance schedule that applies to a calendar date key.
+ * Uses calendar-date string comparison (not raw Date objects) so Prisma @db.Date
+ * values read in non-UTC sessions do not shift the effective boundary.
+ * Dates before the earliest effectiveFrom still receive that earliest schedule so
+ * configured weekly offs are not silently treated as working days.
+ */
+export function pickScheduleForCalendarDate<T extends { effectiveFromKey: string }>(
+  schedules: readonly T[],
+  dateKey: string,
+): T | null {
+  if (schedules.length === 0) return null;
+  let active: T | null = null;
+  let earliest: T | null = null;
+  for (const schedule of schedules) {
+    if (!earliest || schedule.effectiveFromKey < earliest.effectiveFromKey) {
+      earliest = schedule;
+    }
+    if (schedule.effectiveFromKey <= dateKey) {
+      if (!active || schedule.effectiveFromKey > active.effectiveFromKey) {
+        active = schedule;
+      }
+    }
+  }
+  return active ?? earliest;
+}
+
+/** Coerce JSON weekday arrays (numbers or numeric strings) from Prisma Json columns. */
+export function readScheduleWeekdayArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  const out: number[] = [];
+  for (const entry of value) {
+    if (typeof entry === 'number' && Number.isInteger(entry) && entry >= 0 && entry <= 6) {
+      out.push(entry);
+      continue;
+    }
+    if (typeof entry === 'string' && entry.trim() !== '') {
+      const parsed = Number(entry);
+      if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 6) out.push(parsed);
+    }
+  }
+  return out;
+}
+
 export function eventAppliesToEmployee(
   event: OrgCalendarEventRecord,
   employeeId?: string,

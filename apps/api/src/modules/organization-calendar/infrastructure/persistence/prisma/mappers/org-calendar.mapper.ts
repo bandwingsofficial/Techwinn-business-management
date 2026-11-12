@@ -1,5 +1,6 @@
 import type { OrganizationCalendarEvent } from '../../../../../../generated/prisma/client.js';
 import type { OrgCalendarEventItem, OrgCalendarEventType } from '#contracts';
+import { calendarDateKey } from '../../../../../attendance/domain/services/attendance-time.service.js';
 
 const DEFAULT_COLORS: Record<OrgCalendarEventType, string> = {
   PUBLIC_HOLIDAY: '#dc2626',
@@ -19,10 +20,6 @@ function readEmployeeIds(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string');
 }
 
-function formatDateOnly(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 export function defaultColorForType(type: OrgCalendarEventType): string {
   return DEFAULT_COLORS[type] ?? '#64748b';
 }
@@ -33,8 +30,9 @@ export function toOrgCalendarEventItem(row: OrganizationCalendarEvent): OrgCalen
     title: row.title,
     description: row.description,
     eventType: row.eventType,
-    startDate: formatDateOnly(row.startDate),
-    endDate: formatDateOnly(row.endDate),
+    // Prisma @db.Date values are session-TZ midnights; never use toISOString().slice(0, 10).
+    startDate: calendarDateKey(row.startDate),
+    endDate: calendarDateKey(row.endDate),
     isFullDay: row.isFullDay,
     startTimeMinutes: row.startTimeMinutes,
     endTimeMinutes: row.endTimeMinutes,

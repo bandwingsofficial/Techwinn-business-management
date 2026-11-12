@@ -35,6 +35,17 @@ function holidayCategory(day: OrgCalendarMonthDay): 'public' | 'company' | 'othe
   return 'other';
 }
 
+/**
+ * Month summary rule (must match backend `computeOrgCalendarMonthSummary`):
+ * - Count only dates inside the selected calendar month.
+ * - Each date contributes to exactly one bucket from its resolved `dayKind`
+ *   (WORKING / SPECIAL_WORKING / HALF_DAY → working;
+ *   WEEKLY_OFF → weekly offs;
+ *   NON_WORKING → non-working;
+ *   HOLIDAY / OFFICE_CLOSURE → holidays).
+ * - Holidays that fall on a weekly-off weekday stay holidays (classification
+ *   precedence already resolved `dayKind` before summary).
+ */
 export function computeOrgCalendarMonthSummary(input: {
   monthKey: string;
   days: readonly OrgCalendarMonthDay[];
@@ -59,9 +70,7 @@ export function computeOrgCalendarMonthSummary(input: {
 
   for (const day of monthDays) {
     const kind = day.dayKind;
-    if (kind === 'WORKING') {
-      totalWorkingDays += 1;
-    } else if (kind === 'SPECIAL_WORKING' || kind === 'HALF_DAY') {
+    if (kind === 'WORKING' || kind === 'SPECIAL_WORKING' || kind === 'HALF_DAY') {
       totalWorkingDays += 1;
     } else if (kind === 'WEEKLY_OFF') {
       totalWeeklyOffs += 1;

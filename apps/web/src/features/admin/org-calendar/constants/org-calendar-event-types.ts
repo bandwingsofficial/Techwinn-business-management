@@ -22,7 +22,7 @@ export function labelForEventType(type: OrgCalendarEventType): string {
 
 export const ORG_CALENDAR_DAY_KIND_LABEL: Record<string, string> = {
   WORKING: 'Working day',
-  WEEKLY_OFF: 'Weekly off',
+  WEEKLY_OFF: 'Weekly Off',
   NON_WORKING: 'Non-working day',
   HOLIDAY: 'Holiday',
   HALF_DAY: 'Half working day',
