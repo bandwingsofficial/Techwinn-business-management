@@ -134,10 +134,19 @@ function assertUniquePipelineStageNames(
   });
 }
 
+/** Omitted = leave unchanged (update) / default empty (create). null/"" = clear. */
+const pipelineDescriptionInputSchema = z
+  .union([z.string().max(2000), z.null()])
+  .transform((value) => {
+    if (value === null) return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  });
+
 export const createPipelineRequestSchema = z
   .object({
     name: z.string().trim().min(1, 'Enter a pipeline name.').max(120),
-    description: z.string().max(2000).optional(),
+    description: pipelineDescriptionInputSchema.optional(),
     status: pipelineStatusSchema.optional(),
     stages: z.array(pipelineStageInputSchema).min(1, 'Add at least one stage.'),
   })
@@ -147,7 +156,7 @@ export const createPipelineRequestSchema = z
 const updatePipelineRequestObjectSchema = z
   .object({
     name: z.string().trim().min(1, 'Enter a pipeline name.').max(120).optional(),
-    description: z.string().max(2000).optional(),
+    description: pipelineDescriptionInputSchema.optional(),
     status: pipelineStatusSchema.optional(),
     sortOrder: z.number().int().optional(),
     stages: z.array(pipelineStageInputSchema).min(1, 'Add at least one stage.').optional(),

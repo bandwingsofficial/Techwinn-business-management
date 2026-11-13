@@ -10,14 +10,14 @@ export type PipelineStageInput = {
 
 export type CreatePipelineData = {
   readonly name: string;
-  readonly description?: string;
+  readonly description?: string | null;
   readonly status?: PipelineStatus;
   readonly stages: readonly PipelineStageInput[];
 };
 
 export type UpdatePipelineData = {
   readonly name?: string;
-  readonly description?: string;
+  readonly description?: string | null;
   readonly status?: PipelineStatus;
   readonly sortOrder?: number;
   readonly stages?: readonly PipelineStageInput[];

@@ -51,10 +51,16 @@ export function pipelineToForm(pipeline: CrmPipeline): PipelineFormState {
   };
 }
 
+function pipelineDescriptionPayload(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export function formToCreatePayload(form: PipelineFormState) {
+  const description = pipelineDescriptionPayload(form.description);
   return {
     name: form.name.trim(),
-    description: form.description.trim() || undefined,
+    ...(description !== null ? { description } : {}),
     stages: form.stages.map((row) => ({
       ...(row.id ? { id: row.id } : {}),
       name: row.name.trim(),
@@ -66,7 +72,8 @@ export function formToCreatePayload(form: PipelineFormState) {
 export function formToUpdatePayload(form: PipelineFormState) {
   return {
     name: form.name.trim(),
-    description: form.description.trim() || undefined,
+    // Always send description on edit so an empty value clears the stored text.
+    description: pipelineDescriptionPayload(form.description),
     stages: form.stages.map((row) => ({
       ...(row.id ? { id: row.id } : {}),
       name: row.name.trim(),

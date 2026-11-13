@@ -140,7 +140,10 @@ export class PipelinePrismaStore {
         where: { id: pipelineId },
         data: {
           name: input.name,
-          description: input.description,
+          // Column is non-nullable String @default(""); null means clear → "".
+          // undefined means omit → leave existing value unchanged.
+          description:
+            input.description === undefined ? undefined : (input.description ?? ''),
           status: input.status,
           sortOrder: input.sortOrder,
         },

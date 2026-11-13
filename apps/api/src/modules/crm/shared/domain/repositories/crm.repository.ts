@@ -141,14 +141,14 @@ export interface PipelineListFilters {
 
 export interface CreatePipelineInput {
   readonly name: string;
-  readonly description?: string;
+  readonly description?: string | null;
   readonly status?: PipelineStatus;
   readonly stages: readonly PipelineStageInput[];
 }
 
 export interface UpdatePipelineInput {
   readonly name?: string;
-  readonly description?: string;
+  readonly description?: string | null;
   readonly status?: PipelineStatus;
   readonly sortOrder?: number;
   readonly stages?: readonly PipelineStageInput[];
