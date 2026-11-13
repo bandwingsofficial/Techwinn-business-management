@@ -1,5 +1,6 @@
 import { CRM_PIPELINE_PERMISSION_KEYS } from './crm-pipeline-permissions.js';
 import { CRM_LEADS_PERMISSION_KEYS } from './crm-leads-permissions.js';
+import { CRM_SERVICE_PACKAGES_PERMISSION_KEYS } from './crm-service-packages-permissions.js';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -76,7 +77,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'service-packages',
             label: 'Service Packages',
             href: '/admin/packages',
-            permissionKeys: ['settings.read', 'settings.manage'],
+            permissionKeys: CRM_SERVICE_PACKAGES_PERMISSION_KEYS,
           },
           {
             id: 'proposals',

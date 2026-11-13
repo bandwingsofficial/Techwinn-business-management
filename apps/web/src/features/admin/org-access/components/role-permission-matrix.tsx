@@ -5,6 +5,7 @@ import {
   applyPermissionKeyChange,
   applyPermissionKeysChecked,
   crmLeadsPermissionBlockedReason,
+  crmServicePackagesPermissionBlockedReason,
   pagePrimaryViewPermissionKey,
   permissionDefinitionForKey,
   type PermissionHierarchyModule,
@@ -409,7 +410,9 @@ export function RolePermissionMatrix({
                                     pageViewKey !== null &&
                                     key !== pageViewKey &&
                                     !selected.has(pageViewKey);
-                                  const blockedReason = crmLeadsPermissionBlockedReason(key, selected);
+                                  const blockedReason =
+                                    crmLeadsPermissionBlockedReason(key, selected) ??
+                                    crmServicePackagesPermissionBlockedReason(key, selected);
                                   const blocked = needsViewFirst || blockedReason !== null;
                                   return (
                                   <li key={`${page.id}-${key}`}>

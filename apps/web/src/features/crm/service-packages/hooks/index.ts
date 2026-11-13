@@ -1,5 +1,6 @@
 export { servicePackageKeys } from './service-package.keys';
 export { useServicePackages } from './use-service-packages';
+export { useServicePackagePagePermissions } from './use-service-package-page-permissions';
 export { useServicePackage } from './use-service-package';
 export { useCreateServicePackage } from './use-create-service-package';
 export { useUpdateServicePackage } from './use-update-service-package';

@@ -30,9 +30,17 @@ import type {
 } from '#validation';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {
-  RequirePermissions,
+  RequireAllPermissions,
   RequirePermissionsGuard,
 } from '../../../../../org-access/index.js';
+import {
+  SERVICE_PACKAGE_CREATE,
+  SERVICE_PACKAGE_DELETE,
+  SERVICE_PACKAGE_DETAIL,
+  SERVICE_PACKAGE_LIST,
+  SERVICE_PACKAGE_STATUS,
+  SERVICE_PACKAGE_UPDATE,
+} from '#contracts';
 import { ChangeServicePackageStatusHandler } from '../../application/change-status/change-service-package-status.handler.js';
 import { CreateServicePackageHandler } from '../../application/create/create-service-package.handler.js';
 import { DeleteServicePackageHandler } from '../../application/delete/delete-service-package.handler.js';
@@ -80,7 +88,7 @@ export class ServicePackageController {
     @Inject(UpdateServicePackageHandler) private readonly updateServicePackage: UpdateServicePackageHandler,
   ) {}
 
-  @RequirePermissions('settings.read')
+  @RequireAllPermissions(...SERVICE_PACKAGE_LIST)
   @Get()
   @ApiOperation({ summary: 'List service packages' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmServicePackageListResponseSchema) })
@@ -89,7 +97,7 @@ export class ServicePackageController {
     return { packages: result.packages.map(toCrmServicePackage) };
   }
 
-  @RequirePermissions('settings.read')
+  @RequireAllPermissions(...SERVICE_PACKAGE_CREATE)
   @Get('code-preview')
   @ApiOperation({ summary: 'Preview the next TECH-PKG package code (not reserved until create)' })
   @ApiOkResponse({ schema: toOpenApiSchema(servicePackageCodePreviewResponseSchema) })
@@ -98,7 +106,7 @@ export class ServicePackageController {
     return { code: result.code, isPreview: true };
   }
 
-  @RequirePermissions('settings.read')
+  @RequireAllPermissions(...SERVICE_PACKAGE_DETAIL)
   @Get(':packageId')
   @ApiOperation({ summary: 'Get a service package' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmServicePackageResponseSchema) })
@@ -113,7 +121,7 @@ export class ServicePackageController {
     return toCrmServicePackage(result.package);
   }
 
-  @RequirePermissions('settings.manage')
+  @RequireAllPermissions(...SERVICE_PACKAGE_CREATE)
   @Post()
   @ApiOperation({ summary: 'Create a service package' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmServicePackageResponseSchema) })
@@ -128,7 +136,7 @@ export class ServicePackageController {
     return toCrmServicePackage(result.package);
   }
 
-  @RequirePermissions('settings.manage')
+  @RequireAllPermissions(...SERVICE_PACKAGE_STATUS)
   @Patch(':packageId/status')
   @ApiOperation({ summary: 'Activate or deactivate a service package' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmServicePackageResponseSchema) })
@@ -146,7 +154,7 @@ export class ServicePackageController {
     return toCrmServicePackage(result.package);
   }
 
-  @RequirePermissions('settings.manage')
+  @RequireAllPermissions(...SERVICE_PACKAGE_DELETE)
   @Delete(':packageId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Permanently delete a service package' })
@@ -157,7 +165,7 @@ export class ServicePackageController {
     await this.deleteServicePackage.execute({ actor: toCrmActor(ctx), packageId });
   }
 
-  @RequirePermissions('settings.manage')
+  @RequireAllPermissions(...SERVICE_PACKAGE_UPDATE)
   @Patch(':packageId')
   @ApiOperation({ summary: 'Update a service package' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmServicePackageResponseSchema) })

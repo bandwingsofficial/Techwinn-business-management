@@ -227,12 +227,16 @@ export function ServicePackageDetailsModal({
   onOpenChange,
   onEditPackage,
   onListRefresh,
+  canEdit = false,
+  canStatus = false,
 }: {
   packageId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEditPackage?: (packageId: string) => void;
   onListRefresh?: () => void;
+  canEdit?: boolean;
+  canStatus?: boolean;
 }) {
   const toast = useAdminToast();
   const active = open && Boolean(packageId);
@@ -307,7 +311,7 @@ export function ServicePackageDetailsModal({
               >
                 Close
               </Button>
-              {onEditPackage ? (
+              {canEdit && onEditPackage ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -322,19 +326,21 @@ export function ServicePackageDetailsModal({
                   Edit package
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                className={cn('h-11 px-5', LEAD_FORM_PRIMARY_BTN)}
-                disabled={loading || statusPending}
-                onClick={() => setStatusConfirmOpen(true)}
-              >
-                {pkg.status === 'ACTIVE' ? (
-                  <ToggleRight className="size-4" aria-hidden="true" />
-                ) : (
-                  <ToggleLeft className="size-4" aria-hidden="true" />
-                )}
-                {pkg.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-              </Button>
+              {canStatus ? (
+                <Button
+                  type="button"
+                  className={cn('h-11 px-5', LEAD_FORM_PRIMARY_BTN)}
+                  disabled={loading || statusPending}
+                  onClick={() => setStatusConfirmOpen(true)}
+                >
+                  {pkg.status === 'ACTIVE' ? (
+                    <ToggleRight className="size-4" aria-hidden="true" />
+                  ) : (
+                    <ToggleLeft className="size-4" aria-hidden="true" />
+                  )}
+                  {pkg.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                </Button>
+              ) : null}
             </DialogFooter>
           ) : null}
         </DialogContent>

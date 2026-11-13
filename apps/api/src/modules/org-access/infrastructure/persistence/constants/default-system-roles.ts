@@ -42,6 +42,8 @@ export const PROJECT_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
   'media.read',
   'media.upload',
   'settings.read',
+  'crm.service_packages.view',
+  'crm.service_packages.view_details',
   'whatsapp.read',
   'whatsapp.view_all',
   'whatsapp.reply',
@@ -73,6 +75,8 @@ export const SALES_PERMISSIONS: readonly PermissionKey[] = [
   'leads.delete',
   'clients.read',
   'settings.read',
+  'crm.service_packages.view',
+  'crm.service_packages.view_details',
   'whatsapp.read',
   'whatsapp.reply',
 ];
@@ -97,6 +101,8 @@ export const MEMBER_PERMISSIONS: readonly PermissionKey[] = [
   'projects.read',
   'tasks.read',
   'settings.read',
+  'crm.service_packages.view',
+  'crm.service_packages.view_details',
 ];
 
 export const EMPLOYEE_PERMISSIONS: readonly PermissionKey[] = EMPLOYEE_PORTAL_PERMISSIONS;

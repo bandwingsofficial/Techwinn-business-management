@@ -5,6 +5,7 @@ import {
   isCrmLeadsPermissionKey,
 } from './crm-leads-permissions';
 import { applyCrmLeadsCrossPagePrerequisites } from './permission-crm-leads-prerequisites';
+import { applyCrmServicePackagesCrossPagePrerequisites } from './permission-crm-service-packages-prerequisites';
 import {
   PERMISSION_HIERARCHY,
   permissionDefinitionForKey,
@@ -33,6 +34,8 @@ export function isPermissionViewAction(key: PermissionKey): boolean {
 /** Single primary View key for a hierarchy page (empty when manage-only). */
 export function pagePrimaryViewPermissionKey(page: PermissionHierarchyPage): PermissionKey | null {
   const keys = uniqueKeys(page.permissionKeys);
+  const viewPage = keys.find((key) => permissionDefinitionForKey(key).action === 'View Page');
+  if (viewPage) return viewPage;
   const exactView = keys.find((key) => permissionDefinitionForKey(key).action === 'View');
   if (exactView) return exactView;
   const moduleRead = keys.find((key) => /\.read$/.test(key));
@@ -93,6 +96,7 @@ export function ensureViewPermissionPrerequisites(
   const next = new Set(uniqueKeys(keys));
   stripActionPermissionsWithoutView(next);
   applyCrmLeadsCrossPagePrerequisites(next);
+  applyCrmServicePackagesCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -182,6 +186,7 @@ export function applyPermissionKeyChange(
     }
   }
   applyCrmLeadsCrossPagePrerequisites(next);
+  applyCrmServicePackagesCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -199,6 +204,7 @@ export function applyPermissionKeysChecked(
   }
   stripActionPermissionsWithoutView(next);
   applyCrmLeadsCrossPagePrerequisites(next);
+  applyCrmServicePackagesCrossPagePrerequisites(next);
   return [...next];
 }
 

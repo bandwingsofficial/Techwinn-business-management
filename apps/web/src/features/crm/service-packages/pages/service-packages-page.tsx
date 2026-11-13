@@ -60,6 +60,7 @@ import { ServicePackageStatusBadge } from '../components/service-package-status-
 import {
   useChangeServicePackageStatus,
   useDeleteServicePackage,
+  useServicePackagePagePermissions,
   useServicePackages,
 } from '../hooks';
 import type { CrmServicePackage } from '../types/service-package.types';
@@ -90,11 +91,15 @@ export function ServicePackagesPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingPackage, setEditingPackage] = useState<CrmServicePackage | null>(null);
   const [detailPackageId, setDetailPackageId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CrmServicePackage | null>(null);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<CrmServicePackage | null>(null);
-  const { packages, loading, error, refetch } = useServicePackages();
+  const perms = useServicePackagePagePermissions();
+  const { packages, loading, error, refetch } = useServicePackages({
+    enabled: perms.canViewPage,
+  });
   const { changeServicePackageStatus, pending: statusPending } =
     useChangeServicePackageStatus();
   const { deleteServicePackage, pending: deletePending } = useDeleteServicePackage();
@@ -152,13 +157,22 @@ export function ServicePackagesPage() {
       : 'Create a package to reuse scope, integrations, and pricing in proposals.';
 
   const openCreate = () => {
+    if (!perms.canCreate) return;
     setEditingId(null);
+    setEditingPackage(null);
     setFormOpen(true);
   };
 
   const openEdit = (pkg: CrmServicePackage) => {
+    if (!perms.canEdit) return;
     setEditingId(pkg.id);
+    setEditingPackage(pkg);
     setFormOpen(true);
+  };
+
+  const openDetails = (pkg: CrmServicePackage) => {
+    if (!perms.canViewDetails) return;
+    setDetailPackageId(pkg.id);
   };
 
   const clearFilters = () => {
@@ -305,15 +319,17 @@ export function ServicePackagesPage() {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-                  onClick={openCreate}
-                >
-                  <Plus aria-hidden="true" />
-                  New package
-                </Button>
+                {perms.canCreate ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                    onClick={openCreate}
+                  >
+                    <Plus aria-hidden="true" />
+                    New package
+                  </Button>
+                ) : null}
               </>
             }
           />
@@ -334,7 +350,7 @@ export function ServicePackagesPage() {
             tableClassName="table-fixed [&_[data-slot=table-head]]:h-auto [&_[data-slot=table-head]]:py-3 [&_[data-slot=table-cell]]:py-3"
             tableBodyClassName="[&_[data-slot=table-row]]:border-0 [&_[data-slot=table-row]:hover]:bg-[#f5f5f5]"
             phase={tablePhase}
-            colSpan={7}
+            colSpan={perms.showRowActions ? 7 : 6}
             skeletonColumns={CRM_PACKAGES_TABLE_SKELETON}
             header={
               <TableRow className="hover:bg-transparent">
@@ -358,11 +374,13 @@ export function ServicePackagesPage() {
                 <TableHead className={cn(CRM_PACKAGES_TABLE_COLUMN_CLASS.status, 'whitespace-nowrap')}>
                   Status
                 </TableHead>
-                <TableHead
-                  className={cn(CRM_PACKAGES_TABLE_COLUMN_CLASS.actions, 'text-right')}
-                >
-                  Actions
-                </TableHead>
+                {perms.showRowActions ? (
+                  <TableHead
+                    className={cn(CRM_PACKAGES_TABLE_COLUMN_CLASS.actions, 'text-right')}
+                  >
+                    Actions
+                  </TableHead>
+                ) : null}
               </TableRow>
             }
             empty={{
@@ -465,16 +483,22 @@ export function ServicePackagesPage() {
                   <TableCell className={cn(CRM_PACKAGES_TABLE_COLUMN_CLASS.status, 'align-middle')}>
                     <ServicePackageStatusBadge status={pkg.status} />
                   </TableCell>
-                  <TableCell className={cn(CRM_PACKAGES_TABLE_COLUMN_CLASS.actions, 'min-w-0 align-middle pl-4')}>
-                    <ServicePackageActions
-                      pkg={pkg}
-                      disabled={pending}
-                      onToggleStatus={setStatusTarget}
-                      onView={(item) => setDetailPackageId(item.id)}
-                      onEdit={openEdit}
-                      onDelete={setDeleteTarget}
-                    />
-                  </TableCell>
+                  {perms.showRowActions ? (
+                    <TableCell className={cn(CRM_PACKAGES_TABLE_COLUMN_CLASS.actions, 'min-w-0 align-middle pl-4')}>
+                      <ServicePackageActions
+                        pkg={pkg}
+                        disabled={pending}
+                        canViewDetails={perms.canViewDetails}
+                        canStatus={perms.canStatus}
+                        canEdit={perms.canEdit}
+                        canDelete={perms.canDelete}
+                        onToggleStatus={setStatusTarget}
+                        onView={openDetails}
+                        onEdit={openEdit}
+                        onDelete={setDeleteTarget}
+                      />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
             })}
@@ -482,24 +506,38 @@ export function ServicePackagesPage() {
         </div>
       </section>
 
-      <ServicePackageFormModal
-        open={formOpen}
-        editingId={editingId}
-        onOpenChange={setFormOpen}
-        onSaved={refetch}
-      />
+      {perms.canCreate || perms.canEdit ? (
+        <ServicePackageFormModal
+          open={formOpen}
+          editingId={editingId}
+          editingSeed={editingPackage}
+          onOpenChange={(nextOpen) => {
+            setFormOpen(nextOpen);
+            if (!nextOpen) setEditingPackage(null);
+          }}
+          onSaved={refetch}
+        />
+      ) : null}
 
-      <ServicePackageDetailsModal
-        packageId={detailPackageId}
-        open={detailPackageId !== null}
-        onOpenChange={(open) => !open && setDetailPackageId(null)}
-        onEditPackage={(id) => {
-          setDetailPackageId(null);
-          setEditingId(id);
-          setFormOpen(true);
-        }}
-        onListRefresh={refetch}
-      />
+      {perms.canViewDetails ? (
+        <ServicePackageDetailsModal
+          packageId={detailPackageId}
+          open={detailPackageId !== null}
+          onOpenChange={(open) => !open && setDetailPackageId(null)}
+          canEdit={perms.canEdit}
+          canStatus={perms.canStatus}
+          onEditPackage={
+            perms.canEdit
+              ? (id) => {
+                  const pkg = packages?.find((row) => row.id === id) ?? null;
+                  setDetailPackageId(null);
+                  if (pkg) openEdit(pkg);
+                }
+              : undefined
+          }
+          onListRefresh={refetch}
+        />
+      ) : null}
 
       <AlertDialog
         open={statusTarget !== null}

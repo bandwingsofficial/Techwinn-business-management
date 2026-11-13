@@ -60,7 +60,11 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useAdminToast } from '@/features/admin/components/toast';
 import { previewServicePackageCode } from '../api/service-packages.api';
-import type { PackageDiscountType, ServicePackageDeliveryUnit } from '../types/service-package.types';
+import type {
+  CrmServicePackage,
+  PackageDiscountType,
+  ServicePackageDeliveryUnit,
+} from '../types/service-package.types';
 import {
   CrmFieldLabel,
   CrmFormField,
@@ -108,24 +112,29 @@ const fieldLabel = (
 export function ServicePackageFormModal({
   open,
   editingId,
+  editingSeed,
   onOpenChange,
   onSaved,
 }: {
   open: boolean;
   editingId: string | null;
+  /** List row snapshot when the editor lacks View Details (avoids detail GET). */
+  editingSeed?: CrmServicePackage | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void | Promise<void>;
 }) {
   const toast = useAdminToast();
   const { createServicePackage, pending: createPending } = useCreateServicePackage();
   const { updateServicePackage, pending: updatePending } = useUpdateServicePackage();
+  const shouldLoadPackageDetail = open && Boolean(editingId) && !editingSeed;
   const { package: loadedPackage, loading: loadPackagePending } = useServicePackage(
     editingId,
-    open && Boolean(editingId),
+    shouldLoadPackageDetail,
   );
+  const packageForForm = editingSeed ?? loadedPackage;
   const isCreate = editingId === null;
   const pending = createPending || updatePending;
-  const loadingPackage = loadPackagePending && !isCreate;
+  const loadingPackage = loadPackagePending && !isCreate && !editingSeed;
   const [form, setForm] = useState<ServicePackageFormState>(() => emptyServicePackageForm());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -164,10 +173,10 @@ export function ServicePackageFormModal({
   }, [open, editingId]);
 
   useEffect(() => {
-    if (!open || !editingId || !loadedPackage) return;
-    setForm(servicePackageToForm(loadedPackage));
+    if (!open || !editingId || !packageForForm) return;
+    setForm(servicePackageToForm(packageForForm));
     setFieldErrors({});
-  }, [open, editingId, loadedPackage]);
+  }, [open, editingId, packageForForm]);
 
   useEffect(() => {
     if (!open || editingId) return;
