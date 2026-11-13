@@ -667,7 +667,11 @@ export class DailyTaskPrismaStore {
           dailyTaskId: taskId,
           actorAdminId: adminId,
           eventType: 'UPDATED',
-          metadata: Object.keys(changes).length > 0 ? { changes } : null,
+          // Json? column: no change bag → SQL NULL (DbNull), not JS null / JsonNull.
+          metadata:
+            Object.keys(changes).length > 0
+              ? ({ changes } as Prisma.InputJsonValue)
+              : Prisma.DbNull,
         },
       });
 
