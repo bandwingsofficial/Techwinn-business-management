@@ -1,6 +1,7 @@
 import { CRM_PIPELINE_PERMISSION_KEYS } from './crm-pipeline-permissions.js';
-import { CRM_LEADS_PERMISSION_KEYS } from './crm-leads-permissions.js';
+import { CRM_LEADS_PERMISSION_KEYS, LEGACY_LEADS_PERMISSION_KEYS } from './crm-leads-permissions.js';
 import { CRM_SERVICE_PACKAGES_PERMISSION_KEYS } from './crm-service-packages-permissions.js';
+import { CRM_QUOTATIONS_PERMISSION_KEYS } from './crm-quotations-permissions.js';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -82,8 +83,8 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
           {
             id: 'proposals',
             label: 'Proposals & Quotations',
-            href: '/admin/proposals',
-            permissionKeys: ['leads.read', 'leads.create', 'leads.update', 'leads.delete'],
+            href: '/admin/quotations',
+            permissionKeys: CRM_QUOTATIONS_PERMISSION_KEYS,
           },
           {
             id: 'clients',
@@ -409,6 +410,10 @@ export function uniqueHierarchyPermissionKeys(
   return [...keys];
 }
 
+const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
+  ...LEGACY_LEADS_PERMISSION_KEYS,
+]);
+
 /** Ensures every catalog key appears on at least one hierarchy page. Keys may appear on multiple pages when backend shares them. */
 export function assertPermissionHierarchyComplete(
   hierarchy: readonly PermissionHierarchyModule[] = PERMISSION_HIERARCHY,
@@ -423,7 +428,9 @@ export function assertPermissionHierarchyComplete(
       }
     }
   }
-  const missing = PERMISSION_KEYS.filter((key) => !seen.has(key));
+  const missing = PERMISSION_KEYS.filter(
+    (key) => !seen.has(key) && !PERMISSION_HIERARCHY_EXCLUDED_KEYS.has(key),
+  );
   if (missing.length > 0) {
     throw new Error(`Permission hierarchy missing catalog keys: ${missing.join(', ')}`);
   }

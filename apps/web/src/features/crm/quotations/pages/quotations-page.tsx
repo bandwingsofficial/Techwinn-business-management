@@ -52,7 +52,7 @@ import { QuotationActions } from '../components/quotation-actions';
 import { QuotationFormModal } from '../components/quotation-form-modal';
 import { SendQuotationModal } from '../components/send-quotation-modal';
 import { QuotationStatusBadge } from '../components/quotation-status-badge';
-import { useDeleteQuotation, useQuotations } from '../hooks';
+import { useDeleteQuotation, useQuotationPagePermissions, useQuotations } from '../hooks';
 import type { CrmQuotation, QuotationListQuery, QuotationStatus } from '../types/quotation.types';
 import { QUOTATION_WORKFLOW_STATUSES } from '../utils/quotation.utils';
 
@@ -108,7 +108,11 @@ export function QuotationsPage() {
     };
   }, [filters, page, pageSize, search]);
 
-  const { items, total, loading, error, refetch } = useQuotations({ query: listQuery });
+  const perms = useQuotationPagePermissions();
+  const { items, total, loading, error, refetch } = useQuotations({
+    query: listQuery,
+    enabled: perms.canViewPage,
+  });
   const { deleteQuotation, pending: deletePending } = useDeleteQuotation();
 
   useEffect(() => {
@@ -153,17 +157,20 @@ export function QuotationsPage() {
       : 'Add a quotation with client details and line items.';
 
   const openCreate = () => {
+    if (!perms.canCreate) return;
     setEditingId(null);
     setFormOpen(true);
   };
 
   const openEdit = (quotation: CrmQuotation) => {
+    if (!perms.canEdit) return;
     setEditingId(quotation.id);
     setSendOpen(false);
     setFormOpen(true);
   };
 
   const openSend = (quotation: CrmQuotation) => {
+    if (!perms.canSend) return;
     setSendQuotationId(quotation.id);
     setSendOpen(true);
   };
@@ -330,15 +337,17 @@ export function QuotationsPage() {
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-                  onClick={openCreate}
-                >
-                  <Plus aria-hidden="true" />
-                  Add quotation
-                </Button>
+                {perms.canCreate ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                    onClick={openCreate}
+                  >
+                    <Plus aria-hidden="true" />
+                    Add quotation
+                  </Button>
+                ) : null}
               </>
             }
           />
@@ -358,7 +367,7 @@ export function QuotationsPage() {
             tableClassName="table-fixed [&_[data-slot=table-head]]:h-auto [&_[data-slot=table-head]]:py-3 [&_[data-slot=table-cell]]:py-3"
             tableBodyClassName="[&_[data-slot=table-row]]:border-0 [&_[data-slot=table-row]:hover]:bg-[#f5f5f5]"
             phase={tablePhase}
-            colSpan={8}
+            colSpan={perms.showRowActions ? 8 : 7}
             skeletonColumns={CRM_QUOTATIONS_TABLE_SKELETON}
             header={
               <TableRow className="hover:bg-transparent">
@@ -379,11 +388,13 @@ export function QuotationsPage() {
                   Total
                 </TableHead>
                 <TableHead className={CRM_QUOTATIONS_TABLE_COLUMN_CLASS.status}>Status</TableHead>
-                <TableHead
-                  className={cn(CRM_QUOTATIONS_TABLE_COLUMN_CLASS.actions, 'text-right')}
-                >
-                  Actions
-                </TableHead>
+                {perms.showRowActions ? (
+                  <TableHead
+                    className={cn(CRM_QUOTATIONS_TABLE_COLUMN_CLASS.actions, 'text-right')}
+                  >
+                    Actions
+                  </TableHead>
+                ) : null}
               </TableRow>
             }
             empty={{
@@ -478,38 +489,47 @@ export function QuotationsPage() {
                 <TableCell className={CRM_QUOTATIONS_TABLE_COLUMN_CLASS.status}>
                   <QuotationStatusBadge status={quotation.status} />
                 </TableCell>
-                <TableCell className={cn(CRM_QUOTATIONS_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
-                  <QuotationActions
-                    quotation={quotation}
-                    disabled={deletePending}
-                    onSend={openSend}
-                    onEdit={openEdit}
-                    onDelete={setDeleteTarget}
-                  />
-                </TableCell>
+                {perms.showRowActions ? (
+                  <TableCell className={cn(CRM_QUOTATIONS_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
+                    <QuotationActions
+                      quotation={quotation}
+                      disabled={deletePending}
+                      canSend={perms.canSend}
+                      canEdit={perms.canEdit}
+                      canDelete={perms.canDelete}
+                      onSend={openSend}
+                      onEdit={openEdit}
+                      onDelete={setDeleteTarget}
+                    />
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </DataTable>
         </div>
       </section>
 
-      <QuotationFormModal
-        open={formOpen}
-        editingId={editingId}
-        onOpenChange={setFormOpen}
-        onSaved={() => {
-          refetch();
-        }}
-      />
+      {perms.canCreate || perms.canEdit ? (
+        <QuotationFormModal
+          open={formOpen}
+          editingId={editingId}
+          onOpenChange={setFormOpen}
+          onSaved={() => {
+            refetch();
+          }}
+        />
+      ) : null}
 
-      <SendQuotationModal
-        open={sendOpen}
-        quotationId={sendQuotationId}
-        onOpenChange={setSendOpen}
-        onSent={() => {
-          refetch();
-        }}
-      />
+      {perms.canSend ? (
+        <SendQuotationModal
+          open={sendOpen}
+          quotationId={sendQuotationId}
+          onOpenChange={setSendOpen}
+          onSent={() => {
+            refetch();
+          }}
+        />
+      ) : null}
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>

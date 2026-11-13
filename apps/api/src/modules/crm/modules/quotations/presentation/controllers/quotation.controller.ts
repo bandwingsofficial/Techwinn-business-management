@@ -24,6 +24,14 @@ import type {
   QuotationDocumentCodePreviewResponse,
 } from '#contracts';
 import {
+  CRM_QUOTATIONS_VIEW_KEY,
+  QUOTATION_CREATE,
+  QUOTATION_DELETE,
+  QUOTATION_LIST,
+  QUOTATION_SEND,
+  QUOTATION_UPDATE,
+} from '#contracts';
+import {
   parseQuotationListQuery,
   quotationDocumentTypeSchema,
   type ChangeQuotationStatusRequest,
@@ -34,6 +42,7 @@ import {
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {
+  RequireAllPermissions,
   RequirePermissions,
   RequirePermissionsGuard,
 } from '../../../../../org-access/index.js';
@@ -90,7 +99,7 @@ export class QuotationController {
     @Inject(SendQuotationHandler) private readonly sendQuotation: SendQuotationHandler,
   ) {}
 
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...QUOTATION_LIST)
   @Get()
   @ApiOperation({ summary: 'List quotations' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmQuotationListResponseSchema) })
@@ -111,7 +120,7 @@ export class QuotationController {
     };
   }
 
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...QUOTATION_CREATE)
   @Get('code-preview')
   @ApiOperation({ summary: 'Preview next document number (not reserved until create)' })
   @ApiOkResponse({
@@ -135,7 +144,8 @@ export class QuotationController {
     return { documentNumber, type, isPreview: true };
   }
 
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(CRM_QUOTATIONS_VIEW_KEY)
+  @RequirePermissions('crm.quotations.edit', 'crm.quotations.send')
   @Get(':quotationId')
   @ApiOperation({ summary: 'Get a quotation' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmQuotationResponseSchema) })
@@ -150,7 +160,7 @@ export class QuotationController {
     return toCrmQuotation(quotation);
   }
 
-  @RequirePermissions('leads.create')
+  @RequireAllPermissions(...QUOTATION_CREATE)
   @Post()
   @ApiOperation({ summary: 'Create a quotation' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmQuotationResponseSchema) })
@@ -165,7 +175,7 @@ export class QuotationController {
     return toCrmQuotation(quotation);
   }
 
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...QUOTATION_UPDATE)
   @Patch(':quotationId')
   @ApiOperation({ summary: 'Update a draft quotation' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmQuotationResponseSchema) })
@@ -182,7 +192,7 @@ export class QuotationController {
     return toCrmQuotation(quotation);
   }
 
-  @RequirePermissions('leads.delete')
+  @RequireAllPermissions(...QUOTATION_DELETE)
   @Delete(':quotationId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Permanently delete a draft quotation' })
@@ -193,7 +203,7 @@ export class QuotationController {
     await this.deleteQuotation.execute({ actor: toCrmActor(ctx), quotationId });
   }
 
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...QUOTATION_UPDATE)
   @Patch(':quotationId/status')
   @ApiOperation({ summary: 'Transition quotation status' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmQuotationResponseSchema) })
@@ -211,7 +221,7 @@ export class QuotationController {
     return toCrmQuotation(quotation);
   }
 
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...QUOTATION_SEND)
   @Get(':quotationId/print/pdf')
   @ApiOperation({ summary: 'Quotation PDF document' })
   async printPdf(
@@ -228,7 +238,7 @@ export class QuotationController {
     });
   }
 
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...QUOTATION_SEND)
   @Post(':quotationId/send')
   @ApiOperation({ summary: 'Email quotation PDF to recipients' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmQuotationResponseSchema) })
@@ -249,7 +259,8 @@ export class QuotationController {
     return toCrmQuotation(quotation);
   }
 
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(CRM_QUOTATIONS_VIEW_KEY)
+  @RequirePermissions('crm.quotations.edit', 'crm.quotations.send')
   @Get(':quotationId/print')
   @ApiOperation({ summary: 'Print-ready quotation payload' })
   @ApiOkResponse({

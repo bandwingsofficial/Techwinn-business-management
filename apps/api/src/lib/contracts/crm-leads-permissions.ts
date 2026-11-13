@@ -15,6 +15,14 @@ export type CrmLeadsPermissionKey = (typeof CRM_LEADS_PERMISSION_KEYS)[number];
 export const CRM_LEADS_VIEW_KEY = 'crm.leads.view' as const satisfies PermissionKey;
 export const CRM_PIPELINE_VIEW_KEY = 'crm.pipeline.view' as const satisfies PermissionKey;
 
+/** Deprecated catalog keys — persisted on legacy roles; expanded to `crm.leads.*` at resolve time. */
+export const LEGACY_LEADS_PERMISSION_KEYS = [
+  'leads.read',
+  'leads.create',
+  'leads.update',
+  'leads.delete',
+] as const satisfies readonly PermissionKey[];
+
 const CRM_LEADS_KEY_SET = new Set<string>(CRM_LEADS_PERMISSION_KEYS);
 
 export function isCrmLeadsPermissionKey(key: PermissionKey): key is CrmLeadsPermissionKey {

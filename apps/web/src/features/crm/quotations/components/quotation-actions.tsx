@@ -6,6 +6,9 @@ import { canSendQuotation } from '../utils/quotation.utils';
 type QuotationActionsProps = {
   quotation: CrmQuotation;
   disabled?: boolean;
+  canSend?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onSend: (quotation: CrmQuotation) => void;
   onEdit: (quotation: CrmQuotation) => void;
   onDelete: (quotation: CrmQuotation) => void;
@@ -14,6 +17,9 @@ type QuotationActionsProps = {
 export function QuotationActions({
   quotation,
   disabled,
+  canSend = false,
+  canEdit = false,
+  canDelete = false,
   onSend,
   onEdit,
   onDelete,
@@ -23,43 +29,49 @@ export function QuotationActions({
 
   return (
     <div className="flex w-full shrink-0 items-center justify-end gap-1">
-      <TableIconButton
-        label={
-          sendEnabled
-            ? `Send ${quotation.documentNumber}`
-            : `${quotation.documentNumber} cannot be sent`
-        }
-        disabled={disabled || !sendEnabled}
-        onClick={() => onSend(quotation)}
-      >
-        <Mail className="size-4 stroke-[2]" aria-hidden="true" />
-      </TableIconButton>
-      <TableIconButton
-        label={
-          canMutate
-            ? `Edit ${quotation.documentNumber}`
-            : `${quotation.documentNumber} cannot be edited`
-        }
-        tone="default"
-        className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
-        disabled={disabled || !canMutate}
-        onClick={() => onEdit(quotation)}
-      >
-        <SquarePen className="size-4 stroke-[2]" aria-hidden="true" />
-      </TableIconButton>
-      <TableIconButton
-        label={
-          canMutate
-            ? `Delete ${quotation.documentNumber}`
-            : `${quotation.documentNumber} cannot be deleted`
-        }
-        tone="default"
-        className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black disabled:opacity-100 disabled:hover:bg-transparent"
-        disabled={disabled || !canMutate}
-        onClick={() => onDelete(quotation)}
-      >
-        <Trash2 className="size-4 stroke-[2]" aria-hidden="true" />
-      </TableIconButton>
+      {canSend ? (
+        <TableIconButton
+          label={
+            sendEnabled
+              ? `Send ${quotation.documentNumber}`
+              : `${quotation.documentNumber} cannot be sent`
+          }
+          disabled={disabled || !sendEnabled}
+          onClick={() => onSend(quotation)}
+        >
+          <Mail className="size-4 stroke-[2]" aria-hidden="true" />
+        </TableIconButton>
+      ) : null}
+      {canEdit ? (
+        <TableIconButton
+          label={
+            canMutate
+              ? `Edit ${quotation.documentNumber}`
+              : `${quotation.documentNumber} cannot be edited`
+          }
+          tone="default"
+          className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+          disabled={disabled || !canMutate}
+          onClick={() => onEdit(quotation)}
+        >
+          <SquarePen className="size-4 stroke-[2]" aria-hidden="true" />
+        </TableIconButton>
+      ) : null}
+      {canDelete ? (
+        <TableIconButton
+          label={
+            canMutate
+              ? `Delete ${quotation.documentNumber}`
+              : `${quotation.documentNumber} cannot be deleted`
+          }
+          tone="default"
+          className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black disabled:opacity-100 disabled:hover:bg-transparent"
+          disabled={disabled || !canMutate}
+          onClick={() => onDelete(quotation)}
+        >
+          <Trash2 className="size-4 stroke-[2]" aria-hidden="true" />
+        </TableIconButton>
+      ) : null}
     </div>
   );
 }
