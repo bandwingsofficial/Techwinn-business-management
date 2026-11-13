@@ -9,6 +9,7 @@ export * from './project-task-action-permissions';
 export * from './employees';
 export * from './media';
 export * from './permissions';
+export * from './crm-pipeline-permissions';
 export * from './permission-hierarchy';
 export * from './permission-view-dependencies';
 export * from './org-access';

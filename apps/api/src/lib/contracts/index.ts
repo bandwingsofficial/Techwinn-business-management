@@ -9,6 +9,7 @@ export * from './project-task-action-permissions.js';
 export * from './employees.js';
 export * from './media.js';
 export * from './permissions.js';
+export * from './crm-pipeline-permissions.js';
 export * from './permission-hierarchy.js';
 export * from './permission-view-dependencies.js';
 export * from './org-access.js';

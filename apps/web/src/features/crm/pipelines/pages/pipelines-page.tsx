@@ -52,6 +52,7 @@ import { TableIconButton } from '@/features/admin/components/table-icon-button';
 import { TablePagination } from '@/features/admin/components/table-pagination';
 import { useAdminToast } from '@/features/admin/components/toast';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
+import { usePipelinePagePermissions } from '../hooks/use-pipeline-page-permissions';
 import { cn } from '@/shared/lib/utils';
 import {
   CRM_PIPELINE_DESTRUCTIVE_ACTION_CLASS,
@@ -65,6 +66,7 @@ import {
   leadCountFromPipelineDeleteError,
   pipelineDeleteBlockedMessage,
 } from '../utils/pipeline-delete-messages';
+import { exportPipelines } from '../api/pipeline.api';
 import {
   useBulkDeletePipelines,
   useBulkUpdatePipelineStatus,
@@ -83,36 +85,6 @@ type PipelineStatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
 type PipelineSortKey = 'default' | 'name-asc' | 'name-desc' | 'leads-desc' | 'leads-asc';
 
 const SEARCH_DEBOUNCE_MS = 400;
-
-function escapeCsvCell(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-function downloadPipelinesCsv(pipelines: readonly CrmPipeline[], filename = 'pipelines.csv') {
-  const headers = ['Name', 'Description', 'Status', 'Default', 'Sort order', 'Leads', 'Stages'];
-  const rows = pipelines.map((pipeline) =>
-    [
-      escapeCsvCell(pipeline.name),
-      escapeCsvCell(pipeline.description),
-      pipeline.status,
-      pipeline.isDefault ? 'Yes' : 'No',
-      String(pipeline.sortOrder),
-      String(pipeline.leadCount),
-      String(pipeline.stages.length),
-    ].join(','),
-  );
-  const content = [headers.join(','), ...rows].join('\r\n');
-  const blob = new Blob(['\ufeff', content], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
 
 function reportBulkActionResult(
   toast: ReturnType<typeof useAdminToast>,
@@ -139,6 +111,7 @@ function reportBulkActionResult(
 export function PipelinesPage() {
   const toast = useAdminToast();
   const { dashboardBreadcrumb } = usePortalNavigation();
+  const perms = usePipelinePagePermissions();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -161,6 +134,7 @@ export function PipelinesPage() {
   );
   const [bulkStatusTarget, setBulkStatusTarget] = useState<'ACTIVE' | 'INACTIVE' | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [exportPending, setExportPending] = useState(false);
 
   const listQuery = useMemo(
     () => ({
@@ -276,11 +250,13 @@ export function PipelinesPage() {
       : 'Add a pipeline to define how leads move through your workflow.';
 
   const openCreate = () => {
+    if (!perms.canCreate) return;
     setEditingId(null);
     setFormOpen(true);
   };
 
   const openEdit = (pipeline: CrmPipeline) => {
+    if (!perms.canEdit) return;
     setEditingId(pipeline.id);
     setFormOpen(true);
   };
@@ -375,12 +351,29 @@ export function PipelinesPage() {
     setSelectedPipelineIds(new Set());
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (sortedFiltered.length === 0) {
       toast.error('No pipelines to export.');
       return;
     }
-    downloadPipelinesCsv(sortedFiltered);
+    setExportPending(true);
+    try {
+      const blob = await exportPipelines({
+        search: listQuery.search,
+        status: listQuery.status,
+        sort: sortKey,
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'pipelines.csv';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (failure) {
+      toast.error(describeCrmError(failure));
+    } finally {
+      setExportPending(false);
+    }
   };
 
   const statusFilterActive = statusFilter !== 'ALL';
@@ -498,25 +491,34 @@ export function PipelinesPage() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="border-input h-9 shrink-0 border bg-neutral-100 text-foreground shadow-none hover:bg-neutral-200/80"
-              onClick={handleExport}
-            >
-              <Download aria-hidden="true" />
-              Export
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-              onClick={openCreate}
-            >
-              <Plus aria-hidden="true" />
-              Add pipeline
-            </Button>
+            {perms.canExport ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-input h-9 shrink-0 border bg-neutral-100 text-foreground shadow-none hover:bg-neutral-200/80"
+                onClick={() => void handleExport()}
+                disabled={exportPending}
+              >
+                {exportPending ? (
+                  <Loader2 aria-hidden="true" className="animate-spin" />
+                ) : (
+                  <Download aria-hidden="true" />
+                )}
+                Export
+              </Button>
+            ) : null}
+            {perms.canCreate ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                onClick={openCreate}
+              >
+                <Plus aria-hidden="true" />
+                Add pipeline
+              </Button>
+            ) : null}
           </>
           }
         />
@@ -529,45 +531,51 @@ export function PipelinesPage() {
 
         <div aria-hidden className="table-header-edge" />
 
-        {selectedCount > 0 ? (
+        {selectedCount > 0 && perms.showBulkSelection ? (
           <div className="border-border flex flex-wrap items-center gap-2 border-b bg-[#f7faff] px-4 py-2.5 sm:px-5">
             <span className="text-foreground text-sm font-medium tabular-nums">
               {selectedCount} selected
             </span>
             <div className="ml-auto flex flex-wrap items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50"
-                disabled={pending}
-                onClick={() => setBulkStatusTarget('ACTIVE')}
-              >
-                <ToggleLeft className="size-4" aria-hidden="true" />
-                Activate
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 border-red-200 bg-white text-red-800 hover:bg-red-50"
-                disabled={pending}
-                onClick={() => setBulkStatusTarget('INACTIVE')}
-              >
-                <ToggleRight className="size-4" aria-hidden="true" />
-                Deactivate
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"
-                disabled={pending}
-                onClick={() => setBulkDeleteOpen(true)}
-              >
-                <Trash2 className="size-4" aria-hidden="true" />
-                Delete
-              </Button>
+              {perms.canChangeStatus ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50"
+                  disabled={pending}
+                  onClick={() => setBulkStatusTarget('ACTIVE')}
+                >
+                  <ToggleLeft className="size-4" aria-hidden="true" />
+                  Activate
+                </Button>
+              ) : null}
+              {perms.canChangeStatus ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-red-200 bg-white text-red-800 hover:bg-red-50"
+                  disabled={pending}
+                  onClick={() => setBulkStatusTarget('INACTIVE')}
+                >
+                  <ToggleRight className="size-4" aria-hidden="true" />
+                  Deactivate
+                </Button>
+              ) : null}
+              {perms.canBulkDelete ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"
+                  disabled={pending}
+                  onClick={() => setBulkDeleteOpen(true)}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Delete
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -593,6 +601,7 @@ export function PipelinesPage() {
         skeletonColumns={CRM_PIPELINES_TABLE_SKELETON}
         header={
           <TableRow className="hover:bg-transparent">
+            {perms.showBulkSelection ? (
             <TableHead className={CRM_PIPELINES_TABLE_COLUMN_CLASS.select}>
               <Checkbox
                 aria-label="Select all pipelines on this page"
@@ -607,6 +616,9 @@ export function PipelinesPage() {
                 onCheckedChange={() => toggleAllPagePipelines()}
               />
             </TableHead>
+            ) : (
+              <TableHead className={CRM_PIPELINES_TABLE_COLUMN_CLASS.select} aria-hidden />
+            )}
             <TableHead className={CRM_PIPELINES_TABLE_COLUMN_CLASS.name}>Pipeline name</TableHead>
             <TableHead className={CRM_PIPELINES_TABLE_COLUMN_CLASS.description}>
               Description
@@ -658,13 +670,17 @@ export function PipelinesPage() {
           const description = pipeline.description.trim();
           return (
             <TableRow key={pipeline.id} className="border-0">
-              <TableCell className={CRM_PIPELINES_TABLE_COLUMN_CLASS.select}>
-                <Checkbox
-                  aria-label={`Select ${pipeline.name}`}
-                  checked={selectedPipelineIds.has(pipeline.id)}
-                  onCheckedChange={() => togglePipelineSelected(pipeline.id)}
-                />
-              </TableCell>
+              {perms.showBulkSelection ? (
+                <TableCell className={CRM_PIPELINES_TABLE_COLUMN_CLASS.select}>
+                  <Checkbox
+                    aria-label={`Select ${pipeline.name}`}
+                    checked={selectedPipelineIds.has(pipeline.id)}
+                    onCheckedChange={() => togglePipelineSelected(pipeline.id)}
+                  />
+                </TableCell>
+              ) : (
+                <TableCell className={CRM_PIPELINES_TABLE_COLUMN_CLASS.select} aria-hidden />
+              )}
               <TableCell
                 className={cn(CRM_PIPELINES_TABLE_COLUMN_CLASS.name, 'min-w-0')}
               >
@@ -721,6 +737,7 @@ export function PipelinesPage() {
               </TableCell>
               <TableCell className={cn(CRM_PIPELINES_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
                 <div className="flex w-full shrink-0 items-center justify-end gap-1">
+                  {perms.canChangeStatus ? (
                   <TableIconButton
                     label={
                       pipeline.status === 'ACTIVE'
@@ -742,6 +759,8 @@ export function PipelinesPage() {
                       <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
                     )}
                   </TableIconButton>
+                  ) : null}
+                  {perms.canEdit ? (
                   <TableIconButton
                     label={`Edit ${pipeline.name}`}
                     tone="default"
@@ -751,6 +770,8 @@ export function PipelinesPage() {
                   >
                     <SquarePen className="size-4" aria-hidden="true" />
                   </TableIconButton>
+                  ) : null}
+                  {perms.canDelete ? (
                   <TableIconButton
                     label={
                       pipeline.isDefault
@@ -764,6 +785,7 @@ export function PipelinesPage() {
                   >
                     <Trash2 className="size-4" aria-hidden="true" />
                   </TableIconButton>
+                  ) : null}
                 </div>
               </TableCell>
             </TableRow>

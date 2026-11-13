@@ -16,6 +16,7 @@ export const CRM_ROUTES = {
     `${API_PREFIX}/crm/pipelines/${pipelineId}/stages/${stageId}/deactivate`,
   pipelineBulkStatus: `${API_PREFIX}/crm/pipelines/bulk/status`,
   pipelineBulkDelete: `${API_PREFIX}/crm/pipelines/bulk/delete`,
+  pipelineExport: `${API_PREFIX}/crm/pipelines/export`,
   leads: `${API_PREFIX}/crm/leads`,
   leadTags: `${API_PREFIX}/crm/leads/tags`,
   leadTag: (tagId: string) => `${API_PREFIX}/crm/leads/tags/${tagId}`,

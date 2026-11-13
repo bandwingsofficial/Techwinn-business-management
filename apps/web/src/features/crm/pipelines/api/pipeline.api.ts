@@ -1,5 +1,5 @@
 import { CRM_ROUTES } from '@techwin/contracts';
-import { apiRequest } from '@/shared/api/api-client';
+import { apiBinaryRequest, apiRequest } from '@/shared/api/api-client';
 import type {
   CrmPipeline,
   CrmPipelineBulkActionResponse,
@@ -26,6 +26,15 @@ export type PipelineListQuery = {
   status?: 'ACTIVE' | 'INACTIVE';
 };
 
+export type PipelineExportQuery = PipelineListQuery & {
+  sort?:
+    | 'default'
+    | 'name-asc'
+    | 'name-desc'
+    | 'leads-desc'
+    | 'leads-asc';
+};
+
 export function listPipelines(
   query?: PipelineListQuery,
   signal?: AbortSignal,
@@ -37,6 +46,20 @@ export function listPipelines(
   const qs = params.toString();
   const path = qs ? `${CRM_ROUTES.pipelines}?${qs}` : CRM_ROUTES.pipelines;
   return apiRequest<CrmPipelineListResponse>(path, { auth: true, signal });
+}
+
+export function exportPipelines(
+  query?: PipelineExportQuery,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const params = new URLSearchParams();
+  const search = query?.search?.trim();
+  if (search) params.set('search', search);
+  if (query?.status) params.set('status', query.status);
+  if (query?.sort && query.sort !== 'default') params.set('sort', query.sort);
+  const qs = params.toString();
+  const path = qs ? `${CRM_ROUTES.pipelineExport}?${qs}` : CRM_ROUTES.pipelineExport;
+  return apiBinaryRequest(path, { auth: true, signal });
 }
 
 export function getDefaultPipeline(signal?: AbortSignal): Promise<CrmPipeline> {

@@ -3,6 +3,7 @@
 import {
   applyPermissionKeyChange,
   describeMissingViewPrerequisites,
+  findMissingViewPrerequisites,
   type PermissionKey,
 } from '@techwin/contracts';
 import {
@@ -168,6 +169,14 @@ export function RoleFormDialog({
       return;
     }
     setFieldErrors({});
+
+    if (findMissingViewPrerequisites(permissionKeys).length > 0) {
+      toast.error(
+        describeMissingViewPrerequisites(permissionKeys) ??
+          'Select View for each page before saving action permissions.',
+      );
+      return;
+    }
 
     if (isCreate) {
       const parsed = createRoleRequestSchema.safeParse({

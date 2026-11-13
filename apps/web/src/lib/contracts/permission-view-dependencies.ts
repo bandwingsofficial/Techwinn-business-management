@@ -21,7 +21,7 @@ export function isPermissionViewAction(key: PermissionKey): boolean {
   if (/^View [A-Za-z]/.test(action) && !/\b(all|own|summary|audit|compensation|task notes)\b/i.test(action)) {
     return true;
   }
-  return /\.read$/.test(key);
+  return /\.read$/.test(key) || /^crm\.[a-z]+\.view$/.test(key);
 }
 
 /** Single primary View key for a hierarchy page (empty when manage-only). */
@@ -33,7 +33,6 @@ export function pagePrimaryViewPermissionKey(page: PermissionHierarchyPage): Per
   if (moduleRead) return moduleRead;
   const moduleView = keys.find(isPermissionViewAction);
   if (moduleView) return moduleView;
-  // Attendance-style pages: first catalog View* key is the page-access hint only.
   const scopedView = keys.find((key) => {
     const action = permissionDefinitionForKey(key).action;
     return action === 'View' || action.startsWith('View ');
@@ -53,7 +52,7 @@ export function pageActionPermissionKeys(page: PermissionHierarchyPage): Permiss
   return uniqueKeys(page.permissionKeys).filter((key) => key !== primary);
 }
 
-function pagesContainingKey(key: PermissionKey): PermissionHierarchyPage[] {
+function findHierarchyPagesForPermissionKey(key: PermissionKey): PermissionHierarchyPage[] {
   const pages: PermissionHierarchyPage[] = [];
   for (const mod of PERMISSION_HIERARCHY) {
     for (const group of mod.groups) {
@@ -65,14 +64,29 @@ function pagesContainingKey(key: PermissionKey): PermissionHierarchyPage[] {
   return pages;
 }
 
+function stripActionPermissionsWithoutView(keys: Set<PermissionKey>): void {
+  for (const mod of PERMISSION_HIERARCHY) {
+    for (const group of mod.groups) {
+      for (const page of group.pages) {
+        const viewKey = pagePrimaryViewPermissionKey(page);
+        if (!viewKey || keys.has(viewKey)) continue;
+        for (const pageKey of page.permissionKeys) {
+          if (pageKey !== viewKey) keys.delete(pageKey);
+        }
+      }
+    }
+  }
+}
+
 /**
- * Persists the exact submitted set. View prerequisites are advisory in the editor;
- * they are not auto-granted here (avoids sibling auto-select / uncheck snap-back).
+ * Persists only valid page selections: action keys require the page View key.
  */
 export function ensureViewPermissionPrerequisites(
   keys: readonly PermissionKey[],
 ): PermissionKey[] {
-  return uniqueKeys(keys);
+  const next = new Set(uniqueKeys(keys));
+  stripActionPermissionsWithoutView(next);
+  return [...next];
 }
 
 export type MissingViewPrerequisite = {
@@ -114,12 +128,12 @@ export function describeMissingViewPrerequisites(keys: readonly PermissionKey[])
   const pages = [...new Set(missing.map((row) => row.pageLabel))];
   const preview = pages.slice(0, 3).join(', ');
   const more = pages.length > 3 ? ` +${pages.length - 3} more` : '';
-  return `View is required to open: ${preview}${more}. Action permissions were kept; add View for those pages to grant page access.`;
+  return `View is required for: ${preview}${more}. Select View before saving action permissions.`;
 }
 
 /**
- * Independent checkbox change: exactly one permission key added or removed.
- * No sibling grants, no cascade clears.
+ * Toggle one permission key. Unchecking View clears that page's action keys.
+ * Action keys cannot be selected without View.
  */
 export function applyPermissionKeyChange(
   selected: ReadonlySet<PermissionKey>,
@@ -127,33 +141,48 @@ export function applyPermissionKeyChange(
   checked: boolean,
   grantable?: ReadonlySet<PermissionKey>,
 ): PermissionKey[] {
+  if (grantable && !grantable.has(key)) return [...selected];
+  const pages = findHierarchyPagesForPermissionKey(key);
   const next = new Set(selected);
-  const allow = !grantable || grantable.has(key);
-  if (!allow) return [...next];
-  if (checked) next.add(key);
-  else next.delete(key);
+
+  if (checked) {
+    for (const page of pages) {
+      const viewKey = pagePrimaryViewPermissionKey(page);
+      if (viewKey && key !== viewKey && !next.has(viewKey)) {
+        return [...selected];
+      }
+    }
+    next.add(key);
+    return [...next];
+  }
+
+  next.delete(key);
+  for (const page of pages) {
+    const viewKey = pagePrimaryViewPermissionKey(page);
+    if (viewKey && key === viewKey) {
+      for (const pageKey of page.permissionKeys) next.delete(pageKey);
+    }
+  }
   return [...next];
 }
 
-/**
- * Bulk select/clear for a page or module — only the listed keys, no View auto-fill.
- */
+/** Bulk select/clear for a page or module — only the listed keys. */
 export function applyPermissionKeysChecked(
   selected: ReadonlySet<PermissionKey>,
   keys: readonly PermissionKey[],
   checked: boolean,
   grantable?: ReadonlySet<PermissionKey>,
 ): PermissionKey[] {
-  const next = new Set(selected);
+  let next = new Set(selected);
   for (const key of keys) {
     if (grantable && !grantable.has(key)) continue;
-    if (checked) next.add(key);
-    else next.delete(key);
+    next = new Set(applyPermissionKeyChange(next, key, checked, grantable));
   }
+  stripActionPermissionsWithoutView(next);
   return [...next];
 }
 
 /** @internal used by diagnostics */
 export function pagesContainingPermissionKey(key: PermissionKey): PermissionHierarchyPage[] {
-  return pagesContainingKey(key);
+  return findHierarchyPagesForPermissionKey(key);
 }

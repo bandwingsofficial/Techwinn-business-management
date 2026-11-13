@@ -5,11 +5,14 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Header,
   Inject,
   Param,
   Patch,
   Post,
   Query,
+  Req,
+  StreamableFile,
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
@@ -66,9 +69,16 @@ import {
 } from '../../../../shared/presentation/http/dto/crm.schemas.js';
 import { CrmExceptionFilter } from '../../../../shared/presentation/http/filters/crm-exception.filter.js';
 import { CrmContext } from '../../../../shared/presentation/http/guards/crm-context.decorator.js';
-import type { CrmRequestContext } from '../../../../shared/presentation/http/guards/crm-organization.guard.js';
+import type {
+  CrmAuthenticatedRequest,
+  CrmRequestContext,
+} from '../../../../shared/presentation/http/guards/crm-organization.guard.js';
 import { CrmOrganizationGuard } from '../../../../shared/presentation/http/guards/crm-organization.guard.js';
 import { toCrmActor } from '../../../../shared/presentation/http/mappers/crm-actor.mapper.js';
+import type { PermissionKey } from '#contracts';
+import { OrgAccessForbiddenError } from '../../../../../org-access/domain/errors/org-access.errors.js';
+import { PermissionCheckerService } from '../../../../../org-access/application/services/permission-checker.service.js';
+import type { OrgAccessActor } from '../../../../../org-access/application/shared/org-access-actor.js';
 import {
   RequirePermissions,
   RequirePermissionsGuard,
@@ -77,6 +87,11 @@ import {
   toCrmPipelineFromReadModel,
   toCrmPipelineStageFromReadModel,
 } from '../mappers/pipeline-response.mapper.js';
+import {
+  parsePipelineExportSort,
+  pipelinesToCsv,
+  sortPipelinesForExport,
+} from '../export/pipeline-csv.export.js';
 
 @ApiTags('CRM pipelines')
 @ApiBearerAuth()
@@ -104,9 +119,37 @@ export class PipelineController {
     @Inject(BulkDeletePipelinesHandler)
     private readonly bulkDeletePipelines: BulkDeletePipelinesHandler,
     @Inject(DeletePipelineHandler) private readonly deletePipeline: DeletePipelineHandler,
+    @Inject(PermissionCheckerService) private readonly permissionChecker: PermissionCheckerService,
   ) {}
 
-  @RequirePermissions('leads.read')
+  private async assertActorHasEveryPermission(
+    actor: OrgAccessActor,
+    required: readonly PermissionKey[],
+  ): Promise<void> {
+    if (required.length === 0) return;
+    const effective = new Set(await this.permissionChecker.resolveEffectivePermissions(actor));
+    if (!required.every((key) => effective.has(key))) {
+      throw new OrgAccessForbiddenError('You do not have permission to perform this action.');
+    }
+  }
+
+  private async assertPipelineUpdatePermissions(
+    actor: OrgAccessActor,
+    body: UpdatePipelineRequest,
+  ): Promise<void> {
+    const touchesStatus = body.status !== undefined;
+    const touchesOther =
+      body.name !== undefined ||
+      body.description !== undefined ||
+      body.stages !== undefined ||
+      body.sortOrder !== undefined;
+    const required: PermissionKey[] = [];
+    if (touchesOther) required.push('crm.pipeline.edit');
+    if (touchesStatus) required.push('crm.pipeline.status');
+    await this.assertActorHasEveryPermission(actor, required);
+  }
+
+  @RequirePermissions('crm.pipeline.view')
   @Get()
   @ApiOperation({ summary: 'List pipelines for the current organization' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineListResponseSchema) })
@@ -125,7 +168,7 @@ export class PipelineController {
     return { pipelines: result.pipelines.map(toCrmPipelineFromReadModel) };
   }
 
-  @RequirePermissions('leads.read')
+  @RequirePermissions('crm.pipeline.view')
   @Get('default')
   @ApiOperation({ summary: 'Get the organization default pipeline with stages' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineResponseSchema) })
@@ -134,7 +177,32 @@ export class PipelineController {
     return toCrmPipelineFromReadModel(result.pipeline);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.export')
+  @Get('export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @ApiOperation({ summary: 'Export pipelines for the current organization as CSV' })
+  async exportCsv(
+    @CrmContext() ctx: CrmRequestContext,
+    @Query('search') search?: string,
+    @Query('status') status?: 'ACTIVE' | 'INACTIVE',
+    @Query('sort') sort?: string,
+  ): Promise<StreamableFile> {
+    const result = await this.listPipelines.execute({
+      actor: toCrmActor(ctx),
+      filters: {
+        search: search?.trim() || undefined,
+        status: status === 'ACTIVE' || status === 'INACTIVE' ? status : undefined,
+      },
+    });
+    const pipelines = result.pipelines.map(toCrmPipelineFromReadModel);
+    const sorted = sortPipelinesForExport(pipelines, parsePipelineExportSort(sort));
+    const csv = `\ufeff${pipelinesToCsv(sorted)}`;
+    return new StreamableFile(Buffer.from(csv, 'utf-8'), {
+      disposition: 'attachment; filename="pipelines.csv"',
+    });
+  }
+
+  @RequirePermissions('crm.pipeline.status')
   @Post('bulk/status')
   @ApiOperation({ summary: 'Activate or deactivate multiple pipelines' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineBulkActionResponseSchema) })
@@ -150,7 +218,7 @@ export class PipelineController {
     });
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.bulk_delete')
   @Post('bulk/delete')
   @ApiOperation({ summary: 'Delete multiple empty non-default pipelines' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineBulkActionResponseSchema) })
@@ -165,7 +233,7 @@ export class PipelineController {
     });
   }
 
-  @RequirePermissions('leads.read')
+  @RequirePermissions('crm.pipeline.view')
   @Get(':pipelineId')
   @ApiOperation({ summary: 'Get a pipeline with stages' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineResponseSchema) })
@@ -180,7 +248,7 @@ export class PipelineController {
     return toCrmPipelineFromReadModel(result.pipeline);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.create')
   @Post()
   @ApiOperation({ summary: 'Create a pipeline with default stages' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineResponseSchema) })
@@ -196,16 +264,23 @@ export class PipelineController {
     return toCrmPipelineFromReadModel(result.pipeline);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.view')
   @Patch(':pipelineId')
   @ApiOperation({ summary: 'Update pipeline details and stages' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineResponseSchema) })
   async update(
     @CrmContext() ctx: CrmRequestContext,
+    @Req() request: CrmAuthenticatedRequest,
     @Param('pipelineId') pipelineId: string,
     @Body() raw: unknown,
   ): Promise<CrmPipeline> {
     const body: UpdatePipelineRequest = updatePipelineRequestSchema.parse(raw);
+    const accessActor: OrgAccessActor = {
+      organizationId: ctx.organizationId,
+      adminId: ctx.adminId,
+      isPlatformSuperAdmin: request.platformAuth?.admin.role === 'SUPER_ADMIN',
+    };
+    await this.assertPipelineUpdatePermissions(accessActor, body);
     const result = await this.updatePipeline.execute({
       actor: toCrmActor(ctx),
       pipelineId,
@@ -214,7 +289,7 @@ export class PipelineController {
     return toCrmPipelineFromReadModel(result.pipeline);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.delete')
   @Delete(':pipelineId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an empty pipeline' })
@@ -229,7 +304,7 @@ export class PipelineController {
     });
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.edit')
   @Post(':pipelineId/stages/reorder')
   @ApiOperation({ summary: 'Reorder stages within a pipeline' })
   @ApiOkResponse({ schema: toOpenApiSchema(z.array(crmPipelineStageResponseSchema)) })
@@ -246,7 +321,7 @@ export class PipelineController {
     return result.stages.map(toCrmPipelineStageFromReadModel);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.edit')
   @Post(':pipelineId/stages')
   @ApiOperation({ summary: 'Add a pipeline stage' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineStageResponseSchema) })
@@ -263,7 +338,7 @@ export class PipelineController {
     return toCrmPipelineStageFromReadModel(result.stage);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.edit')
   @Patch(':pipelineId/stages/:stageId')
   @ApiOperation({ summary: 'Update a pipeline stage' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineStageResponseSchema) })
@@ -282,7 +357,7 @@ export class PipelineController {
     return toCrmPipelineStageFromReadModel(result.stage);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.edit')
   @Post(':pipelineId/stages/:stageId/activate')
   @ApiOperation({ summary: 'Activate a pipeline stage (appends to end of active order)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineStageResponseSchema) })
@@ -299,7 +374,7 @@ export class PipelineController {
     return toCrmPipelineStageFromReadModel(result.stage);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.edit')
   @Post(':pipelineId/stages/:stageId/deactivate')
   @ApiOperation({ summary: 'Deactivate a pipeline stage (reassign leads when required)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmPipelineStageResponseSchema) })
@@ -318,7 +393,7 @@ export class PipelineController {
     return toCrmPipelineStageFromReadModel(result.stage);
   }
 
-  @RequirePermissions('leads.update')
+  @RequirePermissions('crm.pipeline.edit')
   @Delete(':pipelineId/stages/:stageId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Permanently delete a stage (reassign leads when required)' })

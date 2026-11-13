@@ -4,6 +4,7 @@ import {
   PERMISSION_HIERARCHY,
   applyPermissionKeyChange,
   applyPermissionKeysChecked,
+  pagePrimaryViewPermissionKey,
   permissionDefinitionForKey,
   type PermissionHierarchyModule,
   type PermissionHierarchyPage,
@@ -401,12 +402,18 @@ export function RolePermissionMatrix({
 
                             {pageExpanded ? (
                               <ul className="divide-y divide-border/40">
-                                {visibleItems.map(({ key, def }) => (
+                                {visibleItems.map(({ key, def }) => {
+                                  const pageViewKey = pagePrimaryViewPermissionKey(page);
+                                  const needsViewFirst =
+                                    pageViewKey !== null &&
+                                    key !== pageViewKey &&
+                                    !selected.has(pageViewKey);
+                                  return (
                                   <li key={`${page.id}-${key}`}>
                                     <label
                                       className={cn(
                                         'flex items-start gap-3 py-2.5 pr-3 pl-10',
-                                        readOnly
+                                        readOnly || needsViewFirst
                                           ? 'opacity-90'
                                           : 'hover:bg-muted/25 cursor-pointer',
                                       )}
@@ -415,7 +422,9 @@ export function RolePermissionMatrix({
                                         className="mt-0.5"
                                         checked={selected.has(key)}
                                         disabled={
-                                          readOnly || (grantable ? !grantable.has(key) : false)
+                                          readOnly ||
+                                          needsViewFirst ||
+                                          (grantable ? !grantable.has(key) : false)
                                         }
                                         onCheckedChange={(value) => toggleKey(key, value === true)}
                                         aria-label={`${def.action}: ${def.description}`}
@@ -434,7 +443,8 @@ export function RolePermissionMatrix({
                                       </span>
                                     </label>
                                   </li>
-                                ))}
+                                );
+                                })}
                               </ul>
                             ) : null}
                           </div>

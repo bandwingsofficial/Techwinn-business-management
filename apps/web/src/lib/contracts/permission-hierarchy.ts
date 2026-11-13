@@ -1,3 +1,4 @@
+import { CRM_PIPELINE_PERMISSION_KEYS } from './crm-pipeline-permissions';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -62,7 +63,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'pipeline',
             label: 'Pipeline',
             href: '/admin/pipeline',
-            permissionKeys: ['leads.read', 'leads.update'],
+            permissionKeys: [...CRM_PIPELINE_PERMISSION_KEYS],
           },
           {
             id: 'leads',
