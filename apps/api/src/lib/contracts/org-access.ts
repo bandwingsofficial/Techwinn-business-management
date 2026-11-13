@@ -19,6 +19,7 @@ export const ORG_ACCESS_ROUTES = {
   rolePermissions: (id: string) => `${API_PREFIX}/org-access/roles/${id}/permissions`,
   permissions: `${API_PREFIX}/org-access/permissions`,
   myPermissions: `${API_PREFIX}/org-access/me/permissions`,
+  myPermissionEvents: `${API_PREFIX}/org-access/me/permissions/events`,
 } as const;
 
 export type OrganizationMembershipStatus =
@@ -133,6 +134,16 @@ export interface MyPermissionsResponse {
   readonly roles: readonly MyOrganizationRole[];
   /** Employee profile linked to the signed-in platform account, if any. */
   readonly sessionEmployee: MySessionEmployeeSummary | null;
+  /**
+   * Tenant permission revision. Clients compare this after realtime events /
+   * reconnects; never treat the revision (or event payload) as authorization.
+   */
+  readonly revision: string;
+}
+
+export interface MyPermissionEventsResponse {
+  readonly revision: string;
+  readonly changed: boolean;
 }
 
 export interface CreateInvitationResponse {

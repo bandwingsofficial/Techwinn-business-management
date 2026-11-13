@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { PermissionKey } from '#contracts';
 import { RedisService } from '../../../../../../infrastructure/cache/redis.service.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
+import { OrgAccessPermissionRealtimeService } from '../../../../application/services/org-access-permission-realtime.service.js';
 import type {
   OrgAccessRepository,
   OrgAccessSummary,
@@ -29,8 +30,13 @@ export class PrismaOrgAccessRepository implements OrgAccessRepository {
   private readonly roles: OrgAccessRolesPersistence;
   private readonly invitations: OrgAccessInvitationsPersistence;
 
-  constructor(prisma: PrismaService, redis: RedisService) {
-    this.permissions = new OrgAccessPermissionsPersistence(prisma, redis);
+  constructor(
+    prisma: PrismaService,
+    redis: RedisService,
+    @Inject(OrgAccessPermissionRealtimeService)
+    permissionRealtime: OrgAccessPermissionRealtimeService,
+  ) {
+    this.permissions = new OrgAccessPermissionsPersistence(prisma, redis, permissionRealtime);
     this.members = new OrgAccessMembersPersistence(prisma, this.permissions);
     this.roles = new OrgAccessRolesPersistence(prisma, this.permissions);
     this.invitations = new OrgAccessInvitationsPersistence(prisma, this.permissions);
@@ -62,6 +68,14 @@ export class PrismaOrgAccessRepository implements OrgAccessRepository {
 
   invalidatePermissionCache(organizationId: string, adminId?: string): Promise<void> {
     return this.permissions.invalidatePermissionCache(organizationId, adminId);
+  }
+
+  publishPermissionChange(organizationId: string): Promise<string> {
+    return this.permissions.publishPermissionChange(organizationId);
+  }
+
+  currentPermissionRevision(organizationId: string): Promise<string> {
+    return this.permissions.currentPermissionRevision(organizationId);
   }
 
   listMembers(organizationId: string, filters: OrgMemberListFilters): Promise<PaginatedOrgMembers> {

@@ -1,8 +1,9 @@
-import { Module, type Provider } from '@nestjs/common';
+import { Module, forwardRef, type Provider } from '@nestjs/common';
 import { CacheModule } from '../../infrastructure/cache/cache.module.js';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuthModule } from '../auth/index.js';
 import { CrmModule } from '../crm/index.js';
+import { LeaveModule } from '../leave/index.js';
 import { OrgAccessModule } from '../org-access/index.js';
 import { OrganizationCalendarModule } from '../organization-calendar/index.js';
 import { CreateAttendanceRecordHandler } from './application/create-record/create-record.handler.js';
@@ -57,7 +58,15 @@ const attendanceHandlers = [
 ] as const;
 
 @Module({
-  imports: [DatabaseModule, CacheModule, AuthModule, CrmModule, OrgAccessModule, OrganizationCalendarModule],
+  imports: [
+    DatabaseModule,
+    CacheModule,
+    AuthModule,
+    CrmModule,
+    OrgAccessModule,
+    OrganizationCalendarModule,
+    forwardRef(() => LeaveModule),
+  ],
   controllers: [AttendanceController],
   providers: [
     ...attendancePersistenceProviders,

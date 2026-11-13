@@ -163,6 +163,19 @@ export function parseResetMemberPasswordRequest(raw: unknown): ResetMemberPasswo
   return resetMemberPasswordRequestSchema.parse(raw);
 }
 
+export const orgAccessPermissionEventsQuerySchema = z.object({
+  after: z.string().regex(/^\d+$/).optional(),
+  waitMs: z.coerce.number().int().min(0).max(25_000).default(10_000),
+});
+
+export type OrgAccessPermissionEventsQuery = z.infer<typeof orgAccessPermissionEventsQuerySchema>;
+
+export function parseOrgAccessPermissionEventsQuery(
+  input: unknown,
+): OrgAccessPermissionEventsQuery {
+  return orgAccessPermissionEventsQuerySchema.parse(input);
+}
+
 export type ChangeMemberStatusRequest = z.infer<typeof changeMemberStatusRequestSchema>;
 export type AssignMemberRolesRequest = z.infer<typeof assignMemberRolesRequestSchema>;
 export type CreateRoleRequest = z.infer<typeof createRoleRequestSchema>;

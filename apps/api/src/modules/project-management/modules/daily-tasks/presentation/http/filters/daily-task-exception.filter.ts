@@ -3,6 +3,10 @@ import { API_ERROR_CODES, type ApiErrorCode } from '#contracts';
 import type { Request, Response } from 'express';
 import { sendApiError } from '../../../../../../../common/filters/api-error.response.js';
 import {
+  EmployeeOnApprovedLeaveError,
+  employeeOnApprovedLeaveDetails,
+} from '../../../../../../leave/index.js';
+import {
   DailyTaskError,
   DailyTaskValidationError,
   type DailyTaskErrorCode,
@@ -18,12 +22,21 @@ const HTTP_MAPPING: Record<DailyTaskErrorCode, { status: number; code: ApiErrorC
   FORBIDDEN: { status: HttpStatus.FORBIDDEN, code: API_ERROR_CODES.FORBIDDEN },
 };
 
-@Catch(DailyTaskError)
-export class DailyTaskExceptionFilter implements ExceptionFilter<DailyTaskError> {
-  catch(error: DailyTaskError, host: ArgumentsHost): void {
+@Catch(DailyTaskError, EmployeeOnApprovedLeaveError)
+export class DailyTaskExceptionFilter implements ExceptionFilter<DailyTaskError | EmployeeOnApprovedLeaveError> {
+  catch(error: DailyTaskError | EmployeeOnApprovedLeaveError, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
+    if (error instanceof EmployeeOnApprovedLeaveError) {
+      sendApiError(request, response, {
+        status: HttpStatus.CONFLICT,
+        code: API_ERROR_CODES.EMPLOYEE_ON_APPROVED_LEAVE,
+        message: error.message,
+        details: employeeOnApprovedLeaveDetails(error),
+      });
+      return;
+    }
     const mapping = HTTP_MAPPING[error.code];
     sendApiError(request, response, {
       status: mapping.status,

@@ -180,6 +180,7 @@ export class OrgAccessMembersPersistence {
     });
 
     await this.permissions.invalidatePermissionCache(organizationId, membership.adminId);
+    await this.permissions.publishPermissionChange(organizationId);
     return toMemberRecord(row);
   }
 
@@ -245,6 +246,7 @@ export class OrgAccessMembersPersistence {
     });
 
     await this.permissions.invalidatePermissionCache(organizationId, membership.adminId);
+    await this.permissions.publishPermissionChange(organizationId);
     return toMemberRecord(row);
   }
 
@@ -288,6 +290,7 @@ export class OrgAccessMembersPersistence {
     });
 
     await this.permissions.invalidatePermissionCache(organizationId, membership.adminId);
+    await this.permissions.publishPermissionChange(organizationId);
   }
 
   async updateMemberProfile(
@@ -592,6 +595,7 @@ export class OrgAccessMembersPersistence {
     }
 
     await this.permissions.invalidatePermissionCache(organizationId, account.adminId);
+    await this.permissions.publishPermissionChange(organizationId);
     return toMemberRecord(await loadMembershipOrThrow(this.prisma, organizationId, membershipId));
   }
 }

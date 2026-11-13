@@ -27,4 +27,6 @@ export interface CalendarNormalizedTask {
   readonly completedAt: string | null;
   readonly description: string;
   readonly navigation: CalendarTaskNavigation;
+  readonly assigneeOnLeave: boolean;
+  readonly leaveConflictSummary: string | null;
 }

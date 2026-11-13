@@ -32,6 +32,9 @@ import {
 } from '../constants/leave-apply-payload';
 import {
   firstSelectableLeaveTypeId,
+  formatAvailableBalancePhrase,
+  formatLeaveDayWord,
+  formatWorkingDaysRequested,
   hasLeaveBalanceAvailable,
   parseLeaveDayAmount,
 } from '../constants/employee-leave-ui';
@@ -220,7 +223,7 @@ export function useEmployeeLeavePage() {
     const available = parseLeaveDayAmount(selectedBalance.availableDays);
     const requested = parseLeaveDayAmount(previewDays);
     if (requested <= available) return null;
-    return `${previewDays} working day(s) requested. Available balance: ${selectedBalance.availableDays} days.`;
+    return `${formatWorkingDaysRequested(previewDays)}. ${formatAvailableBalancePhrase(selectedBalance.availableDays)}.`;
   }, [selectedBalance, previewDays]);
 
   useEffect(() => {
@@ -254,9 +257,14 @@ export function useEmployeeLeavePage() {
       void (async () => {
         setPreviewLoading(true);
         try {
+          const selectedDates = expandInclusiveCalendarRange(
+            leaveDateRange.startDate,
+            leaveDateRange.endDate,
+          );
           const result = await previewLeaveDays({
             startDate: leaveDateRange.startDate,
             endDate: leaveDateRange.endDate,
+            selectedDates,
             isHalfDay,
             halfDayDate: isHalfDay && halfDayDate ? halfDayDate : undefined,
             leaveTypeId: leaveTypeId || undefined,
@@ -350,7 +358,7 @@ export function useEmployeeLeavePage() {
       const available = parseLeaveDayAmount(balanceRow.availableDays);
       const requested = parseLeaveDayAmount(previewDays);
       if (requested > available) {
-        errors.balance = `Insufficient balance. Available: ${balanceRow.availableDays} day(s), requested: ${previewDays}.`;
+        errors.balance = `Insufficient balance. Available: ${balanceRow.availableDays} ${formatLeaveDayWord(balanceRow.availableDays)}, requested: ${previewDays}.`;
       }
     }
     if (Object.keys(errors).length > 0) {

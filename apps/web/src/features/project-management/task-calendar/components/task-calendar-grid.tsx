@@ -58,6 +58,10 @@ export function TaskCalendarGrid({
                 isFirstCol={column === 0}
                 taskCount={bucket?.taskCount ?? tasks.length}
                 assigneeCount={bucket?.distinctAssigneeCount ?? assigneeFallback}
+                onLeaveCount={
+                  bucket?.onLeaveCount ??
+                  tasks.filter((task) => task.assigneeOnLeave).length
+                }
                 tasks={cellContentLoading ? [] : tasks}
                 contentLoading={cellContentLoading}
                 onOpenTask={onOpenTask}

@@ -71,3 +71,65 @@ export class LeaveBalanceHasDependenciesError extends LeaveError {
     this.name = 'LeaveBalanceHasDependenciesError';
   }
 }
+
+export type EmployeeOnApprovedLeaveErrorInput = {
+  readonly employeeId: string;
+  readonly employeeDisplayName: string | null;
+  readonly date: string;
+  readonly leaveTypeName: string | null;
+  readonly startDate: string | null;
+  readonly endDate: string | null;
+  readonly coverage: 'full' | 'half';
+  readonly halfDaySession: 'FIRST_HALF' | 'SECOND_HALF' | null;
+  readonly action?: 'punch' | 'manual_present' | 'manual_absent' | 'manual_override' | 'assign';
+};
+
+function buildOnLeaveMessage(input: EmployeeOnApprovedLeaveErrorInput): string {
+  const who = input.employeeDisplayName?.trim() || 'This employee';
+  const leaveType = input.leaveTypeName?.trim() || 'approved leave';
+  const period =
+    input.startDate && input.endDate && input.startDate !== input.endDate
+      ? `${input.startDate} to ${input.endDate}`
+      : input.date;
+  if (input.action === 'punch') {
+    return `${who} is on ${leaveType} for ${input.date}. Punch in/out is not allowed during approved full-day leave.`;
+  }
+  if (input.action === 'manual_present') {
+    return `${who} is on ${leaveType} for ${input.date}. Present cannot be marked for an approved leave day.`;
+  }
+  if (input.action === 'manual_absent') {
+    return `${who} is on ${leaveType} for ${input.date}. Absent cannot be marked for an approved leave day.`;
+  }
+  if (input.action === 'manual_override') {
+    return `${who} is on ${leaveType} for ${input.date}. Attendance cannot be overridden for approved leave.`;
+  }
+  if (input.coverage === 'half') {
+    return `${who} has approved half-day ${leaveType} on ${input.date}.`;
+  }
+  return `${who} is on approved leave (${leaveType}) for ${period}. They cannot be assigned tasks on ${input.date}.`;
+}
+
+/** Cross-module conflict when an action conflicts with persisted approved leave. */
+export class EmployeeOnApprovedLeaveError extends LeaveError {
+  readonly employeeId: string;
+  readonly employeeDisplayName: string | null;
+  readonly date: string;
+  readonly leaveTypeName: string | null;
+  readonly startDate: string | null;
+  readonly endDate: string | null;
+  readonly coverage: 'full' | 'half';
+  readonly halfDaySession: 'FIRST_HALF' | 'SECOND_HALF' | null;
+
+  constructor(input: EmployeeOnApprovedLeaveErrorInput) {
+    super(buildOnLeaveMessage(input), 'EMPLOYEE_ON_APPROVED_LEAVE');
+    this.name = 'EmployeeOnApprovedLeaveError';
+    this.employeeId = input.employeeId;
+    this.employeeDisplayName = input.employeeDisplayName;
+    this.date = input.date;
+    this.leaveTypeName = input.leaveTypeName;
+    this.startDate = input.startDate;
+    this.endDate = input.endDate;
+    this.coverage = input.coverage;
+    this.halfDaySession = input.halfDaySession;
+  }
+}

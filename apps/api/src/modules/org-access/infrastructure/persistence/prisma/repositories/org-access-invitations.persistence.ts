@@ -294,6 +294,7 @@ export class OrgAccessInvitationsPersistence {
       });
 
       await this.permissions.invalidatePermissionCache(invitation.organizationId, admin.id);
+      await this.permissions.publishPermissionChange(invitation.organizationId);
 
       return { organizationId: invitation.organizationId, adminId: admin.id };
     });

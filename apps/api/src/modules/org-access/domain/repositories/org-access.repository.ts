@@ -102,6 +102,8 @@ export interface OrgAccessRepository {
     adminId: string,
   ): Promise<readonly OrgMembershipRoleSummary[]>;
   invalidatePermissionCache(organizationId: string, adminId?: string): Promise<void>;
+  publishPermissionChange(organizationId: string): Promise<string>;
+  currentPermissionRevision(organizationId: string): Promise<string>;
   listMembers(organizationId: string, filters: OrgMemberListFilters): Promise<PaginatedOrgMembers>;
   getMember(organizationId: string, membershipId: string): Promise<OrgMemberRecord | null>;
   getSummary(organizationId: string): Promise<OrgAccessSummary>;

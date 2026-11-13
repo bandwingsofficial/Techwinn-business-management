@@ -38,6 +38,7 @@ import { LeaveAuthorizationService } from './services/leave-authorization.servic
 import { resolveLeaveRequestDates } from '../domain/policies/leave-request-dates.policy.js';
 import { LeaveValidationError } from '../domain/errors/leave.errors.js';
 import { LeaveDayCalculationService } from './services/leave-day-calculation.service.js';
+import { LeaveAttendanceSyncService } from './services/leave-attendance-sync.service.js';
 
 @Injectable()
 export class ListLeaveYearConfigurationsHandler {
@@ -545,29 +546,34 @@ export class CancelLeaveRequestHandler {
   constructor(
     @Inject(LEAVE_REPOSITORY) private readonly repository: LeaveRepository,
     private readonly authz: LeaveAuthorizationService,
+    private readonly attendanceSync: LeaveAttendanceSyncService,
   ) {}
 
   async execute(actor: OrgAccessActor, requestId: string, reason: string): Promise<LeaveRequestItem> {
     const canReadAll = await this.authz.hasPermission(actor, 'leave.requests.read_all');
+    let result: LeaveRequestItem;
     if (canReadAll) {
       await this.authz.requireAnyPermission(actor, ['leave.requests.cancel']);
-      return this.repository.cancelLeaveRequest(
+      result = await this.repository.cancelLeaveRequest(
         actor.organizationId,
         requestId,
         actor.adminId,
         reason,
         {},
       );
+    } else {
+      await this.authz.requireAnyPermission(actor, ['leave.requests.cancel']);
+      const employeeId = await this.authz.requireEmployeeId(actor);
+      result = await this.repository.cancelLeaveRequest(
+        actor.organizationId,
+        requestId,
+        actor.adminId,
+        reason,
+        { employeeId },
+      );
     }
-    await this.authz.requireAnyPermission(actor, ['leave.requests.cancel']);
-    const employeeId = await this.authz.requireEmployeeId(actor);
-    return this.repository.cancelLeaveRequest(
-      actor.organizationId,
-      requestId,
-      actor.adminId,
-      reason,
-      { employeeId },
-    );
+    await this.attendanceSync.reconcileDates(actor.organizationId, result.selectedDates);
+    return result;
   }
 }
 
@@ -576,11 +582,18 @@ export class ApproveLeaveRequestHandler {
   constructor(
     @Inject(LEAVE_REPOSITORY) private readonly repository: LeaveRepository,
     @Inject(LeaveAuthorizationService) private readonly authz: LeaveAuthorizationService,
+    private readonly attendanceSync: LeaveAttendanceSyncService,
   ) {}
 
   async execute(actor: OrgAccessActor, requestId: string): Promise<LeaveRequestItem> {
     await this.authz.requireAnyPermission(actor, ['leave.requests.approve']);
-    return this.repository.approveLeaveRequest(actor.organizationId, requestId, actor.adminId);
+    const result = await this.repository.approveLeaveRequest(
+      actor.organizationId,
+      requestId,
+      actor.adminId,
+    );
+    await this.attendanceSync.reconcileDates(actor.organizationId, result.selectedDates);
+    return result;
   }
 }
 

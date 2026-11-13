@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { WorkspaceShellSkeleton } from '@/components/loading/skeletons';
 import { getMyPermissions } from '@/features/admin/org-access/api/org-access';
+import { useOrgAccessPermissionRealtime } from '@/features/admin/org-access/hooks/use-org-access-permission-realtime';
 import { describeOrgAccessError } from '@/features/admin/org-access/utils/errors';
 import {
   invalidateMyPermissionsCache,
@@ -67,6 +68,7 @@ type AccessSnapshot = {
   readonly permissions: readonly PermissionKey[];
   readonly roles: readonly MyOrganizationRole[];
   readonly sessionEmployee: MySessionEmployeeSummary | null;
+  readonly revision: string;
 };
 
 function readBootstrapSnapshot(): AccessSnapshot | null {
@@ -76,6 +78,7 @@ function readBootstrapSnapshot(): AccessSnapshot | null {
     permissions: bootstrap.permissions,
     roles: bootstrap.roles,
     sessionEmployee: bootstrap.sessionEmployee ?? null,
+    revision: '0',
   };
 }
 
@@ -100,8 +103,10 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(() => !hasUsableAccess(initialSnapshot));
   const loadGenerationRef = useRef(0);
   const hadBootstrapRef = useRef(hasUsableAccess(initialSnapshot));
+  const lastRevisionRef = useRef(initialSnapshot?.revision ?? '0');
 
   const applySnapshot = useCallback((next: AccessSnapshot) => {
+    lastRevisionRef.current = next.revision;
     setSnapshot(next);
     setFatalError(null);
   }, []);
@@ -111,8 +116,9 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       readonly signal?: AbortSignal;
       readonly generation: number;
       readonly silent?: boolean;
+      readonly revalidateRoute?: boolean;
     }) => {
-      const { signal, generation, silent = false } = options;
+      const { signal, generation, silent = false, revalidateRoute = false } = options;
       if (!silent) {
         setInitializing(true);
       }
@@ -136,7 +142,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           permissions: response.permissions,
           roles,
           sessionEmployee: response.sessionEmployee ?? null,
+          revision: response.revision ?? '0',
         });
+        if (revalidateRoute) {
+          router.refresh();
+        }
       } catch (failure) {
         if (signal?.aborted || isAbortError(failure)) return;
         if (generation !== loadGenerationRef.current) return;
@@ -155,7 +165,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           if (previous && previous.permissions.length > 0) {
             return previous;
           }
-          return { permissions: [], roles: [], sessionEmployee: null };
+          return { permissions: [], roles: [], sessionEmployee: null, revision: '0' };
         });
 
         setFatalError(describeOrgAccessError(failure));
@@ -213,6 +223,16 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [runPermissionLoad]);
+
+  useOrgAccessPermissionRealtime({
+    initialRevision: snapshot?.revision ?? null,
+    onRevisionChange: (revision) => {
+      if (revision === lastRevisionRef.current) return;
+      invalidateMyPermissionsCache();
+      const generation = ++loadGenerationRef.current;
+      void runPermissionLoad({ generation, silent: true, revalidateRoute: true });
+    },
+  });
 
   const value = useMemo((): PermissionsContextValue | null => {
     if (!snapshot) return null;

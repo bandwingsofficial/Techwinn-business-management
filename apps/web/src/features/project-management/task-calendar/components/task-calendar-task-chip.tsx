@@ -25,7 +25,14 @@ export function TaskCalendarTaskChip({
 }) {
   const { surfaceHex, dotHex, text } = muted ? MUTED_CHIP_STYLE : taskCalendarChipStyle(task);
   const statusLine = formatTaskCalendarStatusLine(task);
-  const tooltip = [task.title, statusLine, task.dueDate ? `Due ${task.dueDate}` : null].filter(Boolean).join('\n');
+  const tooltip = [
+    task.title,
+    statusLine,
+    task.dueDate ? `Due ${task.dueDate}` : null,
+    task.assigneeOnLeave ? task.leaveConflictSummary ?? 'On Leave' : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return (
     <Tooltip>
@@ -49,6 +56,11 @@ export function TaskCalendarTaskChip({
             aria-hidden
           />
           <span className={cn('min-w-0 flex-1 truncate font-medium', text)}>{task.title}</span>
+          {task.assigneeOnLeave ? (
+            <span className="shrink-0 rounded bg-amber-100 px-1 text-[8px] font-semibold text-amber-900">
+              On Leave
+            </span>
+          ) : null}
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" align="start" className="max-w-[18rem] whitespace-pre-line text-xs">

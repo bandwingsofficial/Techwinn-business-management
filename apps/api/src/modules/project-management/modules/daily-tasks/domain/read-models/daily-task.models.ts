@@ -52,6 +52,14 @@ export interface DailyTaskAssigneeSummary {
   readonly completedAt: string | null;
 }
 
+export interface DailyTaskAssigneeLeaveConflict {
+  readonly employeeId: string;
+  readonly employeeDisplayName: string;
+  readonly coverage: 'full' | 'half';
+  readonly leaveTypeName: string | null;
+  readonly halfDaySession: 'FIRST_HALF' | 'SECOND_HALF' | null;
+}
+
 export interface DailyTaskListItem {
   readonly id: string;
   readonly type: DailyTaskType;
@@ -79,6 +87,7 @@ export interface DailyTaskListItem {
   readonly completedAt: string | null;
   readonly isOverdue: boolean;
   readonly assignees: readonly DailyTaskAssigneeSummary[];
+  readonly assigneeLeaveConflicts: readonly DailyTaskAssigneeLeaveConflict[];
   readonly latestEmployeeNote: DailyTaskLatestNotePreview | null;
   readonly unreadEmployeeNoteCount: number;
   readonly orgTaskNotes: DailyTaskNotesCardSummary | null;

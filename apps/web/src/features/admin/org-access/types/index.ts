@@ -1,5 +1,6 @@
 export type {
   CreateInvitationResponse,
+  MyPermissionEventsResponse,
   MyPermissionsResponse,
   OrgAccessSummaryResponse,
   OrgMemberDetail,

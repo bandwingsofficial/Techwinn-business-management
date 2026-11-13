@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../../../../../infrastructure/database/prisma.service.js';
+import { ApprovedLeaveAvailabilityService } from '../../../../../../../leave/application/services/approved-leave-availability.service.js';
 import type { DailyTaskRepository } from '../../../../domain/repositories/daily-task.repository.js';
 import { DailyTaskPrismaStore } from '../stores/daily-task-prisma.store.js';
 
@@ -8,8 +9,8 @@ import { DailyTaskPrismaStore } from '../stores/daily-task-prisma.store.js';
 export class PrismaDailyTaskRepository implements DailyTaskRepository {
   private readonly store: DailyTaskPrismaStore;
 
-  constructor(prisma: PrismaService) {
-    this.store = new DailyTaskPrismaStore(prisma);
+  constructor(prisma: PrismaService, leaveAvailability: ApprovedLeaveAvailabilityService) {
+    this.store = new DailyTaskPrismaStore(prisma, leaveAvailability);
   }
 
   listWorkflowStages(...args: Parameters<DailyTaskPrismaStore['listWorkflowStages']>) {

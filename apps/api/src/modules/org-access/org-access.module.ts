@@ -23,8 +23,10 @@ import { ProvisionMemberHandler } from './application/provision-member/provision
 import { ResendInvitationHandler } from './application/resend-invitation/resend-invitation.handler.js';
 import { ResetMemberPasswordHandler } from './application/reset-member-password/reset-member-password.handler.js';
 import { RevokeInvitationHandler } from './application/revoke-invitation/revoke-invitation.handler.js';
+import { PollPermissionEventsHandler } from './application/poll-permission-events/poll-permission-events.handler.js';
 import { SetRolePermissionsHandler } from './application/set-role-permissions/set-role-permissions.handler.js';
 import { MemberAccountService } from './application/services/member-account.service.js';
+import { OrgAccessPermissionRealtimeService } from './application/services/org-access-permission-realtime.service.js';
 import { PermissionCheckerService } from './application/services/permission-checker.service.js';
 import { UpdateMemberProfileHandler } from './application/update-member-profile/update-member-profile.handler.js';
 import { UpdateOrgRoleHandler } from './application/update-org-role/update-org-role.handler.js';
@@ -61,6 +63,7 @@ const orgAccessUseCaseHandlers = [
   ResendInvitationHandler,
   ResetMemberPasswordHandler,
   RevokeInvitationHandler,
+  PollPermissionEventsHandler,
   SetRolePermissionsHandler,
   UpdateMemberProfileHandler,
   UpdateOrgRoleHandler,
@@ -78,6 +81,7 @@ const orgAccessUseCaseHandlers = [
   controllers: [OrgAccessController],
   providers: [
     ...orgAccessPersistenceProviders,
+    OrgAccessPermissionRealtimeService,
     PermissionCheckerService,
     MemberAccountService,
     RequirePermissionsGuard,
@@ -87,6 +91,7 @@ const orgAccessUseCaseHandlers = [
   exports: [
     ORG_ACCESS_REPOSITORY,
     MEMBER_ACCOUNT_TRANSACTION,
+    OrgAccessPermissionRealtimeService,
     PermissionCheckerService,
     MemberAccountService,
     RequirePermissionsGuard,

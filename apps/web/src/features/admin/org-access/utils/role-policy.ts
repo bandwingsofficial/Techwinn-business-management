@@ -33,18 +33,18 @@ export function roleHasPendingInvitations(
   return role.pendingInvitationCount > 0;
 }
 
-/** Show activate/deactivate control (Pipeline-style icon). Owner is the only role that hides this in the UI. */
+/** Show activate/deactivate control. Immutable Owner/Admin roles never expose this. */
 export function roleShowsStatusToggle(
   role: OrgRoleListItem,
   canUpdate: boolean,
 ): boolean {
-  if (!canUpdate || isOwnerOrgRole(role)) return false;
+  if (!canUpdate || isImmutableOrgRole(role)) return false;
   return true;
 }
 
-/** Show permanent delete control. Owner is the only role that hides this in the UI. */
+/** Show permanent delete control. Immutable Owner/Admin roles never expose this. */
 export function roleShowsDeleteButton(role: OrgRoleListItem, canDelete: boolean): boolean {
-  if (!canDelete || isOwnerOrgRole(role)) return false;
+  if (!canDelete || isImmutableOrgRole(role)) return false;
   return true;
 }
 

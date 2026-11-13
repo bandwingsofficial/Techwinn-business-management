@@ -10,15 +10,17 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   PERMISSION_DEFINITIONS,
   type PermissionKey,
   type CreateInvitationResponse,
+  type MyPermissionEventsResponse,
   type MyPermissionsResponse,
   type OrgAccessSummaryResponse,
   type OrgMemberDetail,
@@ -34,6 +36,7 @@ import {
   changeMemberStatusRequestSchema,
   createRoleRequestSchema,
   inviteMemberRequestSchema,
+  parseOrgAccessPermissionEventsQuery,
   parseOrgMemberListQuery,
   setRolePermissionsRequestSchema,
   updateRoleRequestSchema,
@@ -58,6 +61,7 @@ import { GetOrgRoleDeletionImpactHandler } from '../../../application/get-org-ro
 import { InviteMemberHandler } from '../../../application/invite-member/invite-member.handler.js';
 import { ListOrgMembersHandler } from '../../../application/list-org-members/list-org-members.handler.js';
 import { ListOrgRolesHandler } from '../../../application/list-org-roles/list-org-roles.handler.js';
+import { PollPermissionEventsHandler } from '../../../application/poll-permission-events/poll-permission-events.handler.js';
 import { ProvisionMemberHandler } from '../../../application/provision-member/provision-member.handler.js';
 import { ResendInvitationHandler } from '../../../application/resend-invitation/resend-invitation.handler.js';
 import { ResetMemberPasswordHandler } from '../../../application/reset-member-password/reset-member-password.handler.js';
@@ -94,6 +98,8 @@ export class OrgAccessController {
     @Inject(DeleteMemberHandler) private readonly deleteMember: DeleteMemberHandler,
     @Inject(DeleteOrgRoleHandler) private readonly deleteOrgRole: DeleteOrgRoleHandler,
     @Inject(GetMyPermissionsHandler) private readonly getMyPermissions: GetMyPermissionsHandler,
+    @Inject(PollPermissionEventsHandler)
+    private readonly pollPermissionEvents: PollPermissionEventsHandler,
     @Inject(GetOrgAccessSummaryHandler) private readonly getOrgAccessSummary: GetOrgAccessSummaryHandler,
     @Inject(GetOrgMemberHandler) private readonly getOrgMember: GetOrgMemberHandler,
     @Inject(GetOrgRoleHandler) private readonly getOrgRole: GetOrgRoleHandler,
@@ -142,7 +148,37 @@ export class OrgAccessController {
       permissions: [...snapshot.permissions] as PermissionKey[],
       roles: [...snapshot.roles],
       sessionEmployee: snapshot.sessionEmployee,
+      revision: snapshot.revision,
     };
+  }
+
+  /**
+   * Long-poll tenant permission revision changes. Returns identifiers only;
+   * clients must refetch `/me/permissions` for authoritative effective access.
+   */
+  @Get('me/permissions/events')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard, CrmOrganizationGuard)
+  @ApiOperation({ summary: 'Long-poll organization permission revision changes' })
+  async myPermissionEvents(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<MyPermissionEventsResponse> {
+    const query = parseOrgAccessPermissionEventsQuery(request.query);
+    const abort = new AbortController();
+    const onClose = () => abort.abort();
+    response.on('close', onClose);
+    try {
+      return await this.pollPermissionEvents.execute({
+        organizationId: ctx.organizationId,
+        after: query.after,
+        waitMs: query.waitMs,
+        signal: abort.signal,
+      });
+    } finally {
+      response.off('close', onClose);
+    }
   }
 
   @Get('permissions')

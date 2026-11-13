@@ -1,7 +1,8 @@
 'use client';
 
 import {
-  ensureViewPermissionPrerequisites,
+  applyPermissionKeyChange,
+  describeMissingViewPrerequisites,
   type PermissionKey,
 } from '@techwin/contracts';
 import {
@@ -17,6 +18,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -146,9 +148,15 @@ export function RoleFormDialog({
       .finally(() => setLoadingRole(false));
   }, [open, roleId, isCreate, resetCreate, toast]);
 
+  /** Authoritative selection for this editing session — exact keys, no template merge. */
   const permissionKeys = useMemo(
-    () => ensureViewPermissionPrerequisites([...form.permissionKeys]),
+    () => [...form.permissionKeys],
     [form.permissionKeys],
+  );
+
+  const missingViewWarning = useMemo(
+    () => describeMissingViewPrerequisites(permissionKeys),
+    [permissionKeys],
   );
 
   const onSubmit = async () => {
@@ -172,8 +180,13 @@ export function RoleFormDialog({
         return;
       }
       try {
-        await run(() => createOrgRole(parsed.data));
-        toast.success('Role created.');
+        const created = await run(() => createOrgRole(parsed.data));
+        if (!created) return;
+        setForm((current) => ({
+          ...current,
+          permissionKeys: new Set(created.permissionKeys),
+        }));
+        toast.success('Role saved.');
         invalidateMyPermissionsCache();
         await refreshMyPermissions();
         onOpenChange(false);
@@ -228,6 +241,10 @@ export function RoleFormDialog({
         return;
       }
 
+      setForm((current) => ({
+        ...current,
+        permissionKeys: new Set(saved.permissionKeys),
+      }));
       toast.success('Role saved.');
       invalidateMyPermissionsCache();
       await refreshMyPermissions();
@@ -377,16 +394,10 @@ export function RoleFormDialog({
                   readOnly={effectiveReadOnly || pending}
                   grantable={grantablePermissions}
                   onToggle={(key, checked) => {
-                    // Matrix primarily uses onReplaceSelection; keep this path consistent.
                     setForm((current) => ({
                       ...current,
                       permissionKeys: new Set(
-                        checked
-                          ? ensureViewPermissionPrerequisites([
-                              ...current.permissionKeys,
-                              key,
-                            ])
-                          : [...current.permissionKeys].filter((entry) => entry !== key),
+                        applyPermissionKeyChange(current.permissionKeys, key, checked, grantablePermissions),
                       ),
                     }));
                     clearFormFieldError(setFieldErrors, 'permissionKeys');
@@ -394,13 +405,16 @@ export function RoleFormDialog({
                   onReplaceSelection={(keys) => {
                     setForm((current) => ({
                       ...current,
-                      permissionKeys: new Set(
-                        ensureViewPermissionPrerequisites(keys),
-                      ),
+                      permissionKeys: new Set(keys),
                     }));
                     clearFormFieldError(setFieldErrors, 'permissionKeys');
                   }}
                 />
+                {missingViewWarning && !effectiveReadOnly ? (
+                  <Alert>
+                    <AlertDescription>{missingViewWarning}</AlertDescription>
+                  </Alert>
+                ) : null}
                 <CrmInlineFieldError message={fieldErrors.permissionKeys} reserveSpace={false} />
               </div>
             </div>

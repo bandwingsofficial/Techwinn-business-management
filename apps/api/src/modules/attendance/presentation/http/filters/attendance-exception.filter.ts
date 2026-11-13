@@ -2,14 +2,29 @@ import { Catch, HttpStatus, type ArgumentsHost, type ExceptionFilter } from '@ne
 import { API_ERROR_CODES, type ApiErrorCode } from '#contracts';
 import type { Request, Response } from 'express';
 import { sendApiError } from '../../../../../common/filters/api-error.response.js';
+import {
+  EmployeeOnApprovedLeaveError,
+  employeeOnApprovedLeaveDetails,
+} from '../../../../leave/index.js';
 import { AttendanceError } from '../../../domain/errors/attendance.errors.js';
 
-@Catch(AttendanceError)
-export class AttendanceExceptionFilter implements ExceptionFilter<AttendanceError> {
-  catch(error: AttendanceError, host: ArgumentsHost): void {
+@Catch(AttendanceError, EmployeeOnApprovedLeaveError)
+export class AttendanceExceptionFilter
+  implements ExceptionFilter<AttendanceError | EmployeeOnApprovedLeaveError>
+{
+  catch(error: AttendanceError | EmployeeOnApprovedLeaveError, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
+    if (error instanceof EmployeeOnApprovedLeaveError) {
+      sendApiError(request, response, {
+        status: HttpStatus.CONFLICT,
+        code: API_ERROR_CODES.EMPLOYEE_ON_APPROVED_LEAVE,
+        message: error.message,
+        details: employeeOnApprovedLeaveDetails(error),
+      });
+      return;
+    }
     let status = HttpStatus.BAD_REQUEST;
     let code: ApiErrorCode = API_ERROR_CODES.BAD_REQUEST;
     if (error.code === 'ATTENDANCE_NOT_FOUND') {

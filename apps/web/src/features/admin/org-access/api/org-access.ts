@@ -12,6 +12,7 @@ import type {
   CreateInvitationResponse,
   CreateRoleRequest,
   InviteMemberRequest,
+  MyPermissionEventsResponse,
   MyPermissionsResponse,
   OrgAccessSummaryResponse,
   OrgMemberDetail,
@@ -50,6 +51,20 @@ export function getOrgAccessSummary(signal?: AbortSignal): Promise<OrgAccessSumm
 
 export function getMyPermissions(signal?: AbortSignal): Promise<MyPermissionsResponse> {
   return apiRequest<MyPermissionsResponse>(ORG_ACCESS_ROUTES.myPermissions, { auth: true, signal });
+}
+
+export function pollMyPermissionEvents(
+  after: string | null,
+  waitMs: number,
+  signal?: AbortSignal,
+): Promise<MyPermissionEventsResponse> {
+  return apiRequest<MyPermissionEventsResponse>(
+    `${ORG_ACCESS_ROUTES.myPermissionEvents}${buildQueryString({
+      after: after ?? undefined,
+      waitMs: after === null ? 0 : waitMs,
+    })}`,
+    { auth: true, signal },
+  );
 }
 
 export function getPermissionCatalog(signal?: AbortSignal): Promise<PermissionCatalogResponse> {

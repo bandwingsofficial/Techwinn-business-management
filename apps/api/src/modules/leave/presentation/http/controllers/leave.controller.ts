@@ -19,6 +19,7 @@ import type {
   EmployeeLeaveBalanceItem,
   EmployeeLeaveBalanceListResponse,
   GenerateEmployeeBalancesResponse,
+  EmployeeApprovedLeaveAvailabilityResponse,
   LeavePreviewDaysResponse,
   LeaveRequestItem,
   LeaveRequestListResponse,
@@ -85,6 +86,7 @@ import {
   UpdateLeaveBalanceConfigurationHandler,
   UpdateLeaveYearConfigurationHandler,
 } from '../../../application/leave.handlers.js';
+import { ListApprovedLeaveAvailabilityHandler } from '../../../application/list-approved-leave-availability/list-approved-leave-availability.handler.js';
 import { LeaveExceptionFilter } from '../filters/leave-exception.filter.js';
 import type { LeaveBalanceTransactionListResponse } from '../../../domain/repositories/leave.repository.js';
 
@@ -128,7 +130,31 @@ export class LeaveController {
     private readonly cancelLeaveRequest: CancelLeaveRequestHandler,
     private readonly approveLeaveRequest: ApproveLeaveRequestHandler,
     private readonly rejectLeaveRequest: RejectLeaveRequestHandler,
+    private readonly listApprovedLeaveAvailability: ListApprovedLeaveAvailabilityHandler,
   ) {}
+
+  @Get('approved-availability')
+  @ApiOperation({ summary: 'List employees with approved leave on a date' })
+  approvedAvailability(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: PlatformAuthenticatedRequest,
+    @Query() query: Record<string, unknown>,
+  ): Promise<EmployeeApprovedLeaveAvailabilityResponse> {
+    const date = typeof query.date === 'string' ? query.date.trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new NotFoundException('Provide a valid date (YYYY-MM-DD).');
+    }
+    const rawIds = typeof query.employeeIds === 'string' ? query.employeeIds : '';
+    const employeeIds = rawIds
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return this.listApprovedLeaveAvailability.execute(
+      actorFrom(ctx, request),
+      date,
+      employeeIds.length > 0 ? employeeIds : undefined,
+    );
+  }
 
   @Get('year-configurations')
   @ApiOperation({ summary: 'List leave year configurations' })

@@ -42,6 +42,8 @@ import {
   updateDailyTask,
 } from '../api/daily-tasks';
 import { classifyOrgCalendarDate } from '@/features/admin/org-calendar/api/org-calendar-api';
+import { fetchApprovedLeaveAvailability } from '@/features/leave/api/leave-api';
+import type { EmployeeApprovedLeaveAvailabilityItem } from '@techwin/contracts';
 import type { DailyTaskListItem, DailyTaskType, DailyTaskWorkflowStage } from '../types';
 
 const BTN_SECONDARY =
@@ -103,6 +105,9 @@ export function DailyTaskAssignDialog({
   const [formAssignDate, setFormAssignDate] = useState(assignDate);
   const [dueDate, setDueDate] = useState('');
   const [nonWorkingAssignWarning, setNonWorkingAssignWarning] = useState<string | null>(null);
+  const [leaveByEmployeeId, setLeaveByEmployeeId] = useState<
+    ReadonlyMap<string, EmployeeApprovedLeaveAvailabilityItem>
+  >(new Map());
 
   const defaultDailyStageId = useMemo(
     () => dailyStages.find((s) => s.stageKey === 'todo')?.id ?? dailyStages[0]?.id ?? '',
@@ -191,6 +196,31 @@ export function DailyTaskAssignDialog({
   }, [open, formAssignDate]);
 
   useEffect(() => {
+    if (!open || !formAssignDate) {
+      setLeaveByEmployeeId(new Map());
+      return;
+    }
+    let cancelled = false;
+    void fetchApprovedLeaveAvailability({ date: formAssignDate })
+      .then((response) => {
+        if (cancelled) return;
+        setLeaveByEmployeeId(new Map(response.items.map((item) => [item.employeeId, item])));
+        setEmployeeIds((current) =>
+          current.filter((id) => {
+            const leave = response.items.find((item) => item.employeeId === id);
+            return !leave || leave.coverage !== 'full';
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setLeaveByEmployeeId(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, formAssignDate]);
+
+  useEffect(() => {
     if (type !== 'PROJECT' || !projectId) {
       setProjectPhases([]);
       setProjectPhaseId('');
@@ -213,6 +243,8 @@ export function DailyTaskAssignDialog({
   }, [type, projectId, toast]);
 
   const toggleEmployee = (id: string) => {
+    const leave = leaveByEmployeeId.get(id);
+    if (leave?.coverage === 'full') return;
     setEmployeeIds((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
     );
@@ -444,18 +476,61 @@ export function DailyTaskAssignDialog({
               {employees.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No active employees found.</p>
               ) : (
-                employees.map((employee) => (
-                  <label key={employee.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50">
+                employees.map((employee) => {
+                  const leave = leaveByEmployeeId.get(employee.id);
+                  const fullDayLeave = leave?.coverage === 'full';
+                  const halfDayLeave = leave?.coverage === 'half';
+                  const leaveType = leave?.leaveTypeName?.trim() || 'approved leave';
+                  return (
+                  <label
+                    key={employee.id}
+                    className={cn(
+                      'flex items-start gap-2 rounded-md px-2 py-1.5',
+                      fullDayLeave ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-muted/50',
+                    )}
+                  >
                     <input
                       type="checkbox"
+                      className="mt-1"
                       checked={employeeIds.includes(employee.id)}
-                      disabled={!canAssign}
+                      disabled={!canAssign || fullDayLeave}
                       onChange={() => toggleEmployee(employee.id)}
                     />
-                    <span className="text-sm font-medium">{employee.displayName}</span>
-                    <span className="text-muted-foreground text-xs">{employee.jobTitle}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">{employee.displayName}</span>
+                        <span className="text-muted-foreground text-xs">{employee.jobTitle}</span>
+                        {fullDayLeave ? (
+                          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                            On Leave
+                          </span>
+                        ) : null}
+                        {halfDayLeave ? (
+                          <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-900">
+                            Half-day leave
+                          </span>
+                        ) : null}
+                      </span>
+                      {fullDayLeave ? (
+                        <span className="text-muted-foreground mt-0.5 block text-xs">
+                          On approved {leaveType} for {formAssignDate}. Cannot assign on this date.
+                        </span>
+                      ) : null}
+                      {halfDayLeave ? (
+                        <span className="text-muted-foreground mt-0.5 block text-xs">
+                          Approved half-day {leaveType}
+                          {leave?.halfDaySession === 'FIRST_HALF'
+                            ? ' (first half)'
+                            : leave?.halfDaySession === 'SECOND_HALF'
+                              ? ' (second half)'
+                              : ''}{' '}
+                          on {formAssignDate}. Assignment remains allowed for the working session.
+                        </span>
+                      ) : null}
+                    </span>
                   </label>
-                ))
+                  );
+                })
               )}
             </div>
           </CrmFormField>

@@ -28,8 +28,10 @@ import {
   CRM_PIPELINE_FORM_TEXTAREA_CLASS,
 } from '@/features/admin/crm/constants';
 import {
+  formatAvailableBalancePhrase,
   formatLeaveBalanceSummary,
   formatLeaveTypeOptionLabel,
+  formatWorkingDaysRequested,
   hasLeaveBalanceAvailable,
 } from '../constants/employee-leave-ui';
 import { cn } from '@/shared/lib/utils';
@@ -93,7 +95,7 @@ export function EmployeeApplyLeaveDialog({
     page.previewHasWorkingDays &&
     page.selectedBalance &&
     !page.balanceShortageMessage
-      ? `${page.previewDays} working day${page.previewDays === '1' ? '' : 's'} requested. Available balance: ${page.selectedBalance.availableDays} days.`
+      ? `${formatWorkingDaysRequested(page.previewDays)}. ${formatAvailableBalancePhrase(page.selectedBalance.availableDays)}.`
       : null;
 
   return (

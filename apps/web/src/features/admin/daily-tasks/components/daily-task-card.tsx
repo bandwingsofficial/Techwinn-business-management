@@ -265,6 +265,19 @@ export function DailyTaskKanbanCardSurface({
                 Overdue
               </span>
             ) : null}
+            {task.assigneeLeaveConflicts.length > 0 ? (
+              <span
+                className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900"
+                title={task.assigneeLeaveConflicts
+                  .map((conflict) => {
+                    const leaveType = conflict.leaveTypeName?.trim() || 'approved leave';
+                    return `${conflict.employeeDisplayName} is on ${leaveType}`;
+                  })
+                  .join('; ')}
+              >
+                On Leave conflict
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

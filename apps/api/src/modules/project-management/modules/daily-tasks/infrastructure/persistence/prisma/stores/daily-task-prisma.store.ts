@@ -7,6 +7,8 @@ import type {
 } from '../../../../domain/read-models/daily-task.models.js';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../../../infrastructure/database/prisma.service.js';
+import { ApprovedLeaveAvailabilityService } from '../../../../../../../leave/application/services/approved-leave-availability.service.js';
+import { resolveApprovedLeaveCoverageDetail } from '../../../../../../../leave/domain/policies/approved-leave-coverage.policy.js';
 import { DEFAULT_DAILY_TASK_WORKFLOW_STAGES } from '../../../../domain/constants/default-workflow-stages.js';
 import {
   DailyTaskConflictError,
@@ -47,7 +49,10 @@ const parseDateOnly = parseIsoDateOnly;
  * Implements the same operations as {@link DailyTaskRepository}; the Nest repository delegates here.
  */
 export class DailyTaskPrismaStore {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly leaveAvailability: ApprovedLeaveAvailabilityService,
+  ) {}
 
   async ensureDefaultWorkflowStages(organizationId: string): Promise<void> {
     const count = await this.prisma.dailyTaskWorkflowStage.count({ where: { organizationId } });
@@ -325,6 +330,7 @@ export class DailyTaskPrismaStore {
 
     let items: DailyTaskListItem[] = rows.map((row) => toDailyTaskListItem(row, clientToday));
     items = [...(await this.attachLatestEmployeeNotes(organizationId, items))];
+    items = [...(await this.attachAssigneeLeaveConflicts(organizationId, items))];
     if (noteAttach) {
       items = [...(await this.attachTaskNoteSummaries(organizationId, items, noteAttach))];
     }
@@ -395,6 +401,7 @@ export class DailyTaskPrismaStore {
 
     let items: DailyTaskListItem[] = rows.map((row) => toDailyTaskListItem(row, clientToday));
     items = [...(await this.attachLatestEmployeeNotes(organizationId, items))];
+    items = [...(await this.attachAssigneeLeaveConflicts(organizationId, items))];
     if (noteAttach) {
       items = [...(await this.attachTaskNoteSummaries(organizationId, items, noteAttach))];
     }
@@ -446,6 +453,11 @@ export class DailyTaskPrismaStore {
   async createTask(organizationId: string, adminId: string, input: CreateDailyTaskInput) {
     assertCreateDailyTaskBusinessRules(input);
     await this.assertEmployeesEligible(organizationId, input.employeeIds);
+    await this.leaveAvailability.assertEmployeesAssignableOnDate(
+      organizationId,
+      input.employeeIds,
+      input.assignDate,
+    );
 
     let workflowStageId: string | null = null;
     let projectPhaseId: string | null = null;
@@ -547,9 +559,10 @@ export class DailyTaskPrismaStore {
       include: this.taskInclude(),
     });
     if (!row) throw new DailyTaskNotFoundError();
-    const [item] = await this.attachLatestEmployeeNotes(organizationId, [
+    let [item] = await this.attachLatestEmployeeNotes(organizationId, [
       toDailyTaskListItem(row, clientToday),
     ]);
+    [item] = await this.attachAssigneeLeaveConflicts(organizationId, [item!]);
     return item!;
   }
 
@@ -569,6 +582,25 @@ export class DailyTaskPrismaStore {
 
     if (input.employeeIds) {
       await this.assertEmployeesEligible(organizationId, input.employeeIds);
+    }
+    const nextAssignDate =
+      input.assignDate !== undefined ? input.assignDate : dateOnlyFromDb(existing.assignDate);
+    const nextEmployeeIds =
+      input.employeeIds ??
+      (
+        await this.prisma.dailyTaskAssignee.findMany({
+          where: { dailyTaskId: taskId },
+          select: { employeeId: true },
+        })
+      )
+        .map((row) => row.employeeId)
+        .filter((id): id is string => Boolean(id));
+    if (input.employeeIds !== undefined || input.assignDate !== undefined) {
+      await this.leaveAvailability.assertEmployeesAssignableOnDate(
+        organizationId,
+        nextEmployeeIds,
+        nextAssignDate,
+      );
     }
     if (input.projectId) await this.assertProjectAccessible(organizationId, input.projectId);
 
@@ -836,6 +868,15 @@ export class DailyTaskPrismaStore {
     const task = await this.prisma.dailyTask.findFirst({ where: { id: taskId, organizationId } });
     if (!task) throw new DailyTaskNotFoundError();
     assertRescheduleChangesAssignDate(task.assignDate, input.assignDate);
+    const assignees = await this.prisma.dailyTaskAssignee.findMany({
+      where: { dailyTaskId: taskId },
+      select: { employeeId: true },
+    });
+    await this.leaveAvailability.assertEmployeesAssignableOnDate(
+      organizationId,
+      assignees.map((row) => row.employeeId).filter((id): id is string => Boolean(id)),
+      input.assignDate,
+    );
     const fromAssignDate = task.assignDate;
     const toAssignDate = parseDateOnly(input.assignDate);
 
@@ -1031,6 +1072,52 @@ export class DailyTaskPrismaStore {
     });
 
     return this.getTask(organizationId, taskId);
+  }
+
+  async attachAssigneeLeaveConflicts(
+    organizationId: string,
+    items: readonly DailyTaskListItem[],
+  ): Promise<DailyTaskListItem[]> {
+    if (items.length === 0) return [...items];
+    const employeeIds = [
+      ...new Set(
+        items.flatMap((item) =>
+          item.assignees.map((assignee) => assignee.employeeId).filter(Boolean),
+        ),
+      ),
+    ];
+    if (employeeIds.length === 0) {
+      return items.map((item) => ({ ...item, assigneeLeaveConflicts: [] }));
+    }
+    const dates = [...new Set(items.map((item) => item.assignDate))];
+    const from = dates.reduce((min, value) => (value < min ? value : min), dates[0]!);
+    const to = dates.reduce((max, value) => (value > max ? value : max), dates[0]!);
+    const leaveByEmployee = await this.leaveAvailability.listApprovedLeaveDaysForEmployees(
+      organizationId,
+      employeeIds,
+      from,
+      to,
+    );
+    return items.map((item) => {
+      const conflicts = item.assignees.flatMap((assignee) => {
+        if (!assignee.employeeId) return [];
+        const detail = resolveApprovedLeaveCoverageDetail(
+          leaveByEmployee.get(assignee.employeeId) ?? [],
+          item.assignDate,
+        );
+        if (detail.coverage === 'none') return [];
+        return [
+          {
+            employeeId: assignee.employeeId,
+            employeeDisplayName: assignee.displayName,
+            coverage: detail.coverage,
+            leaveTypeName: detail.leaveTypeName,
+            halfDaySession: detail.halfDaySession,
+          },
+        ];
+      });
+      return { ...item, assigneeLeaveConflicts: conflicts };
+    });
   }
 
   async attachLatestEmployeeNotes(

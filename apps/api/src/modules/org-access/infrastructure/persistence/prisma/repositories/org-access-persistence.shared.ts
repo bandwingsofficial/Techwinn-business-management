@@ -1,5 +1,4 @@
 import {
-  EMPLOYEE_PORTAL_PERMISSIONS,
   IMMUTABLE_ORG_ROLE_KEYS,
   isPermissionKey,
   PERMISSION_KEYS,
@@ -589,37 +588,15 @@ export async function resolvePermissionsFromDb(
   }
 
   const keys: string[] = [];
-  let hasEmployeeSystemRole = false;
   for (const link of membership.roleLinks) {
     if (link.role.status !== 'ACTIVE') continue;
-    if (link.role.key === SYSTEM_ROLE_KEYS.employee) {
-      hasEmployeeSystemRole = true;
-    }
     for (const permission of link.role.permissions) {
       keys.push(permission.permissionKey);
     }
   }
 
-  const adminEmail = membership.admin.email.trim();
-  const linkedEmployee = await prisma.employee.findFirst({
-    where: {
-      organizationId,
-      employmentStatus: 'ACTIVE',
-      deactivatedAt: null,
-      OR: [
-        { platformAdminId: adminId },
-        ...(adminEmail.length > 0
-          ? [{ workEmail: { equals: adminEmail, mode: 'insensitive' as const } }]
-          : []),
-      ],
-    },
-    select: { id: true },
-  });
-
-  if (hasEmployeeSystemRole || linkedEmployee) {
-    keys.push(...EMPLOYEE_PORTAL_PERMISSIONS);
-  }
-
+  // Effective permissions come only from assigned active roles (plus isOwner above).
+  // Do not re-inject EMPLOYEE_PORTAL_PERMISSIONS — that overwrote Role Management edits.
   return uniquePermissionKeys(keys);
 }
 

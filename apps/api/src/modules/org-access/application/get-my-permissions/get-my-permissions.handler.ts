@@ -17,6 +17,7 @@ export type MyAccessSnapshot = {
   readonly permissions: readonly PermissionKey[];
   readonly roles: readonly MyOrganizationRole[];
   readonly sessionEmployee: MySessionEmployeeSummary | null;
+  readonly revision: string;
 };
 
 @Injectable()
@@ -28,7 +29,10 @@ export class GetMyPermissionsHandler {
   ) {}
 
   async execute(query: GetMyPermissionsQuery): Promise<MyAccessSnapshot> {
-    const permissions = await this.permissionChecker.resolveEffectivePermissions(query.actor);
+    const [permissions, revision] = await Promise.all([
+      this.permissionChecker.resolveEffectivePermissions(query.actor),
+      this.repository.currentPermissionRevision(query.actor.organizationId),
+    ]);
     const sessionEmployee = await this.resolveSessionEmployee(
       query.actor.organizationId,
       query.actor.adminId,
@@ -37,6 +41,7 @@ export class GetMyPermissionsHandler {
       return {
         permissions,
         sessionEmployee,
+        revision,
         roles: [
           {
             id: SYSTEM_ROLE_KEYS.owner,
@@ -50,7 +55,7 @@ export class GetMyPermissionsHandler {
       query.actor.organizationId,
       query.actor.adminId,
     );
-    return { permissions, roles: [...roles], sessionEmployee };
+    return { permissions, roles: [...roles], sessionEmployee, revision };
   }
 
   private async resolveSessionEmployee(

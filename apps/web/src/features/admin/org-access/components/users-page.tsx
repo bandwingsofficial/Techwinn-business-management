@@ -143,15 +143,16 @@ export function UsersPage() {
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
   const { admin } = useAuthenticatedAdmin();
-  const { has, hasAll, permissions } = useMyPermissions();
+  const { has, permissions } = useMyPermissions();
 
   const canRead = has('users.read');
-  const canProvision = hasAll('users.create', 'memberships.manage');
+  // Match backend `@RequirePermissions` OR semantics (any listed key).
+  const canProvision = has('users.create') || has('memberships.manage');
   const canUpdateProfile = has('users.update');
   const canManageRoles = has('users.manage_roles');
   const canResetPassword = has('users.reset_password');
-  const canChangeStatus = hasAll('users.deactivate', 'memberships.manage');
-  const canDeleteMembers = hasAll('users.deactivate', 'memberships.manage');
+  const canChangeStatus = has('users.deactivate') || has('memberships.manage');
+  const canDeleteMembers = has('users.deactivate') || has('memberships.manage');
 
   const [items, setItems] = useState<readonly OrgMemberListItem[]>([]);
   const [total, setTotal] = useState(0);

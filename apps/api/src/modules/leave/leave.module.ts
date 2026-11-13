@@ -1,6 +1,7 @@
-import { Module, type Provider } from '@nestjs/common';
+import { Module, forwardRef, type Provider } from '@nestjs/common';
 import { DatabaseModule } from '../../infrastructure/database/database.module.js';
 import { AuthModule } from '../auth/index.js';
+import { AttendanceModule } from '../attendance/attendance.module.js';
 import { CrmModule } from '../crm/index.js';
 import { OrgAccessModule } from '../org-access/index.js';
 import { OrganizationCalendarModule } from '../organization-calendar/index.js';
@@ -37,6 +38,9 @@ import {
 } from './application/leave.handlers.js';
 import { LeaveAuthorizationService } from './application/services/leave-authorization.service.js';
 import { LeaveDayCalculationService } from './application/services/leave-day-calculation.service.js';
+import { ApprovedLeaveAvailabilityService } from './application/services/approved-leave-availability.service.js';
+import { LeaveAttendanceSyncService } from './application/services/leave-attendance-sync.service.js';
+import { ListApprovedLeaveAvailabilityHandler } from './application/list-approved-leave-availability/list-approved-leave-availability.handler.js';
 import { LEAVE_REPOSITORY } from './domain/repositories/leave.repository.js';
 import { PrismaLeaveRepository } from './infrastructure/persistence/prisma/repositories/prisma-leave.repository.js';
 import {
@@ -61,6 +65,9 @@ export const leavePersistenceProviders: Provider[] = [
 const leaveHandlers = [
   LeaveAuthorizationService,
   LeaveDayCalculationService,
+  ApprovedLeaveAvailabilityService,
+  LeaveAttendanceSyncService,
+  ListApprovedLeaveAvailabilityHandler,
   ListLeaveTypesHandler,
   GetLeaveTypeHandler,
   CreateLeaveTypeHandler,
@@ -99,9 +106,21 @@ const leaveHandlers = [
 ] as const;
 
 @Module({
-  imports: [DatabaseModule, AuthModule, CrmModule, OrgAccessModule, OrganizationCalendarModule],
+  imports: [
+    DatabaseModule,
+    AuthModule,
+    CrmModule,
+    OrgAccessModule,
+    OrganizationCalendarModule,
+    forwardRef(() => AttendanceModule),
+  ],
   controllers: [LeaveTypesController, LeaveController],
   providers: [...leavePersistenceProviders, ...leaveHandlers, LeaveExceptionFilter],
-  exports: [LEAVE_REPOSITORY, LEAVE_TYPE_REPOSITORY, LeaveExceptionFilter],
+  exports: [
+    LEAVE_REPOSITORY,
+    LEAVE_TYPE_REPOSITORY,
+    LeaveExceptionFilter,
+    ApprovedLeaveAvailabilityService,
+  ],
 })
 export class LeaveModule {}

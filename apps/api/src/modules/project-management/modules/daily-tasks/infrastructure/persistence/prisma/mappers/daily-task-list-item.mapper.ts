@@ -84,6 +84,7 @@ export function toDailyTaskListItem(row: DailyTaskListRow, clientToday?: string)
       startedAt: assignee.startedAt?.toISOString() ?? null,
       completedAt: assignee.completedAt?.toISOString() ?? null,
     })),
+    assigneeLeaveConflicts: [],
     latestEmployeeNote: null,
     unreadEmployeeNoteCount: 0,
     orgTaskNotes: null,

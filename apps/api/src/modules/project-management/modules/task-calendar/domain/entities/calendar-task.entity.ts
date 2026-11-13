@@ -50,6 +50,16 @@ export function fromDailyTaskListItem(task: DailyTaskListItem, clientToday: stri
     completedAt: task.completedAt,
     description: task.description,
     navigation: { kind: 'daily_task', dailyTaskId: task.id },
+    assigneeOnLeave: task.assigneeLeaveConflicts.length > 0,
+    leaveConflictSummary:
+      task.assigneeLeaveConflicts.length > 0
+        ? task.assigneeLeaveConflicts
+            .map((conflict) => {
+              const leaveType = conflict.leaveTypeName?.trim() || 'approved leave';
+              return `${conflict.employeeDisplayName} · On Leave (${leaveType})`;
+            })
+            .join('; ')
+        : null,
   };
 }
 
@@ -95,5 +105,7 @@ export function fromProjectTaskRow(
     completedAt: task.actualCompletedAt,
     description: task.description,
     navigation: { kind: 'project_task', projectId: task.projectId, projectTaskId: task.id },
+    assigneeOnLeave: false,
+    leaveConflictSummary: null,
   };
 }

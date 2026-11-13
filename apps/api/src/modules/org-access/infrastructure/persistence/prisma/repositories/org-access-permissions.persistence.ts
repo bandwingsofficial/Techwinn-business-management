@@ -2,6 +2,7 @@ import { PERMISSION_KEYS, SYSTEM_ROLE_KEYS, type PermissionKey } from '#contract
 import { randomUUID } from 'node:crypto';
 import { RedisService } from '../../../../../../infrastructure/cache/redis.service.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
+import { OrgAccessPermissionRealtimeService } from '../../../../application/services/org-access-permission-realtime.service.js';
 import {
   OrgAccessConflictError,
   OrgAccessNotFoundError,
@@ -25,6 +26,7 @@ export class OrgAccessPermissionsPersistence {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly permissionRealtime: OrgAccessPermissionRealtimeService,
   ) {}
 
   resolveActiveMembershipRoles = async (
@@ -195,5 +197,14 @@ export class OrgAccessPermissionsPersistence {
     } catch {
       // Best-effort cache invalidation.
     }
+  }
+
+  /** Bump tenant permission revision after a real access change (not bootstrap cache clears). */
+  async publishPermissionChange(organizationId: string): Promise<string> {
+    return this.permissionRealtime.bump(organizationId);
+  }
+
+  currentPermissionRevision(organizationId: string): Promise<string> {
+    return this.permissionRealtime.currentRevision(organizationId);
   }
 }

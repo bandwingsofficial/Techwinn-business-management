@@ -42,11 +42,13 @@ function buildCalendarResponse(
       for (const t of dayTasks) {
         for (const id of t.assigneeEmployeeIds) assignees.add(id);
       }
+      const onLeaveCount = dayTasks.filter((task) => task.assigneeOnLeave).length;
       return {
         date,
         tasks: dayTasks.map(toDto),
         taskCount: dayTasks.length,
         distinctAssigneeCount: assignees.size,
+        onLeaveCount,
       };
     });
 

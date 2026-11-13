@@ -1,5 +1,6 @@
 import {
   LEAVE_ROUTES,
+  type EmployeeApprovedLeaveAvailabilityResponse,
   type EmployeeLeaveBalanceItem,
   type EmployeeLeaveBalanceListResponse,
   type GenerateEmployeeBalancesResponse,
@@ -350,6 +351,21 @@ export function previewLeaveDays(
 ): Promise<LeavePreviewDaysResponse> {
   return apiRequest<LeavePreviewDaysResponse>(
     `${LEAVE_ROUTES.previewDays}${buildQueryString(query)}`,
+    { auth: true, signal },
+  );
+}
+
+export function fetchApprovedLeaveAvailability(
+  query: { date: string; employeeIds?: readonly string[] },
+  signal?: AbortSignal,
+): Promise<EmployeeApprovedLeaveAvailabilityResponse> {
+  return apiRequest<EmployeeApprovedLeaveAvailabilityResponse>(
+    `${LEAVE_ROUTES.approvedAvailability}${buildQueryString({
+      date: query.date,
+      ...(query.employeeIds && query.employeeIds.length > 0
+        ? { employeeIds: query.employeeIds.join(',') }
+        : {}),
+    })}`,
     { auth: true, signal },
   );
 }

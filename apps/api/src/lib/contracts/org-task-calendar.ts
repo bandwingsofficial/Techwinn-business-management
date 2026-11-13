@@ -50,6 +50,9 @@ export interface TaskCalendarTaskDto {
   readonly completedAt: string | null;
   readonly description: string;
   readonly navigation: CalendarTaskNavigation;
+  /** True when an assignee has approved leave on the task assign date. */
+  readonly assigneeOnLeave: boolean;
+  readonly leaveConflictSummary: string | null;
 }
 
 export interface TaskCalendarDayBucketDto {
@@ -57,6 +60,8 @@ export interface TaskCalendarDayBucketDto {
   readonly tasks: readonly TaskCalendarTaskDto[];
   readonly taskCount: number;
   readonly distinctAssigneeCount: number;
+  /** Employees with approved leave on this date (not counted as tasks). */
+  readonly onLeaveCount: number;
 }
 
 export interface TaskCalendarResponse {

@@ -165,6 +165,7 @@ export interface AttendanceSummaryResponse {
   readonly pendingDays: number;
   readonly weeklyOffDays: number;
   readonly holidayDays: number;
+  readonly onLeaveDays: number;
   readonly totalWorkingMinutes: number;
 }
 

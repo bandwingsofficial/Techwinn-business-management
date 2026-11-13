@@ -3,10 +3,30 @@ import { API_ERROR_CODES, type ApiErrorCode, type ApiErrorDetail } from '#contra
 import type { Request, Response } from 'express';
 import { sendApiError } from '../../../../../common/filters/api-error.response.js';
 import {
+  EmployeeOnApprovedLeaveError,
   LeaveBalanceHasDependenciesError,
   LeaveError,
   LeaveTypeHasDependenciesError,
 } from '../../../domain/errors/leave.errors.js';
+
+export function employeeOnApprovedLeaveDetails(
+  error: EmployeeOnApprovedLeaveError,
+): readonly ApiErrorDetail[] {
+  return [
+    { path: 'employeeId', message: error.employeeId },
+    ...(error.employeeDisplayName
+      ? [{ path: 'employeeDisplayName', message: error.employeeDisplayName }]
+      : []),
+    { path: 'date', message: error.date },
+    ...(error.leaveTypeName ? [{ path: 'leaveType', message: error.leaveTypeName }] : []),
+    ...(error.startDate ? [{ path: 'leavePeriodStart', message: error.startDate }] : []),
+    ...(error.endDate ? [{ path: 'leavePeriodEnd', message: error.endDate }] : []),
+    { path: 'coverage', message: error.coverage },
+    ...(error.halfDaySession
+      ? [{ path: 'halfDaySession', message: error.halfDaySession }]
+      : []),
+  ];
+}
 
 @Catch(LeaveError)
 export class LeaveExceptionFilter implements ExceptionFilter<LeaveError> {
@@ -26,6 +46,10 @@ export class LeaveExceptionFilter implements ExceptionFilter<LeaveError> {
     } else if (error.code === 'LEAVE_EMPLOYEE_PROFILE_NOT_LINKED') {
       status = HttpStatus.FORBIDDEN;
       code = API_ERROR_CODES.EMPLOYEE_PROFILE_NOT_LINKED;
+    } else if (error instanceof EmployeeOnApprovedLeaveError) {
+      status = HttpStatus.CONFLICT;
+      code = API_ERROR_CODES.EMPLOYEE_ON_APPROVED_LEAVE;
+      details = employeeOnApprovedLeaveDetails(error);
     } else if (error.code === 'LEAVE_CONFLICT') {
       status = HttpStatus.CONFLICT;
       code = API_ERROR_CODES.BAD_REQUEST;

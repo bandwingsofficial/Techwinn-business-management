@@ -35,6 +35,7 @@ export const LEAVE_ROUTES = {
   myRequest: (id: string) => `${API_PREFIX}/leave/my/requests/${id}`,
   apply: `${API_PREFIX}/leave/my/apply`,
   previewDays: `${API_PREFIX}/leave/my/preview-days`,
+  approvedAvailability: `${API_PREFIX}/leave/approved-availability`,
 } as const;
 
 export type LeaveTypeStatus = 'ACTIVE' | 'INACTIVE';
@@ -230,4 +231,23 @@ export interface LeavePreviewDaysResponse {
 export interface GenerateEmployeeBalancesResponse {
   readonly created: number;
   readonly skipped: number;
+}
+
+export type ApprovedLeaveCoverage = 'none' | 'full' | 'half';
+
+export interface EmployeeApprovedLeaveAvailabilityItem {
+  readonly employeeId: string;
+  readonly employeeDisplayName: string | null;
+  readonly date: string;
+  readonly coverage: Exclude<ApprovedLeaveCoverage, 'none'>;
+  readonly leaveTypeName: string | null;
+  readonly halfDaySession: LeaveHalfDaySession | null;
+  readonly startDate: string | null;
+  readonly endDate: string | null;
+  readonly leaveRequestId: string | null;
+}
+
+export interface EmployeeApprovedLeaveAvailabilityResponse {
+  readonly date: string;
+  readonly items: readonly EmployeeApprovedLeaveAvailabilityItem[];
 }

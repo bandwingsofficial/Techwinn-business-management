@@ -37,6 +37,7 @@ export function TaskCalendarDayCell({
   isFirstCol,
   taskCount,
   assigneeCount,
+  onLeaveCount = 0,
   tasks,
   contentLoading = false,
   onOpenTask,
@@ -55,6 +56,7 @@ export function TaskCalendarDayCell({
   isFirstCol: boolean;
   taskCount: number;
   assigneeCount: number;
+  onLeaveCount?: number;
   tasks: readonly TaskCalendarTaskDto[];
   /** Shimmer inside this cell only. The cell shell stays mounted. */
   contentLoading?: boolean;
@@ -71,11 +73,18 @@ export function TaskCalendarDayCell({
   const overflow = Math.max(0, taskCount - MAX_VISIBLE_CHIPS);
 
   const summary =
-    taskCount === 0
+    taskCount === 0 && onLeaveCount === 0
       ? null
-      : `${taskCount} task${taskCount === 1 ? '' : 's'} • ${assigneeCount} ${
-          assigneeCount === 1 ? 'person' : 'people'
-        }`;
+      : [
+          taskCount > 0
+            ? `${taskCount} task${taskCount === 1 ? '' : 's'} • ${assigneeCount} ${
+                assigneeCount === 1 ? 'person' : 'people'
+              }`
+            : null,
+          onLeaveCount > 0 ? `${onLeaveCount} on leave` : null,
+        ]
+          .filter(Boolean)
+          .join(' • ');
 
   const handleDayClick = () => {
     onSelectDate(date);

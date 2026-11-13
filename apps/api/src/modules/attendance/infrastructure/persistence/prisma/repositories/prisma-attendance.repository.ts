@@ -47,6 +47,7 @@ import {
   ORG_CALENDAR_REPOSITORY,
   type OrgCalendarRepository,
 } from '../../../../../organization-calendar/domain/repositories/org-calendar.repository.js';
+import { ApprovedLeaveAvailabilityService } from '../../../../../leave/application/services/approved-leave-availability.service.js';
 import { resolveScheduleDayFlags } from '../../../../../organization-calendar/domain/services/org-calendar-classification.service.js';
 import { calendarDateAnchor } from '../../../../../organization-calendar/infrastructure/persistence/prisma/mappers/org-calendar.mapper.js';
 import {
@@ -144,6 +145,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(ORG_CALENDAR_REPOSITORY) private readonly orgCalendar: OrgCalendarRepository,
+    private readonly leaveAvailability: ApprovedLeaveAvailabilityService,
   ) {}
 
   private async resolveAttendanceDayKind(
@@ -370,6 +372,12 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
     const schedule = await this.requireSchedule(ctx.organizationId, ctx.now);
     const parts = getZonedParts(ctx.now, schedule.timeZone);
     const attendanceDate = formatDateOnly(parts);
+    await this.leaveAvailability.assertAttendanceActionAllowed(
+      ctx.organizationId,
+      ctx.employeeId,
+      attendanceDate,
+      { action: 'punch' },
+    );
     const attendanceDayKind = await this.resolveAttendanceDayKind(
       ctx.organizationId,
       attendanceDate,
@@ -512,6 +520,12 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
     const schedule = await this.requireSchedule(ctx.organizationId, ctx.now);
     const parts = getZonedParts(ctx.now, schedule.timeZone);
     const attendanceDate = formatDateOnly(parts);
+    await this.leaveAvailability.assertAttendanceActionAllowed(
+      ctx.organizationId,
+      ctx.employeeId,
+      attendanceDate,
+      { action: 'punch' },
+    );
     const record = await this.prisma.attendanceRecord.findUnique({
       where: {
         organizationId_employeeId_attendanceDate: {
@@ -751,6 +765,14 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
     if (input.attendanceDate > today) {
       throw new AttendancePolicyError('Attendance cannot be recorded for a future date.');
     }
+    if (input.punchInAt) {
+      await this.leaveAvailability.assertAttendanceActionAllowed(
+        organizationId,
+        input.employeeId,
+        input.attendanceDate,
+        { action: 'manual_present' },
+      );
+    }
     const snapshot = toScheduleSnapshot(schedule);
     const derivation = await this.attendanceDerivationContext(
       organizationId,
@@ -889,6 +911,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
       pendingDays: count('PENDING'),
       weeklyOffDays: count('WEEKLY_OFF'),
       holidayDays: count('HOLIDAY'),
+      onLeaveDays: count('ON_LEAVE'),
       totalWorkingMinutes: rows.reduce((sum, r) => sum + (r.workingMinutes ?? 0), 0),
     };
   }
@@ -907,6 +930,21 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
     const attendanceDateKey = calendarDateKey(row.attendanceDate);
     const liveSchedule = await this.resolveScheduleForDate(organizationId, attendanceDateKey);
     const schedule = liveSchedule ?? snapshotToScheduleConfig(snapshotFromJson(row.scheduleSnapshot));
+    const nextPunchIn = input.punchInAt === undefined ? row.punchInAt : input.punchInAt;
+    const nextHasPunch =
+      nextPunchIn instanceof Date
+        ? true
+        : typeof nextPunchIn === 'string'
+          ? nextPunchIn.length > 0
+          : Boolean(nextPunchIn);
+    if (nextHasPunch) {
+      await this.leaveAvailability.assertAttendanceActionAllowed(
+        organizationId,
+        row.employeeId,
+        attendanceDateKey,
+        { action: 'manual_present' },
+      );
+    }
     const derivation = await this.attendanceDerivationContext(
       organizationId,
       row.employeeId,

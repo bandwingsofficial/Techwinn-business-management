@@ -28,6 +28,8 @@ export const API_ERROR_CODES = {
   LEAVE_TYPE_HAS_DEPENDENCIES: 'LEAVE_TYPE_HAS_DEPENDENCIES',
   LEAVE_BALANCE_HAS_DEPENDENCIES: 'LEAVE_BALANCE_HAS_DEPENDENCIES',
   EMPLOYEE_HAS_PENDING_TASKS: 'EMPLOYEE_HAS_PENDING_TASKS',
+  /** Action conflicts with persisted approved leave for the employee/date. */
+  EMPLOYEE_ON_APPROVED_LEAVE: 'EMPLOYEE_ON_APPROVED_LEAVE',
   /**
    * Authenticated member has no active employee HR profile linked to their
    * platform account (self-service attendance/leave require a link).

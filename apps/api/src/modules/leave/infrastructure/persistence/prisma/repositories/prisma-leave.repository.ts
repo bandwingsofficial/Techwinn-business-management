@@ -1146,8 +1146,12 @@ export class PrismaLeaveRepository implements LeaveRepository {
         include: this.leaveRequestInclude(),
       });
       if (!request) throw new LeaveNotFoundError('Leave request');
-      if (request.status !== 'PENDING') {
-        throw new LeaveValidationError('Only pending leave requests can be cancelled.');
+      if (request.status !== 'PENDING' && request.status !== 'APPROVED') {
+        throw new LeaveValidationError('Only pending or approved leave requests can be cancelled.');
+      }
+      // Employees may cancel their own pending requests; approved cancellation is admin-managed.
+      if (scope.employeeId && request.status !== 'PENDING') {
+        throw new LeaveValidationError('Only pending leave requests can be cancelled by the employee.');
       }
 
       const balance = await tx.employeeLeaveBalance.findFirst({
@@ -1160,16 +1164,28 @@ export class PrismaLeaveRepository implements LeaveRepository {
       });
       if (!balance) throw new LeaveNotFoundError('Employee leave balance');
 
-      const legacyReserved = balance.reservedPendingDays.gte(request.totalDays);
-      let beforeAvailable = parseLeaveDays(computeAvailableDays(balance));
+      const fromStatus = request.status;
+      const beforeAvailable = parseLeaveDays(computeAvailableDays(balance));
       let afterAvailable = beforeAvailable;
+      let wroteReversal = false;
 
-      if (legacyReserved) {
+      if (fromStatus === 'PENDING') {
+        const legacyReserved = balance.reservedPendingDays.gte(request.totalDays);
+        if (legacyReserved) {
+          await tx.employeeLeaveBalance.update({
+            where: { id: balance.id },
+            data: { reservedPendingDays: balance.reservedPendingDays.sub(request.totalDays) },
+          });
+          afterAvailable = beforeAvailable.add(request.totalDays);
+          wroteReversal = true;
+        }
+      } else {
         await tx.employeeLeaveBalance.update({
           where: { id: balance.id },
-          data: { reservedPendingDays: balance.reservedPendingDays.sub(request.totalDays) },
+          data: { usedApprovedDays: balance.usedApprovedDays.sub(request.totalDays) },
         });
         afterAvailable = beforeAvailable.add(request.totalDays);
+        wroteReversal = true;
       }
 
       const updated = await tx.leaveRequest.update({
@@ -1186,7 +1202,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
         select: { calendarYear: true },
       });
 
-      if (legacyReserved) {
+      if (wroteReversal) {
         await tx.leaveBalanceTransaction.create({
           data: {
             id: randomUUID(),
@@ -1211,7 +1227,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
           id: randomUUID(),
           organizationId,
           leaveRequestId: request.id,
-          fromStatus: 'PENDING',
+          fromStatus,
           toStatus: 'CANCELLED',
           reason,
           performedByAdminId: adminId,

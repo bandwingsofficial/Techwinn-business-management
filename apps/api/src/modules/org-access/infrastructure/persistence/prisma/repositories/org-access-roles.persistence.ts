@@ -115,6 +115,7 @@ export class OrgAccessRolesPersistence {
         return created;
       });
       await this.permissions.invalidatePermissionCache(organizationId);
+      await this.permissions.publishPermissionChange(organizationId);
       return toRoleRecord(row);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -169,6 +170,9 @@ export class OrgAccessRolesPersistence {
       return updated;
     });
     await this.permissions.invalidatePermissionCache(organizationId);
+    if (input.status !== undefined) {
+      await this.permissions.publishPermissionChange(organizationId);
+    }
     return toRoleRecord(row);
   }
 
@@ -180,6 +184,7 @@ export class OrgAccessRolesPersistence {
   ): Promise<OrgRoleRecord> {
     const role = await loadRoleOrThrow(this.prisma, organizationId, roleId);
     assertOrgRoleMutable(role, 'modify');
+    // Persist the exact submitted unique set (no silent sibling grants).
     const normalized = uniquePermissionKeys(
       ensureViewPermissionPrerequisites(permissionKeys),
     );
@@ -214,6 +219,7 @@ export class OrgAccessRolesPersistence {
       return updated;
     });
     await this.permissions.invalidatePermissionCache(organizationId);
+    await this.permissions.publishPermissionChange(organizationId);
     return toRoleRecord(row);
   }
 
@@ -307,5 +313,6 @@ export class OrgAccessRolesPersistence {
       });
     });
     await this.permissions.invalidatePermissionCache(organizationId);
+    await this.permissions.publishPermissionChange(organizationId);
   }
 }

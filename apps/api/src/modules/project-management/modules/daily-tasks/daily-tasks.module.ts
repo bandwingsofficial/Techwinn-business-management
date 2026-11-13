@@ -2,6 +2,7 @@ import { Module, type Provider } from '@nestjs/common';
 import { DatabaseModule } from '../../../../infrastructure/database/database.module.js';
 import { AuthModule } from '../../../auth/index.js';
 import { CrmModule } from '../../../crm/index.js';
+import { LeaveModule } from '../../../leave/index.js';
 import { OrgAccessModule } from '../../../org-access/index.js';
 import { AddDailyTaskCommentHandler } from './application/add-daily-task-comment/add-daily-task-comment.handler.js';
 import { AcknowledgeDailyTaskNoteHandler } from './application/acknowledge-daily-task-note/acknowledge-daily-task-note.handler.js';
@@ -50,7 +51,7 @@ const dailyTaskUseCaseHandlers = [
 ] as const;
 
 @Module({
-  imports: [DatabaseModule, AuthModule, CrmModule, OrgAccessModule],
+  imports: [DatabaseModule, AuthModule, CrmModule, OrgAccessModule, LeaveModule],
   controllers: [DailyTasksController],
   providers: [
     ...dailyTaskPersistenceProviders,

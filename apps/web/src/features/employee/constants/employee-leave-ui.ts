@@ -36,21 +36,31 @@ export function parseLeaveDayAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+export function formatLeaveDayWord(amount: string | number): 'day' | 'days' {
+  const value = typeof amount === 'number' ? amount : parseLeaveDayAmount(amount);
+  return value === 1 ? 'day' : 'days';
+}
+
+/** e.g. "1 working day requested", "0.5 working days requested" */
+export function formatWorkingDaysRequested(days: string): string {
+  return `${days} working ${formatLeaveDayWord(days)} requested`;
+}
+
+export function formatAvailableBalancePhrase(availableDays: string): string {
+  return `Available balance: ${availableDays} ${formatLeaveDayWord(availableDays)}`;
+}
+
 export function hasLeaveBalanceAvailable(balance: EmployeeLeaveBalanceItem): boolean {
   return parseLeaveDayAmount(balance.availableDays) > 0;
 }
 
 export function formatLeaveBalanceSummary(balance: EmployeeLeaveBalanceItem): string {
-  const days = parseLeaveDayAmount(balance.availableDays);
-  const dayWord = days === 1 ? 'day' : 'days';
-  return `${balance.availableDays} ${dayWord} available`;
+  return `${balance.availableDays} ${formatLeaveDayWord(balance.availableDays)} available`;
 }
 
 export function formatLeaveTypeOptionLabel(balance: EmployeeLeaveBalanceItem): string {
-  const days = parseLeaveDayAmount(balance.availableDays);
-  const dayWord = days === 1 ? 'day' : 'days';
   const paidHint = balance.leaveTypeIsPaid ? '' : ' · Unpaid';
-  return `${balance.leaveTypeName} · ${balance.availableDays} ${dayWord} available${paidHint}`;
+  return `${balance.leaveTypeName} · ${formatLeaveBalanceSummary(balance)}${paidHint}`;
 }
 
 export function firstSelectableLeaveTypeId(

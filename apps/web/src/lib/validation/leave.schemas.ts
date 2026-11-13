@@ -2,6 +2,26 @@ import { z } from 'zod';
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date (YYYY-MM-DD).');
 
+/**
+ * Query-string booleans. Do not use `z.coerce.boolean()` — it treats the string
+ * `"false"` as true (`Boolean("false") === true`).
+ */
+const queryBooleanSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'off') {
+      return false;
+    }
+  }
+  return value;
+}, z.boolean());
+
 const leaveTypeNameSchema = z
   .string()
   .trim()
@@ -438,10 +458,10 @@ export const previewLeaveDaysQuerySchema = z
     startDate: dateString.optional(),
     endDate: dateString.optional(),
     selectedDates: selectedDatesQueryField,
-    isHalfDay: z.coerce.boolean().default(false),
+    isHalfDay: queryBooleanSchema.default(false),
     halfDayDate: dateString.optional(),
     leaveTypeId: z.string().uuid().optional(),
-    skipDuration: z.coerce.boolean().optional(),
+    skipDuration: queryBooleanSchema.optional(),
   })
   .superRefine((value, ctx) => {
     if (value.skipDuration) return;
