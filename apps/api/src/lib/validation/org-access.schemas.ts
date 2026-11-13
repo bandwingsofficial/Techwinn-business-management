@@ -93,15 +93,17 @@ export const assignMemberRolesRequestSchema = z
   })
   .strict();
 
+export const portalSlugSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z][a-z0-9-]*$/, 'Use lowercase letters, numbers, and hyphens.');
+
 export const createRoleRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
-    key: z
-      .string()
-      .trim()
-      .min(2)
-      .max(64)
-      .regex(/^[a-z][a-z0-9_]*$/, 'Use lowercase letters, numbers, and underscores.'),
+    portalSlug: portalSlugSchema,
     description: z.string().max(500).optional(),
     permissionKeys: z.array(permissionKeySchema),
   })
@@ -110,6 +112,7 @@ export const createRoleRequestSchema = z
 export const updateRoleRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
+    portalSlug: portalSlugSchema.optional(),
     description: z.string().max(500).optional(),
     status: organizationRoleStatusSchema.optional(),
   })

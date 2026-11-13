@@ -26,15 +26,15 @@ function humanizeRoleKey(key: string): string {
 export function organizationRoleDisplayName(role: MyOrganizationRole): string {
   const named = role.name?.trim();
   if (named) return named;
-  return humanizeRoleKey(role.key);
+  return humanizeRoleKey(role.portalSlug);
 }
 
 export function sortOrganizationRolesForDisplay(
   roles: readonly MyOrganizationRole[],
 ): readonly MyOrganizationRole[] {
   return [...roles].sort((left, right) => {
-    const leftOrder = ROLE_LABEL_ORDER[left.key] ?? 50;
-    const rightOrder = ROLE_LABEL_ORDER[right.key] ?? 50;
+    const leftOrder = ROLE_LABEL_ORDER[left.portalSlug] ?? 50;
+    const rightOrder = ROLE_LABEL_ORDER[right.portalSlug] ?? 50;
     if (leftOrder !== rightOrder) return leftOrder - rightOrder;
     return organizationRoleDisplayName(left).localeCompare(organizationRoleDisplayName(right));
   });

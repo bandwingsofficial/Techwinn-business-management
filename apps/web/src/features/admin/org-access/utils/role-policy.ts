@@ -1,23 +1,23 @@
 import { IMMUTABLE_ORG_ROLE_KEYS, SYSTEM_ROLE_KEYS, type PermissionKey } from '@techwin/contracts';
 import type { OrgRoleListItem } from '../types';
 
-export function isImmutableOrgRole(role: { readonly key: string }): boolean {
-  return IMMUTABLE_ORG_ROLE_KEYS.has(role.key);
+export function isImmutableOrgRole(role: { readonly portalSlug: string }): boolean {
+  return IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug);
 }
 
-export function isOwnerOrgRole(role: { readonly key: string }): boolean {
-  return role.key === SYSTEM_ROLE_KEYS.owner;
+export function isOwnerOrgRole(role: { readonly portalSlug: string }): boolean {
+  return role.portalSlug === SYSTEM_ROLE_KEYS.owner;
 }
 
 export function isEditableOrgRole(role: OrgRoleListItem): boolean {
   return !isImmutableOrgRole(role);
 }
 
-export function immutableRoleReason(role: { readonly key: string }): string {
-  if (role.key === SYSTEM_ROLE_KEYS.admin) {
+export function immutableRoleReason(role: { readonly portalSlug: string }): string {
+  if (role.portalSlug === SYSTEM_ROLE_KEYS.admin) {
     return 'The Admin role is protected and cannot be changed, deactivated, or deleted.';
   }
-  if (role.key === SYSTEM_ROLE_KEYS.owner) {
+  if (role.portalSlug === SYSTEM_ROLE_KEYS.owner) {
     return 'The Owner role is protected and cannot be changed, deactivated, or deleted.';
   }
   return 'This role is protected.';

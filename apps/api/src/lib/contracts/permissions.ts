@@ -514,11 +514,12 @@ export function isPermissionKey(value: string): value is PermissionKey {
   return PERMISSION_KEY_SET.has(value);
 }
 
+/** Stable portal URL slugs for seeded system roles (also stored on `organization_roles.portal_slug`). */
 export const SYSTEM_ROLE_KEYS = {
   owner: 'owner',
   admin: 'admin',
-  projectManager: 'project_manager',
-  projectManagement: 'project_management',
+  projectManager: 'project-manager',
+  projectManagement: 'project-management',
   sales: 'sales',
   financial: 'financial',
   member: 'member',
@@ -552,7 +553,7 @@ export const PROTECTED_SYSTEM_ROLE_KEYS: ReadonlySet<string> = new Set([
   SYSTEM_ROLE_KEYS.owner,
 ]);
 
-/** Organization roles that cannot be edited, deactivated, or deleted (stable keys, not display names). */
+/** Organization roles that cannot be edited, deactivated, or deleted (stable portal slugs, not display names). */
 export const IMMUTABLE_ORG_ROLE_KEYS: ReadonlySet<string> = new Set([
   SYSTEM_ROLE_KEYS.admin,
   SYSTEM_ROLE_KEYS.owner,

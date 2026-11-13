@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { AdminDashboard } from '@/features/admin/auth/components/admin-dashboard';
+import { WorkspaceDashboard } from '@/features/workspace/components/workspace-dashboard';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
 };
 
 export default function AdminDashboardPage() {
-  return <AdminDashboard />;
+  return <WorkspaceDashboard />;
 }

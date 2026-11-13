@@ -116,7 +116,9 @@ function loginAccessInclude(organizationId: string) {
             status: true,
             isOwner: true,
             roleLinks: {
-              select: { role: { select: { id: true, key: true, name: true, status: true } } },
+              select: {
+                role: { select: { id: true, portalSlug: true, name: true, status: true } },
+              },
             },
           },
         },
@@ -154,7 +156,7 @@ export class EmployeePrismaStore {
       roles: membership.roleLinks
         .map((link) => link.role)
         .filter((role) => role.status === 'ACTIVE')
-        .map((role) => ({ id: role.id, key: role.key, name: role.name })),
+        .map((role) => ({ id: role.id, portalSlug: role.portalSlug, name: role.name })),
       lastLoginAt: row.platformAdmin.lastLoginAt?.toISOString() ?? null,
     };
   }

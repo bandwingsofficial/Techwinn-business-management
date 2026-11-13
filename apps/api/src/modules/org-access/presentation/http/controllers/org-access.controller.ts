@@ -423,7 +423,7 @@ export class OrgAccessController {
     const role = await this.createOrgRole.execute({
       organizationId: ctx.organizationId,
       actorAdminId: ctx.adminId,
-      key: body.key,
+      portalSlug: body.portalSlug,
       name: body.name,
       description: body.description ?? '',
       permissionKeys: body.permissionKeys,
@@ -446,6 +446,7 @@ export class OrgAccessController {
       roleId: id,
       actorAdminId: ctx.adminId,
       name: body.name,
+      portalSlug: body.portalSlug,
       description: body.description,
       status: body.status,
     });

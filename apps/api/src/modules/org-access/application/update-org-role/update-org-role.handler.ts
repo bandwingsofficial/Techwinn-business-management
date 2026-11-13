@@ -17,6 +17,7 @@ export class UpdateOrgRoleHandler {
       command.roleId,
       {
         ...(command.name !== undefined ? { name: command.name } : {}),
+        ...(command.portalSlug !== undefined ? { portalSlug: command.portalSlug } : {}),
         ...(command.description !== undefined ? { description: command.description } : {}),
         ...(command.status !== undefined ? { status: command.status } : {}),
       },

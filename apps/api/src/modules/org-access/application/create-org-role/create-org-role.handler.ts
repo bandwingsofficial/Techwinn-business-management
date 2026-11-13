@@ -15,7 +15,7 @@ export class CreateOrgRoleHandler {
     return this.repository.createRole(
       command.organizationId,
       {
-        key: command.key,
+        portalSlug: command.portalSlug,
         name: command.name,
         description: command.description,
         permissionKeys: command.permissionKeys,

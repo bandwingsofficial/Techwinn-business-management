@@ -2,7 +2,9 @@ import { SYSTEM_ROLE_KEYS } from '@techwin/contracts';
 import type { OrgRoleListItem } from '../types';
 
 export function employeeSystemRoleIds(roles: readonly OrgRoleListItem[]): readonly string[] {
-  return roles.filter((role) => role.key === SYSTEM_ROLE_KEYS.employee).map((role) => role.id);
+  return roles
+    .filter((role) => role.portalSlug === SYSTEM_ROLE_KEYS.employee)
+    .map((role) => role.id);
 }
 
 export function roleSelectionIncludesEmployeeRole(

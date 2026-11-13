@@ -17,7 +17,7 @@ export function toOrgMemberListItem(record: OrgMemberRecord): OrgMemberListItem 
     isOwner: record.isOwner,
     roles: record.roles.map((role) => ({
       id: role.id,
-      key: role.key,
+      portalSlug: role.portalSlug,
       name: role.name,
       isSystem: role.isSystem,
     })),
@@ -45,7 +45,7 @@ export function toOrgMemberDetail(
 export function toOrgRoleListItem(record: OrgRoleRecord): OrgRoleListItem {
   return {
     id: record.id,
-    key: record.key,
+    portalSlug: record.portalSlug,
     name: record.name,
     description: record.description,
     isSystem: record.isSystem,

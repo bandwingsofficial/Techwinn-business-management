@@ -199,7 +199,8 @@ export function RolesPage() {
       const query = search.toLowerCase();
       list = list.filter(
         (role) =>
-          role.name.toLowerCase().includes(query) || role.key.toLowerCase().includes(query),
+          role.name.toLowerCase().includes(query) ||
+            role.portalSlug.toLowerCase().includes(query),
       );
     }
     if (typeFilter === 'SYSTEM') list = list.filter((role) => role.isSystem);
@@ -470,7 +471,7 @@ export function RolesPage() {
               header={
                 <TableRow className="hover:bg-transparent">
                   <TableHead className={ORG_ROLES_TABLE_COLUMN_CLASS.name}>Role Name</TableHead>
-                  <TableHead className={ORG_ROLES_TABLE_COLUMN_CLASS.key}>Role Key</TableHead>
+                  <TableHead className={ORG_ROLES_TABLE_COLUMN_CLASS.key}>Portal URL slug</TableHead>
                   <TableHead className={ORG_ROLES_TABLE_COLUMN_CLASS.type}>Type</TableHead>
                   <TableHead
                     className={cn(ORG_ROLES_TABLE_COLUMN_CLASS.permissions, 'text-right whitespace-nowrap')}
@@ -539,9 +540,11 @@ export function RolesPage() {
                   <TableCell className={cn(ORG_ROLES_TABLE_COLUMN_CLASS.key, 'min-w-0')}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <code className="text-muted-foreground block truncate text-xs">{role.key}</code>
+                        <code className="text-muted-foreground block truncate text-xs">
+                          {role.portalSlug}
+                        </code>
                       </TooltipTrigger>
-                      <TooltipContent side="top">{role.key}</TooltipContent>
+                      <TooltipContent side="top">{role.portalSlug}</TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className={ORG_ROLES_TABLE_COLUMN_CLASS.type}>

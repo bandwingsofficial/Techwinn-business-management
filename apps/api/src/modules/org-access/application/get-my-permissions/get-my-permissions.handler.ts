@@ -45,7 +45,7 @@ export class GetMyPermissionsHandler {
         roles: [
           {
             id: SYSTEM_ROLE_KEYS.owner,
-            key: SYSTEM_ROLE_KEYS.owner,
+            portalSlug: SYSTEM_ROLE_KEYS.owner,
             name: 'Owner',
           },
         ],

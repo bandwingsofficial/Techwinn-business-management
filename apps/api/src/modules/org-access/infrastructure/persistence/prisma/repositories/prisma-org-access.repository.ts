@@ -100,8 +100,8 @@ export class PrismaOrgAccessRepository implements OrgAccessRepository {
 
   createRole(
     organizationId: string,
-    input: {
-      key: string;
+     input: {
+      portalSlug: string;
       name: string;
       description: string;
       permissionKeys: readonly PermissionKey[];
@@ -114,7 +114,12 @@ export class PrismaOrgAccessRepository implements OrgAccessRepository {
   updateRole(
     organizationId: string,
     roleId: string,
-    input: { name?: string; description?: string; status?: OrganizationRoleStatus },
+    input: {
+      name?: string;
+      portalSlug?: string;
+      description?: string;
+      status?: OrganizationRoleStatus;
+    },
     actorAdminId: string,
   ): Promise<OrgRoleRecord> {
     return this.roles.updateRole(organizationId, roleId, input, actorAdminId);

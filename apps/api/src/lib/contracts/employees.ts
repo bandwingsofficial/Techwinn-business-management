@@ -40,7 +40,7 @@ export type EmployeeLoginStatus = 'ACTIVE' | 'INVITED' | 'SUSPENDED' | 'DEACTIVA
 
 export interface EmployeeLoginRole {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
 }
 

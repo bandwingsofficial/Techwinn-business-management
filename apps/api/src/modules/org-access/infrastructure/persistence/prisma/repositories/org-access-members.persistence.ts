@@ -26,7 +26,7 @@ import {
   assertActorCanManageMember,
   assertRolesAssignable,
   countActiveOwners,
-  ensureSystemRoleByKey,
+  ensureSystemRoleByPortalSlug,
   loadMembershipOrThrow,
   memberInclude,
   normalizeEmail,
@@ -448,19 +448,21 @@ export class OrgAccessMembersPersistence {
     }
   }
 
-  async resolveSystemRoleId(organizationId: string, key: SystemRoleKey): Promise<string> {
+  async resolveSystemRoleId(organizationId: string, portalSlug: SystemRoleKey): Promise<string> {
     const findSystemRole = () =>
       this.prisma.organizationRole.findFirst({
-        where: { organizationId, key, isSystem: true },
+        where: { organizationId, portalSlug, isSystem: true },
         select: { id: true },
       });
     const existing = await findSystemRole();
     if (existing) return existing.id;
-    await this.prisma.$transaction((tx) => ensureSystemRoleByKey(tx, organizationId, key));
+    await this.prisma.$transaction((tx) =>
+      ensureSystemRoleByPortalSlug(tx, organizationId, portalSlug),
+    );
     const configured = await findSystemRole();
     if (!configured) {
       throw new OrgAccessConflictError(
-        `The ${key} system role cannot be configured because a custom role already uses its key.`,
+        `The ${portalSlug} system role cannot be configured because a custom role already uses that portal slug.`,
       );
     }
     return configured.id;

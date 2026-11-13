@@ -26,7 +26,11 @@ export interface EmployeeLoginAccessRecord {
   readonly isOwner: boolean;
   /** Created together with the employee, so deleting the employee deletes the account. */
   readonly ownsAccount: boolean;
-  readonly roles: readonly { readonly id: string; readonly key: string; readonly name: string }[];
+  readonly roles: readonly {
+    readonly id: string;
+    readonly portalSlug: string;
+    readonly name: string;
+  }[];
   readonly lastLoginAt: string | null;
 }
 

@@ -364,8 +364,12 @@ export function adminPageTitle(pathname: string): string {
       if (item.kind === 'link' && isNavItemActive(pathname, item)) return item.label;
     }
   }
-  const segment = pathname.split('/').filter(Boolean).pop();
-  if (!segment || segment === 'admin' || segment === 'employee' || segment === 'project-manager') {
+  const parts = pathname.split('/').filter(Boolean);
+  const segment = parts[parts.length - 1];
+  if (!segment || segment === 'dashboard') {
+    return 'Dashboard';
+  }
+  if (parts.length === 1) {
     return 'Workspace';
   }
   return segment

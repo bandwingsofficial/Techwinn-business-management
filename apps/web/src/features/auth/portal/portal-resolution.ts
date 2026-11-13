@@ -9,17 +9,17 @@ import {
   type AdminNavGroupWithAccess,
 } from '@/features/admin/navigation/filter-admin-nav';
 import type { AdminNavLink } from '@/features/admin/navigation/admin-nav-config';
-import { prefersOrganizationWorkspace } from '@/features/admin/navigation/navigation-route-policy';
-import {
-  canAccessWorkspaceDashboard,
-  membershipAccessContext,
-} from '../membership/membership-access';
+import { membershipAccessContext } from '../membership/membership-access';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
+import {
+  portalDashboardPath,
+  resolvePortalSegment,
+} from './portal-segment';
 import { resolvePortalKind, type PortalKind } from './portal-policy';
 
 export type { PortalKind };
 
-export { resolvePortalKind };
+export { resolvePortalKind, resolvePortalSegment };
 
 function navLinks(groups: readonly AdminNavGroupWithAccess[]): AdminNavLink[] {
   return groups.flatMap((group) =>
@@ -27,9 +27,9 @@ function navLinks(groups: readonly AdminNavGroupWithAccess[]): AdminNavLink[] {
   );
 }
 
-/** Picks the best post-login landing page from permission-filtered navigation (not portal kind). */
+/** Post-login landing page for the member's portal segment. */
 export function defaultDashboardPath(
-  _portal: PortalKind,
+  portalSegment: PortalKind,
   permissions: readonly PermissionKey[],
   input: {
     readonly admin: PlatformAdminProfile;
@@ -42,41 +42,25 @@ export function defaultDashboardPath(
     input.roles,
     input.sessionEmployee ?? null,
   );
-  const links = navLinks(filterAdminNav(permissions, access));
-
-  if (canAccessWorkspaceDashboard(access)) {
-    const adminDashboard = links.find((item) => item.href === '/admin/dashboard');
-    if (adminDashboard) return adminDashboard.href;
-  }
-
   const permissionSet = new Set(permissions);
-  const orgWorkspace = prefersOrganizationWorkspace(permissionSet, access);
+  const dashboard = portalDashboardPath(portalSegment);
 
-  // Self-service accounts land on `/employee/*` first. Organization collaborators keep `/admin/*`.
-  if (!orgWorkspace) {
-    const employeeModule = links.find(
-      (item) => item.href.startsWith('/employee/') && item.href !== '/employee/dashboard',
-    );
-    if (employeeModule) return employeeModule.href;
+  if (canAccessAppPath(dashboard, permissionSet, access, portalSegment)) {
+    return dashboard;
   }
 
-  const adminModule = links.find(
-    (item) => item.href.startsWith('/admin/') && item.href !== '/admin/dashboard',
-  );
-  if (adminModule) return adminModule.href;
+  const links = navLinks(filterAdminNav(permissions, access, portalSegment));
+  const firstModule = links.find((item) => !item.href.endsWith('/dashboard'));
+  if (firstModule) return firstModule.href;
 
-  const employeeFallback = links.find(
-    (item) => item.href.startsWith('/employee/') && item.href !== '/employee/dashboard',
-  );
-  if (employeeFallback) return employeeFallback.href;
+  if (links.length > 0) return links[0]!.href;
 
-  const fallback = links.find((item) => item.href.endsWith('/dashboard'));
-  return fallback?.href ?? links[0]?.href ?? '/employee/dashboard';
+  return dashboard;
 }
 
 export function sanitizeReturnPath(
   value: string | null | undefined,
-  _portal: PortalKind,
+  portalSegment: PortalKind,
   permissions: ReadonlySet<PermissionKey>,
   access: ReturnType<typeof membershipAccessContext>,
 ): string | null {
@@ -85,12 +69,7 @@ export function sanitizeReturnPath(
   if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) return null;
   if (path.startsWith('/login') || path.includes('/admin/login')) return null;
 
-  const isAppPath =
-    path.startsWith('/admin') ||
-    path.startsWith('/employee') ||
-    path.startsWith('/project-manager');
-  if (!isAppPath) return null;
-  return canAccessAppPath(path, permissions, access) ? path : null;
+  return canAccessAppPath(path, permissions, access, portalSegment) ? path : null;
 }
 
 export function resolvePostAuthRedirect(input: {
@@ -100,13 +79,13 @@ export function resolvePostAuthRedirect(input: {
   readonly sessionEmployee?: MySessionEmployeeSummary | null;
   readonly returnTo?: string | null;
 }): string {
-  const portal = resolvePortalKind(input.admin, input.permissions, input.roles);
+  const portalSegment = resolvePortalSegment(input.admin, input.roles);
   const permissionSet = new Set(input.permissions);
   const access = membershipAccessContext(
     input.admin,
     input.roles,
     input.sessionEmployee ?? null,
   );
-  const safeReturn = sanitizeReturnPath(input.returnTo, portal, permissionSet, access);
-  return safeReturn ?? defaultDashboardPath(portal, input.permissions, input);
+  const safeReturn = sanitizeReturnPath(input.returnTo, portalSegment, permissionSet, access);
+  return safeReturn ?? defaultDashboardPath(portalSegment, input.permissions, input);
 }

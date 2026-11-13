@@ -257,10 +257,10 @@ export class OrgAccessInvitationsPersistence {
         roleIds.length > 0
           ? await tx.organizationRole.findMany({
               where: { id: { in: roleIds }, organizationId: invitation.organizationId },
-              select: { id: true, key: true },
+              select: { id: true, portalSlug: true },
             })
           : [];
-      const isOwner = roles.some((role) => role.key === SYSTEM_ROLE_KEYS.owner);
+      const isOwner = roles.some((role) => role.portalSlug === SYSTEM_ROLE_KEYS.owner);
       const membershipId = randomUUID();
 
       await tx.organizationMembership.create({

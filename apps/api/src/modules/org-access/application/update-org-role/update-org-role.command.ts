@@ -5,6 +5,7 @@ export type UpdateOrgRoleCommand = {
   readonly roleId: string;
   readonly actorAdminId: string;
   readonly name?: string;
+  readonly portalSlug?: string;
   readonly description?: string;
   readonly status?: OrganizationRoleStatus;
 };

@@ -34,7 +34,7 @@ export type OrganizationRoleStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface OrgMemberRoleSummary {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
   readonly isSystem: boolean;
 }
@@ -77,7 +77,7 @@ export interface OrgAccessSummaryResponse {
 
 export interface OrgRoleListItem {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
   readonly description: string;
   readonly isSystem: boolean;
@@ -118,7 +118,7 @@ export interface PermissionCatalogResponse {
 
 export interface MyOrganizationRole {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
 }
 

@@ -5,6 +5,11 @@ import {
   canUseEmployeeSelfService,
   type MembershipAccessContext,
 } from '@/features/auth/membership/membership-access';
+import {
+  canonicalPermissionPath,
+  pathnamePortalSegment,
+  portalDashboardPath,
+} from '@/features/auth/portal/portal-segment';
 
 /**
  * Organization daily-task boards — require org-scope view, not merely `tasks.read`
@@ -128,8 +133,27 @@ export function canAccessAppPath(
   pathname: string,
   permissions: ReadonlySet<PermissionKey>,
   access?: MembershipAccessContext,
+  expectedPortalSegment?: string,
 ): boolean {
   const path = normalizePath(pathname);
+
+  if (expectedPortalSegment) {
+    const pathPortal = pathnamePortalSegment(path);
+    if (pathPortal && pathPortal !== expectedPortalSegment) {
+      return false;
+    }
+  }
+
+  if (expectedPortalSegment && path === portalDashboardPath(expectedPortalSegment)) {
+    if (expectedPortalSegment === 'admin' && access && !canAccessWorkspaceDashboard(access)) {
+      return false;
+    }
+    if (expectedPortalSegment === 'employee' && access && !canUseEmployeeSelfService(access)) {
+      return false;
+    }
+    return true;
+  }
+
   if (access && (path === '/admin' || path === '/admin/dashboard')) {
     if (!canAccessWorkspaceDashboard(access)) return false;
   }
@@ -138,8 +162,13 @@ export function canAccessAppPath(
     if (!canUseEmployeeSelfService(access)) return false;
   }
 
+  const canonical = canonicalPermissionPath(path);
   const matchedDailyBoardRoute = [...ORGANIZATION_DAILY_TASK_BOARD_ROUTES].find(
-    (route) => path === route || path.startsWith(`${route}/`),
+    (route) =>
+      path === route ||
+      path.startsWith(`${route}/`) ||
+      canonical === route ||
+      canonical.startsWith(`${route}/`),
   );
   if (matchedDailyBoardRoute) {
     return canViewOrganizationDailyTasks(
@@ -148,14 +177,17 @@ export function canAccessAppPath(
     );
   }
 
-  const required = permissionsForAppPath(path);
+  let required = permissionsForAppPath(path);
   if (required === null) {
-    return (
-      !path.startsWith('/admin') &&
-      !path.startsWith('/employee') &&
-      !path.startsWith('/project-manager')
-    );
+    const canonical = canonicalPermissionPath(path);
+    required = permissionsForAppPath(canonical);
   }
-  if (required.length === 0) return true;
+  if (required === null) {
+    return false;
+  }
+  if (required.length === 0) {
+    if (path === '/admin' || path === '/employee' || path === '/project-manager') return true;
+    return false;
+  }
   return required.some((key) => permissions.has(key));
 }

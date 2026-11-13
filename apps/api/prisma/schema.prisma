@@ -1146,7 +1146,7 @@ model OrganizationMembership {
 model OrganizationRole {
   id             String                 @id @db.Uuid
   organizationId String                 @map("organization_id") @db.Uuid
-  key            String                 @db.VarChar(64)
+  portalSlug     String                 @map("portal_slug") @db.VarChar(64)
   name           String                 @db.VarChar(120)
   description    String                 @default("") @db.VarChar(500)
   isSystem       Boolean                @default(false) @map("is_system")
@@ -1159,7 +1159,7 @@ model OrganizationRole {
   memberships  OrganizationMembershipRole[]
   invitations  OrganizationInvitationRole[]
 
-  @@unique([organizationId, key])
+  @@unique([organizationId, portalSlug])
   @@index([organizationId, status])
   @@map("organization_roles")
 }

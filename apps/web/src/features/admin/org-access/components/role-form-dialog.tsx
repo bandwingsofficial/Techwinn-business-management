@@ -55,7 +55,7 @@ import { invalidateMyPermissionsCache } from '../my-permissions-cache';
 import type { OrganizationRoleStatus } from '../types';
 import { applyOrgAccessFieldErrors, describeOrgAccessError } from '../utils/errors';
 import { isEditableOrgRole } from '../utils/role-policy';
-import { slugifyRoleKey } from '../utils/role-key-slug';
+import { slugifyPortalSlug } from '../utils/portal-slug';
 import { RolePermissionMatrix } from './role-permission-matrix';
 
 const FORM_SECONDARY_BTN =
@@ -72,18 +72,20 @@ const DIALOG_SHELL_CLASS = cn(
 
 type RoleFormState = {
   name: string;
-  key: string;
+  portalSlug: string;
   description: string;
   status: OrganizationRoleStatus;
+  isSystem: boolean;
   permissionKeys: ReadonlySet<PermissionKey>;
 };
 
 function emptyForm(): RoleFormState {
   return {
     name: '',
-    key: '',
+    portalSlug: '',
     description: '',
     status: 'ACTIVE',
+    isSystem: false,
     permissionKeys: new Set(),
   };
 }
@@ -109,7 +111,7 @@ export function RoleFormDialog({
   const isCreate = roleId === null;
 
   const [form, setForm] = useState<RoleFormState>(() => emptyForm());
-  const [keyManuallyEdited, setKeyManuallyEdited] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loadingRole, setLoadingRole] = useState(false);
   const [loadedEditable, setLoadedEditable] = useState(true);
@@ -118,7 +120,7 @@ export function RoleFormDialog({
 
   const resetCreate = useCallback(() => {
     setForm(emptyForm());
-    setKeyManuallyEdited(false);
+    setSlugManuallyEdited(false);
     setFieldErrors({});
     setLoadedEditable(true);
   }, []);
@@ -135,12 +137,13 @@ export function RoleFormDialog({
       .then((role) => {
         setForm({
           name: role.name,
-          key: role.key,
+          portalSlug: role.portalSlug,
           description: role.description,
           status: role.status,
+          isSystem: role.isSystem,
           permissionKeys: new Set(role.permissionKeys),
         });
-        setKeyManuallyEdited(true);
+        setSlugManuallyEdited(true);
         setFieldErrors({});
         setLoadedEditable(isEditableOrgRole(role));
       })
@@ -169,7 +172,7 @@ export function RoleFormDialog({
     if (isCreate) {
       const parsed = createRoleRequestSchema.safeParse({
         name: form.name.trim(),
-        key: form.key.trim(),
+        portalSlug: form.portalSlug.trim(),
         description: form.description.trim() || undefined,
         permissionKeys,
       });
@@ -201,6 +204,7 @@ export function RoleFormDialog({
 
     const metadataParsed = updateRoleRequestSchema.safeParse({
       name: form.name.trim(),
+      ...(!form.isSystem ? { portalSlug: form.portalSlug.trim() } : {}),
       description: form.description.trim(),
       status: form.status,
     });
@@ -305,36 +309,38 @@ export function RoleFormDialog({
                           setForm((current) => ({
                             ...current,
                             name: next,
-                            key:
-                              isCreate && !keyManuallyEdited
-                                ? slugifyRoleKey(next)
-                                : current.key,
+                            portalSlug:
+                              isCreate && !slugManuallyEdited
+                                ? slugifyPortalSlug(next)
+                                : current.portalSlug,
                           }));
                         }}
                       />
                       <CrmInlineFieldError message={fieldErrors.name} reserveSpace={false} />
                     </div>
                     <div className="grid gap-2">
-                      <CrmFieldLabel htmlFor="role-key" required={isCreate && !effectiveReadOnly}>
-                        Role key
+                      <CrmFieldLabel htmlFor="role-portal-slug" required={isCreate && !effectiveReadOnly}>
+                        Portal URL slug
                       </CrmFieldLabel>
                       <Input
-                        id="role-key"
-                        value={form.key}
-                        disabled={pending || effectiveReadOnly || !isCreate}
-                        readOnly={!isCreate}
-                        aria-invalid={Boolean(fieldErrors.key)}
+                        id="role-portal-slug"
+                        value={form.portalSlug}
+                        disabled={
+                          pending || effectiveReadOnly || (form.isSystem && !isCreate)
+                        }
+                        readOnly={form.isSystem && !isCreate}
+                        aria-invalid={Boolean(fieldErrors.portalSlug)}
                         className={cn(
                           CRM_PIPELINE_FORM_FIELD_CLASS,
-                          formControlStateClass(fieldErrors.key ? 'invalid' : 'neutral'),
+                          formControlStateClass(fieldErrors.portalSlug ? 'invalid' : 'neutral'),
                         )}
                         onChange={(event) => {
-                          clearFormFieldError(setFieldErrors, 'key');
-                          setKeyManuallyEdited(true);
-                          setForm((current) => ({ ...current, key: event.target.value }));
+                          clearFormFieldError(setFieldErrors, 'portalSlug');
+                          setSlugManuallyEdited(true);
+                          setForm((current) => ({ ...current, portalSlug: event.target.value }));
                         }}
                       />
-                      <CrmInlineFieldError message={fieldErrors.key} reserveSpace={false} />
+                      <CrmInlineFieldError message={fieldErrors.portalSlug} reserveSpace={false} />
                     </div>
                   </div>
                   {!isCreate && !effectiveReadOnly ? (

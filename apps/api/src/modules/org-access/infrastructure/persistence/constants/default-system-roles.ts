@@ -85,55 +85,55 @@ export const MEMBER_PERMISSIONS: readonly PermissionKey[] = [
 export const EMPLOYEE_PERMISSIONS: readonly PermissionKey[] = EMPLOYEE_PORTAL_PERMISSIONS;
 
 export const DEFAULT_SYSTEM_ROLES: readonly {
-  key: string;
+  portalSlug: string;
   name: string;
   description: string;
   permissions: readonly PermissionKey[];
 }[] = [
   {
-    key: SYSTEM_ROLE_KEYS.owner,
+    portalSlug: SYSTEM_ROLE_KEYS.owner,
     name: 'Owner',
     description: 'Full organization administration including users and roles.',
     permissions: OWNER_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.admin,
+    portalSlug: SYSTEM_ROLE_KEYS.admin,
     name: 'Admin',
     description: 'Full business module access without user or role administration.',
     permissions: ORG_ADMIN_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.projectManager,
+    portalSlug: SYSTEM_ROLE_KEYS.projectManager,
     name: 'Project Manager',
     description: 'Leads and human resources operations.',
     permissions: PROJECT_MANAGER_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.projectManagement,
+    portalSlug: SYSTEM_ROLE_KEYS.projectManagement,
     name: 'Project Management',
     description: 'Project management module only: projects, project tasks and daily tasks.',
     permissions: PROJECT_MANAGEMENT_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.sales,
+    portalSlug: SYSTEM_ROLE_KEYS.sales,
     name: 'Sales',
     description: 'Leads and client-facing sales operations.',
     permissions: SALES_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.financial,
+    portalSlug: SYSTEM_ROLE_KEYS.financial,
     name: 'Financial',
     description: 'Finance and expense operations.',
     permissions: FINANCIAL_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.member,
+    portalSlug: SYSTEM_ROLE_KEYS.member,
     name: 'Member',
     description: 'Read-only access to common modules.',
     permissions: MEMBER_PERMISSIONS,
   },
   {
-    key: SYSTEM_ROLE_KEYS.employee,
+    portalSlug: SYSTEM_ROLE_KEYS.employee,
     name: 'Employee',
     description: 'Assigned automatically to employees given sign-in from Employee Management.',
     permissions: EMPLOYEE_PERMISSIONS,

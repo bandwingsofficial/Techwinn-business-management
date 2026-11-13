@@ -65,7 +65,7 @@ export class OrgAccessRolesPersistence {
   async createRole(
     organizationId: string,
     input: {
-      key: string;
+      portalSlug: string;
       name: string;
       description: string;
       permissionKeys: readonly PermissionKey[];
@@ -91,7 +91,7 @@ export class OrgAccessRolesPersistence {
           data: {
             id: roleId,
             organizationId,
-            key: input.key.trim(),
+            portalSlug: input.portalSlug.trim(),
             name: input.name.trim(),
             description: input.description.trim(),
             isSystem: false,
@@ -110,7 +110,7 @@ export class OrgAccessRolesPersistence {
           type: 'ROLE_CREATED',
           entityType: 'role',
           entityId: created.id,
-          metadata: { key: created.key, permissionKeys },
+          metadata: { portalSlug: created.portalSlug, permissionKeys },
         });
         return created;
       });
@@ -119,7 +119,7 @@ export class OrgAccessRolesPersistence {
       return toRoleRecord(row);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new OrgAccessConflictError('A role with this key already exists.');
+        throw new OrgAccessConflictError('A role with this portal URL slug already exists.');
       }
       throw error;
     }
@@ -128,11 +128,19 @@ export class OrgAccessRolesPersistence {
   async updateRole(
     organizationId: string,
     roleId: string,
-    input: { name?: string; description?: string; status?: OrganizationRoleStatus },
+    input: {
+      name?: string;
+      portalSlug?: string;
+      description?: string;
+      status?: OrganizationRoleStatus;
+    },
     actorAdminId: string,
   ): Promise<OrgRoleRecord> {
     const existing = await loadRoleOrThrow(this.prisma, organizationId, roleId);
     assertOrgRoleMutable(existing, 'modify');
+    if (input.portalSlug !== undefined && existing.isSystem) {
+      throw new OrgAccessValidationError('System role portal URL slugs cannot be changed.');
+    }
     await assertActorHoldsPermissions(
       this.prisma,
       this.permissions.resolveEffectivePermissions,
@@ -141,7 +149,8 @@ export class OrgAccessRolesPersistence {
       existing.permissions.map((permission) => permission.permissionKey),
       'You cannot modify a role that has permissions you do not have.',
     );
-    const row = await this.prisma.$transaction(async (tx) => {
+    try {
+      const row = await this.prisma.$transaction(async (tx) => {
       if (input.status === 'INACTIVE' && existing.status === 'ACTIVE') {
         const assignmentCount = await tx.organizationMembershipRole.count({ where: { roleId } });
         if (assignmentCount > 0) {
@@ -156,6 +165,7 @@ export class OrgAccessRolesPersistence {
         where: { id: roleId },
         data: {
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+          ...(input.portalSlug !== undefined ? { portalSlug: input.portalSlug.trim() } : {}),
           ...(input.description !== undefined ? { description: input.description.trim() } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
         },
@@ -168,12 +178,18 @@ export class OrgAccessRolesPersistence {
         entityId: updated.id,
       });
       return updated;
-    });
-    await this.permissions.invalidatePermissionCache(organizationId);
-    if (input.status !== undefined) {
-      await this.permissions.publishPermissionChange(organizationId);
+      });
+      await this.permissions.invalidatePermissionCache(organizationId);
+      if (input.status !== undefined || input.portalSlug !== undefined) {
+        await this.permissions.publishPermissionChange(organizationId);
+      }
+      return toRoleRecord(row);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new OrgAccessConflictError('A role with this portal URL slug already exists.');
+      }
+      throw error;
     }
-    return toRoleRecord(row);
   }
 
   async setRolePermissions(
@@ -309,7 +325,7 @@ export class OrgAccessRolesPersistence {
         type: 'ROLE_DELETED',
         entityType: 'role',
         entityId: roleId,
-        metadata: { key: role.key },
+        metadata: { portalSlug: role.portalSlug },
       });
     });
     await this.permissions.invalidatePermissionCache(organizationId);

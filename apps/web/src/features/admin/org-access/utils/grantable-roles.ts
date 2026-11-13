@@ -14,7 +14,7 @@ export function selectGrantableRoles(
   return roles.filter(
     (role) =>
       role.status === 'ACTIVE' &&
-      role.key !== SYSTEM_ROLE_KEYS.owner &&
+      role.portalSlug !== SYSTEM_ROLE_KEYS.owner &&
       role.permissionKeys.every((key) => actor.permissions.has(key)),
   );
 }

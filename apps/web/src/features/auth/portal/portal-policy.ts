@@ -1,17 +1,19 @@
 import type { MyOrganizationRole, PermissionKey, PlatformAdminProfile } from '@techwin/contracts';
-import type { MembershipAccessContext } from '../membership/membership-access';
+import { resolvePortalSegment } from './portal-segment';
 
-/** Legacy namespace id; all roles share one application shell and `/admin` feature routes. */
-export type PortalKind = 'admin' | 'employee' | 'project-manager';
+/** Active URL portal segment for the signed-in member (e.g. `admin`, `project-manager`, `quality-analyst`). */
+export type PortalKind = string;
+
+export { resolvePortalSegment };
 
 /**
- * Unified workspace: every organization member uses the same Admin shell and navigation config.
- * Route access, sidebar items and actions come from effective permissions — not portal kind.
+ * Portal segment from assigned organization roles' saved portal URL slugs — never from display names.
+ * Navigation and route access still come from effective permissions.
  */
 export function resolvePortalKind(
-  _admin: PlatformAdminProfile,
+  admin: PlatformAdminProfile,
   _permissions: readonly PermissionKey[],
-  _roles: readonly MyOrganizationRole[],
+  roles: readonly MyOrganizationRole[],
 ): PortalKind {
-  return 'admin';
+  return resolvePortalSegment(admin, roles);
 }

@@ -10,7 +10,9 @@ import test from 'node:test';
 
 function canAccessWorkspaceDashboard(context) {
   if (context.platformRole === 'SUPER_ADMIN') return true;
-  return context.membershipRoles.some((role) => role.key === 'owner' || role.key === 'admin');
+  return context.membershipRoles.some(
+    (role) => role.portalSlug === 'owner' || role.portalSlug === 'admin',
+  );
 }
 
 function canUseEmployeeSelfService(context) {
@@ -61,7 +63,7 @@ test('Super Admin never uses employee self-service even with all permissions', (
   /** @type {Access} */
   const access = {
     platformRole: 'SUPER_ADMIN',
-    membershipRoles: [{ key: 'owner' }],
+    membershipRoles: [{ portalSlug: 'owner' }],
     sessionEmployee: null,
   };
   assert.equal(canUseEmployeeSelfService(access), false);
@@ -76,7 +78,7 @@ test('Super Admin with linked employee still cannot open My Workspace routes', (
   /** @type {Access} */
   const access = {
     platformRole: 'SUPER_ADMIN',
-    membershipRoles: [{ key: 'owner' }],
+    membershipRoles: [{ portalSlug: 'owner' }],
     sessionEmployee: { id: 'emp-1' },
   };
   assert.equal(canUseEmployeeSelfService(access), false);
@@ -87,7 +89,7 @@ test('Organization Admin without employee profile does not see My Workspace', ()
   /** @type {Access} */
   const access = {
     platformRole: 'ORGANIZATION_MEMBER',
-    membershipRoles: [{ key: 'admin' }],
+    membershipRoles: [{ portalSlug: 'admin' }],
     sessionEmployee: null,
   };
   assert.equal(canUseEmployeeSelfService(access), false);
@@ -99,7 +101,7 @@ test('Employee with linked profile and permissions sees My Leave', () => {
   /** @type {Access} */
   const access = {
     platformRole: 'ORGANIZATION_MEMBER',
-    membershipRoles: [{ key: 'employee' }],
+    membershipRoles: [{ portalSlug: 'employee' }],
     sessionEmployee: { id: 'emp-9' },
   };
   assert.equal(canUseEmployeeSelfService(access), true);
@@ -111,7 +113,7 @@ test('Organization Admin is not automatically platform Super Admin', () => {
   /** @type {Access} */
   const access = {
     platformRole: 'ORGANIZATION_MEMBER',
-    membershipRoles: [{ key: 'admin' }],
+    membershipRoles: [{ portalSlug: 'admin' }],
     sessionEmployee: null,
   };
   assert.notEqual(access.platformRole, 'SUPER_ADMIN');

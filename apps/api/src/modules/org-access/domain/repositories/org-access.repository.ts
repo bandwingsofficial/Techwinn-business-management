@@ -17,7 +17,7 @@ export interface OrgMemberListFilters {
 
 export interface OrgMemberRoleRecord {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
   readonly isSystem: boolean;
 }
@@ -49,7 +49,7 @@ export interface PaginatedOrgMembers {
 
 export interface OrgRoleRecord {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
   readonly description: string;
   readonly isSystem: boolean;
@@ -85,7 +85,7 @@ export interface OrgMembershipRef {
 
 export interface OrgMembershipRoleSummary {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
 }
 
@@ -112,7 +112,7 @@ export interface OrgAccessRepository {
   createRole(
     organizationId: string,
     input: {
-      key: string;
+      portalSlug: string;
       name: string;
       description: string;
       permissionKeys: readonly PermissionKey[];
@@ -122,7 +122,12 @@ export interface OrgAccessRepository {
   updateRole(
     organizationId: string,
     roleId: string,
-    input: { name?: string; description?: string; status?: OrganizationRoleStatus },
+    input: {
+      name?: string;
+      portalSlug?: string;
+      description?: string;
+      status?: OrganizationRoleStatus;
+    },
     actorAdminId: string,
   ): Promise<OrgRoleRecord>;
   setRolePermissions(
@@ -186,7 +191,7 @@ export interface OrgAccessRepository {
     actorAdminId: string,
     targetAdminId: string,
   ): Promise<void>;
-  /** System role with `key`, configured from the role templates if the organization lacks it. */
+  /** System role by portal slug, configured from templates if the organization lacks it. */
   resolveSystemRoleId(organizationId: string, key: SystemRoleKey): Promise<string>;
   /** Permanently removes a membership and, when exclusive, its sign-in account. */
   deleteMember(

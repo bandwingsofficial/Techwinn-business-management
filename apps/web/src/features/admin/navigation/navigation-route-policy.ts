@@ -60,7 +60,9 @@ export function prefersOrganizationWorkspace(
 ): boolean {
   if (access && canAccessWorkspaceDashboard(access)) return true;
   if (hasOrganizationTaskView(permissions)) return true;
-  return ORGANIZATION_WORKSPACE_ROUTES.some((route) => canAccessAppPath(route, permissions, access));
+  return ORGANIZATION_WORKSPACE_ROUTES.some((route) =>
+    canAccessAppPath(route, permissions, access, undefined),
+  );
 }
 
 /** Whether a nav href should appear after canonical-route deduplication. */

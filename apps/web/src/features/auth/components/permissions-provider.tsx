@@ -41,13 +41,17 @@ import {
 import {
   defaultDashboardPath,
   resolvePortalKind,
+  resolvePortalSegment,
   type PortalKind,
 } from '../portal/portal-resolution';
+import { portalDashboardPath } from '../portal/portal-segment';
 
 const ACCESS_DENIED_REFRESH_INTERVAL_MS = 5_000;
 
 export type PermissionsContextValue = {
   readonly portal: PortalKind;
+  /** URL segment for the member's workspace (`admin`, `project-manager`, custom role slug). */
+  readonly portalSegment: string;
   readonly permissions: readonly PermissionKey[];
   readonly permissionSet: ReadonlySet<PermissionKey>;
   readonly roles: readonly MyOrganizationRole[];
@@ -60,6 +64,7 @@ export type PermissionsContextValue = {
   readonly hasAll: (...keys: PermissionKey[]) => boolean;
   readonly refresh: () => Promise<void>;
   readonly defaultDashboard: string;
+  readonly portalDashboard: string;
 };
 
 const PermissionsContext = createContext<PermissionsContextValue | null>(null);
@@ -242,9 +247,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     const hasAny = (...keys: PermissionKey[]) => keys.some((key) => permissionSet.has(key));
     const hasAll = (...keys: PermissionKey[]) => keys.every((key) => permissionSet.has(key));
     const portal = resolvePortalKind(admin, permissions, roles);
+    const portalSegment = resolvePortalSegment(admin, roles);
     const navAccess = membershipAccessContext(admin, roles, sessionEmployee);
     return {
       portal,
+      portalSegment,
       permissions,
       permissionSet,
       roles,
@@ -255,11 +262,12 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       has,
       hasAny,
       hasAll,
-      defaultDashboard: defaultDashboardPath(portal, permissions, {
+      defaultDashboard: defaultDashboardPath(portalSegment, permissions, {
         admin,
         roles,
         sessionEmployee,
       }),
+      portalDashboard: portalDashboardPath(portalSegment),
       refresh: async () => {
         invalidateMyPermissionsCache();
         const generation = ++loadGenerationRef.current;

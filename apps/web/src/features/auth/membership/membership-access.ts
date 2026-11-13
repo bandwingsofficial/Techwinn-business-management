@@ -24,7 +24,7 @@ const WORKSPACE_OVERVIEW_ROLE_KEYS: ReadonlySet<string> = new Set([
 
 export function canAccessWorkspaceDashboard(context: MembershipAccessContext): boolean {
   if (context.platformRole === 'SUPER_ADMIN') return true;
-  return context.membershipRoles.some((role) => WORKSPACE_OVERVIEW_ROLE_KEYS.has(role.key));
+  return context.membershipRoles.some((role) => WORKSPACE_OVERVIEW_ROLE_KEYS.has(role.portalSlug));
 }
 
 /**

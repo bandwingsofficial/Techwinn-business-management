@@ -36,7 +36,7 @@ export const memberInclude = {
   roleLinks: {
     include: {
       role: {
-        select: { id: true, key: true, name: true, isSystem: true, status: true },
+        select: { id: true, portalSlug: true, name: true, isSystem: true, status: true },
       },
     },
   },
@@ -103,7 +103,7 @@ export function toMemberRecord(row: MembershipRow): OrgMemberRecord {
     .filter((role) => role.status === 'ACTIVE')
     .map((role) => ({
       id: role.id,
-      key: role.key,
+      portalSlug: role.portalSlug,
       name: role.name,
       isSystem: role.isSystem,
     }));
@@ -136,7 +136,7 @@ export function toRoleRecord(
 ): OrgRoleRecord {
   return {
     id: row.id,
-    key: row.key,
+    portalSlug: row.portalSlug,
     name: row.name,
     description: row.description,
     isSystem: row.isSystem,
@@ -172,25 +172,25 @@ async function upsertSystemRoleTemplate(
   tx: Pick<PrismaService, 'organizationRole' | 'organizationRolePermission'>,
   organizationId: string,
   template: (typeof DEFAULT_SYSTEM_ROLES)[number],
-  keyToId: Map<string, string>,
-  customRoleKeys: ReadonlySet<string>,
+  slugToId: Map<string, string>,
+  customRoleSlugs: ReadonlySet<string>,
 ): Promise<void> {
-  if (customRoleKeys.has(template.key)) return;
-  let roleId = keyToId.get(template.key);
+  if (customRoleSlugs.has(template.portalSlug)) return;
+  let roleId = slugToId.get(template.portalSlug);
   if (!roleId) {
     roleId = randomUUID();
     await tx.organizationRole.create({
       data: {
         id: roleId,
         organizationId,
-        key: template.key,
+        portalSlug: template.portalSlug,
         name: template.name,
         description: template.description,
         isSystem: true,
         status: 'ACTIVE',
       },
     });
-    keyToId.set(template.key, roleId);
+    slugToId.set(template.portalSlug, roleId);
     // New system roles start from the template. Editable system roles (Employee, Sales, …)
     // must keep administrator customizations after creation — never wipe on later bootstraps.
     await syncSystemRolePermissions(tx, roleId, template.permissions);
@@ -208,7 +208,7 @@ async function upsertSystemRoleTemplate(
 
   // Owner/Admin are immutable in Role Management; keep them aligned with the catalog.
   // All other system roles are editable — only merge missing defaults elsewhere.
-  if (IMMUTABLE_ORG_ROLE_KEYS.has(template.key)) {
+  if (IMMUTABLE_ORG_ROLE_KEYS.has(template.portalSlug)) {
     await syncSystemRolePermissions(tx, roleId, template.permissions);
   }
 }
@@ -220,16 +220,16 @@ export async function ensureSystemRoles(
 ): Promise<Map<string, string>> {
   const existing = await tx.organizationRole.findMany({
     where: { organizationId },
-    select: { id: true, key: true, isSystem: true },
+    select: { id: true, portalSlug: true, isSystem: true },
   });
-  const keyToId = new Map(existing.map((row) => [row.key, row.id]));
-  const customRoleKeys = new Set(existing.filter((row) => !row.isSystem).map((row) => row.key));
+  const slugToId = new Map(existing.map((row) => [row.portalSlug, row.id]));
+  const customRoleSlugs = new Set(existing.filter((row) => !row.isSystem).map((row) => row.portalSlug));
 
   for (const template of DEFAULT_SYSTEM_ROLES) {
-    await upsertSystemRoleTemplate(tx, organizationId, template, keyToId, customRoleKeys);
+    await upsertSystemRoleTemplate(tx, organizationId, template, slugToId, customRoleSlugs);
   }
 
-  return keyToId;
+  return slugToId;
 }
 
 /**
@@ -241,44 +241,47 @@ export async function ensureProtectedSystemRoles(
 ): Promise<Map<string, string>> {
   const existing = await tx.organizationRole.findMany({
     where: { organizationId },
-    select: { id: true, key: true, isSystem: true },
+    select: { id: true, portalSlug: true, isSystem: true },
   });
-  const keyToId = new Map(existing.map((row) => [row.key, row.id]));
-  const customRoleKeys = new Set(existing.filter((row) => !row.isSystem).map((row) => row.key));
+  const slugToId = new Map(existing.map((row) => [row.portalSlug, row.id]));
+  const customRoleSlugs = new Set(existing.filter((row) => !row.isSystem).map((row) => row.portalSlug));
   const protectedTemplates = DEFAULT_SYSTEM_ROLES.filter((template) =>
-    IMMUTABLE_ORG_ROLE_KEYS.has(template.key),
+    IMMUTABLE_ORG_ROLE_KEYS.has(template.portalSlug),
   );
   for (const template of protectedTemplates) {
-    await upsertSystemRoleTemplate(tx, organizationId, template, keyToId, customRoleKeys);
+    await upsertSystemRoleTemplate(tx, organizationId, template, slugToId, customRoleSlugs);
   }
-  return keyToId;
+  return slugToId;
 }
 
 /** Ensures a single system role template exists (for employee assignment and similar flows). */
-export async function ensureSystemRoleByKey(
+export async function ensureSystemRoleByPortalSlug(
   tx: Pick<PrismaService, 'organizationRole' | 'organizationRolePermission'>,
   organizationId: string,
-  key: string,
+  portalSlug: string,
 ): Promise<string> {
   const existing = await tx.organizationRole.findMany({
     where: { organizationId },
-    select: { id: true, key: true, isSystem: true },
+    select: { id: true, portalSlug: true, isSystem: true },
   });
-  const keyToId = new Map(existing.map((row) => [row.key, row.id]));
-  const customRoleKeys = new Set(existing.filter((row) => !row.isSystem).map((row) => row.key));
-  const template = DEFAULT_SYSTEM_ROLES.find((row) => row.key === key);
+  const slugToId = new Map(existing.map((row) => [row.portalSlug, row.id]));
+  const customRoleSlugs = new Set(existing.filter((row) => !row.isSystem).map((row) => row.portalSlug));
+  const template = DEFAULT_SYSTEM_ROLES.find((row) => row.portalSlug === portalSlug);
   if (!template) {
-    throw new OrgAccessValidationError(`Unknown system role key: ${key}`);
+    throw new OrgAccessValidationError(`Unknown system role portal slug: ${portalSlug}`);
   }
-  await upsertSystemRoleTemplate(tx, organizationId, template, keyToId, customRoleKeys);
-  const roleId = keyToId.get(key);
+  await upsertSystemRoleTemplate(tx, organizationId, template, slugToId, customRoleSlugs);
+  const roleId = slugToId.get(portalSlug);
   if (!roleId) {
     throw new OrgAccessConflictError(
-      `The ${key} system role cannot be configured because a custom role already uses its key.`,
+      `The ${portalSlug} system role cannot be configured because a custom role already uses that portal slug.`,
     );
   }
   return roleId;
 }
+
+/** @deprecated Use {@link ensureSystemRoleByPortalSlug}. */
+export const ensureSystemRoleByKey = ensureSystemRoleByPortalSlug;
 
 /** First org access creates all defaults; later requests only restore protected Owner/Admin roles. */
 export async function ensureOrganizationRoleBootstrap(
@@ -292,7 +295,7 @@ export async function ensureOrganizationRoleBootstrap(
   }
   const map = await ensureProtectedSystemRoles(tx, organizationId);
   // Ensure the Employee role row exists without resetting its permissions.
-  await ensureSystemRoleByKey(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
+  await ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
   // Only immutable roles receive catalog merges on every request. Editable system
   // roles (Employee, Member, …) keep administrator-saved permission sets intact.
   await mergeSystemRoleDefaultPermissions(tx, organizationId, [
@@ -321,7 +324,7 @@ export async function ensureOwnerMembershipRole(
   });
   if (!membership?.isOwner) return false;
 
-  const ownerRoleId = await ensureSystemRoleByKey(tx, organizationId, SYSTEM_ROLE_KEYS.owner);
+  const ownerRoleId = await ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.owner);
   const hasOwnerRole = membership.roleLinks.some((link) => link.roleId === ownerRoleId);
   if (hasOwnerRole) return false;
 
@@ -365,7 +368,7 @@ export async function ensureLinkedEmployeeMembershipRole(
   });
   if (!employee) return false;
 
-  const employeeRoleId = await ensureSystemRoleByKey(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
+  const employeeRoleId = await ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
   const membership = await tx.organizationMembership.findUnique({
     where: { organizationId_adminId: { organizationId, adminId } },
     select: { id: true, roleLinks: { select: { roleId: true } } },
@@ -385,13 +388,13 @@ export async function ensureLinkedEmployeeMembershipRole(
 export async function mergeSystemRoleDefaultPermissions(
   tx: Pick<PrismaService, 'organizationRole' | 'organizationRolePermission'>,
   organizationId: string,
-  roleKeys: readonly string[],
+  rolePortalSlugs: readonly string[],
 ): Promise<void> {
-  for (const roleKey of roleKeys) {
-    const template = DEFAULT_SYSTEM_ROLES.find((row) => row.key === roleKey);
+  for (const portalSlug of rolePortalSlugs) {
+    const template = DEFAULT_SYSTEM_ROLES.find((row) => row.portalSlug === portalSlug);
     if (!template) continue;
     const role = await tx.organizationRole.findFirst({
-      where: { organizationId, key: roleKey, isSystem: true },
+      where: { organizationId, portalSlug, isSystem: true },
       select: { id: true },
     });
     if (!role) continue;
@@ -409,17 +412,20 @@ export async function mergeSystemRoleDefaultPermissions(
   }
 }
 
-export async function findRoleIdByKey(
+export async function findRoleIdByPortalSlug(
   tx: Pick<PrismaService, 'organizationRole'>,
   organizationId: string,
-  key: string,
+  portalSlug: string,
 ): Promise<string | null> {
   const row = await tx.organizationRole.findFirst({
-    where: { organizationId, key },
+    where: { organizationId, portalSlug },
     select: { id: true },
   });
   return row?.id ?? null;
 }
+
+/** @deprecated Use {@link findRoleIdByPortalSlug}. */
+export const findRoleIdByKey = findRoleIdByPortalSlug;
 
 export async function countActiveOwners(
   tx: Pick<PrismaService, 'organizationMembership'>,
@@ -501,13 +507,16 @@ export async function assertRolesAssignable(
   return roles;
 }
 
-export function rolesIncludeOwner(roles: readonly { key: string }[]): boolean {
-  return roles.some((role) => role.key === SYSTEM_ROLE_KEYS.owner);
+export function rolesIncludeOwner(roles: readonly { portalSlug: string }[]): boolean {
+  return roles.some((role) => role.portalSlug === SYSTEM_ROLE_KEYS.owner);
 }
 
-export function assertOrgRoleMutable(role: { readonly key: string }, action: 'modify' | 'delete'): void {
-  if (!IMMUTABLE_ORG_ROLE_KEYS.has(role.key)) return;
-  if (role.key === SYSTEM_ROLE_KEYS.admin) {
+export function assertOrgRoleMutable(
+  role: { readonly portalSlug: string },
+  action: 'modify' | 'delete',
+): void {
+  if (!IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug)) return;
+  if (role.portalSlug === SYSTEM_ROLE_KEYS.admin) {
     throw new OrgAccessForbiddenError(
       action === 'delete'
         ? 'The Admin role is protected and cannot be deleted.'
@@ -523,7 +532,7 @@ export function assertOrgRoleMutable(role: { readonly key: string }, action: 'mo
 
 export type ActiveMembershipRoleSummary = {
   readonly id: string;
-  readonly key: string;
+  readonly portalSlug: string;
   readonly name: string;
 };
 
@@ -537,7 +546,7 @@ export async function resolveActiveMembershipRolesFromDb(
     include: {
       roleLinks: {
         include: {
-          role: { select: { id: true, key: true, name: true, status: true } },
+          role: { select: { id: true, portalSlug: true, name: true, status: true } },
         },
       },
     },
@@ -548,7 +557,7 @@ export async function resolveActiveMembershipRolesFromDb(
     .filter((link) => link.role.status === 'ACTIVE')
     .map((link) => ({
       id: link.role.id,
-      key: link.role.key,
+      portalSlug: link.role.portalSlug,
       name: link.role.name,
     }));
 
@@ -556,7 +565,7 @@ export async function resolveActiveMembershipRolesFromDb(
     return [
       {
         id: SYSTEM_ROLE_KEYS.owner,
-        key: SYSTEM_ROLE_KEYS.owner,
+        portalSlug: SYSTEM_ROLE_KEYS.owner,
         name: 'Owner',
       },
     ];
@@ -622,7 +631,10 @@ export async function assertActorCanGrantRoles(
   );
 
   for (const role of roles) {
-    if (PROTECTED_SYSTEM_ROLE_KEYS.has(role.key) && role.key === SYSTEM_ROLE_KEYS.owner) {
+    if (
+      PROTECTED_SYSTEM_ROLE_KEYS.has(role.portalSlug) &&
+      role.portalSlug === SYSTEM_ROLE_KEYS.owner
+    ) {
       await assertActorIsOwner(prisma, organizationId, actorAdminId);
     }
     for (const assignment of role.permissions) {
