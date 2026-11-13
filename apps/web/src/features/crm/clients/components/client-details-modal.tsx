@@ -99,12 +99,16 @@ export function ClientDetailsModal({
   onOpenChange,
   onEdit,
   onUpdated,
+  canEdit = false,
+  canStatus = false,
 }: {
   clientId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (clientId: string) => void;
   onUpdated?: () => void;
+  canEdit?: boolean;
+  canStatus?: boolean;
 }) {
   const toast = useAdminToast();
   const { client, loading, error, refetch } = useClient(clientId, open);
@@ -218,31 +222,32 @@ export function ClientDetailsModal({
               >
                 Close
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className={LEAD_FORM_SECONDARY_BTN}
-                disabled={statusPending}
-                onClick={() => setStatusConfirmOpen(true)}
-              >
-                {client.status === 'ACTIVE' ? (
-                  <ToggleRight className="size-4" aria-hidden="true" />
-                ) : (
-                  <ToggleLeft className="size-4" aria-hidden="true" />
-                )}
-                {client.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-              </Button>
-              <Button
-                type="button"
-                className={cn('h-11 px-5', LEAD_FORM_PRIMARY_BTN)}
-                onClick={() => {
-                  onOpenChange(false);
-                  onEdit(client.id);
-                }}
-              >
-                <Pencil className="size-4" aria-hidden="true" />
-                Edit client
-              </Button>
+              {canStatus ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={LEAD_FORM_SECONDARY_BTN}
+                  disabled={statusPending}
+                  onClick={() => setStatusConfirmOpen(true)}
+                >
+                  {client.status === 'ACTIVE' ? (
+                    <ToggleRight className="size-4" aria-hidden="true" />
+                  ) : (
+                    <ToggleLeft className="size-4" aria-hidden="true" />
+                  )}
+                  {client.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                </Button>
+              ) : null}
+              {canEdit ? (
+                <Button
+                  type="button"
+                  className={cn('h-11 px-5', LEAD_FORM_PRIMARY_BTN)}
+                  onClick={() => onEdit(client.id)}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                  Edit client
+                </Button>
+              ) : null}
             </DialogFooter>
           ) : null}
         </DialogContent>

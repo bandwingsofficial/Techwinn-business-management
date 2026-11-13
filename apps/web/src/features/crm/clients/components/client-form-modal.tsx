@@ -67,7 +67,7 @@ import {
   useCreateClient,
   useUpdateClient,
 } from '../hooks';
-import type { ClientType } from '../types/client.types';
+import type { ClientType, CrmClient } from '../types/client.types';
 import {
   buildCreateClientPayload,
   buildUpdateClientPayload,
@@ -103,11 +103,13 @@ function SectionHeading({ children }: { children: string }) {
 export function ClientFormModal({
   open,
   editingId,
+  editingSeed,
   onOpenChange,
   onSaved,
 }: {
   open: boolean;
   editingId: string | null;
+  editingSeed?: CrmClient | null;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void | Promise<void>;
 }) {
@@ -115,7 +117,9 @@ export function ClientFormModal({
   const isEdit = Boolean(editingId);
   const { createClient, pending: createPending } = useCreateClient();
   const { updateClient, pending: updatePending } = useUpdateClient();
-  const { client, loading: loadingClient } = useClient(editingId, open && isEdit);
+  const shouldLoadClient = open && isEdit && !editingSeed;
+  const { client: loadedClient, loading: loadingClient } = useClient(editingId, shouldLoadClient);
+  const client = editingSeed ?? loadedClient;
   const { preview, loading: previewLoading } = useClientReferencePreview(open && !isEdit);
 
   const [form, setForm] = useState<ClientFormState>(() => emptyClientForm());
@@ -137,7 +141,7 @@ export function ClientFormModal({
 
   const fieldError = (key: string) => mergeFieldErrors(liveFields.errors, formErrors, key);
 
-  const pending = createPending || updatePending || (isEdit && loadingClient);
+  const pending = createPending || updatePending || (isEdit && loadingClient && !editingSeed);
 
   const nameLabel = form.type === 'COMPANY' ? 'Company name' : 'Client name';
 

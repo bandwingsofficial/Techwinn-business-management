@@ -2,6 +2,7 @@ import { CRM_PIPELINE_PERMISSION_KEYS } from './crm-pipeline-permissions.js';
 import { CRM_LEADS_PERMISSION_KEYS, LEGACY_LEADS_PERMISSION_KEYS } from './crm-leads-permissions.js';
 import { CRM_SERVICE_PACKAGES_PERMISSION_KEYS } from './crm-service-packages-permissions.js';
 import { CRM_QUOTATIONS_PERMISSION_KEYS } from './crm-quotations-permissions.js';
+import { CRM_CLIENTS_PERMISSION_KEYS, LEGACY_CLIENTS_PERMISSION_KEYS } from './crm-clients-permissions.js';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -90,7 +91,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'clients',
             label: 'Clients',
             href: '/admin/clients',
-            permissionKeys: ['clients.read', 'clients.create', 'clients.update', 'clients.delete'],
+            permissionKeys: CRM_CLIENTS_PERMISSION_KEYS,
           },
         ],
       },
@@ -412,6 +413,7 @@ export function uniqueHierarchyPermissionKeys(
 
 const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_LEADS_PERMISSION_KEYS,
+  ...LEGACY_CLIENTS_PERMISSION_KEYS,
 ]);
 
 /** Ensures every catalog key appears on at least one hierarchy page. Keys may appear on multiple pages when backend shares them. */

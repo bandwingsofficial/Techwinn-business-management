@@ -7,6 +7,7 @@ import {
 import { applyCrmLeadsCrossPagePrerequisites } from './permission-crm-leads-prerequisites.js';
 import { applyCrmServicePackagesCrossPagePrerequisites } from './permission-crm-service-packages-prerequisites.js';
 import { applyCrmQuotationsCrossPagePrerequisites } from './permission-crm-quotations-prerequisites.js';
+import { applyCrmClientsCrossPagePrerequisites } from './permission-crm-clients-prerequisites.js';
 import {
   PERMISSION_HIERARCHY,
   permissionDefinitionForKey,
@@ -88,6 +89,7 @@ export function ensureViewPermissionPrerequisites(
   applyCrmLeadsCrossPagePrerequisites(next);
   applyCrmServicePackagesCrossPagePrerequisites(next);
   applyCrmQuotationsCrossPagePrerequisites(next);
+  applyCrmClientsCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -174,6 +176,7 @@ export function applyPermissionKeyChange(
   applyCrmLeadsCrossPagePrerequisites(next);
   applyCrmServicePackagesCrossPagePrerequisites(next);
   applyCrmQuotationsCrossPagePrerequisites(next);
+  applyCrmClientsCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -192,6 +195,7 @@ export function applyPermissionKeysChecked(
   applyCrmLeadsCrossPagePrerequisites(next);
   applyCrmServicePackagesCrossPagePrerequisites(next);
   applyCrmQuotationsCrossPagePrerequisites(next);
+  applyCrmClientsCrossPagePrerequisites(next);
   return [...next];
 }
 

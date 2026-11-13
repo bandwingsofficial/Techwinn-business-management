@@ -16,7 +16,7 @@ export const PROJECT_MANAGER_ROUTE_PERMISSIONS: Readonly<Record<string, readonly
     '/project-manager/packages': ['crm.service_packages.view'],
     '/project-manager/quotations': ['crm.quotations.view'],
     '/project-manager/proposals': ['crm.quotations.view'],
-    '/project-manager/clients': ['clients.read'],
+    '/project-manager/clients': ['crm.clients.view'],
     '/project-manager/employees': ['employees.read'],
     '/project-manager/whatsapp/inbox': ['whatsapp.read'],
     '/project-manager/whatsapp/channels': ['whatsapp.channels.manage'],

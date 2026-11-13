@@ -33,6 +33,7 @@ import type {
   CrmLeadBulkActionResponse,
   CrmLeadTagListResponse,
 } from '#contracts';
+import { CLIENT_CREATE } from '#contracts';
 import {
   bulkLeadIdsRequestSchema,
   createLeadTagRequestSchema,
@@ -383,7 +384,7 @@ export class LeadController {
   }
 
   @Post(':leadId/convert')
-  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', 'clients.create')
+  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', ...CLIENT_CREATE)
   @ApiOperation({ summary: 'Convert lead to client (idempotent)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadConvertResponseSchema) })
   async convert(
@@ -399,7 +400,7 @@ export class LeadController {
   }
 
   @Post(':leadId/link-client')
-  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', 'clients.create')
+  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', ...CLIENT_CREATE)
   @ApiOperation({ summary: 'Link lead to an existing client (same phone)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadConvertResponseSchema) })
   async linkClient(

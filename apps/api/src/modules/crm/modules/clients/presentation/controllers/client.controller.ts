@@ -15,6 +15,14 @@ import type { Request } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { CrmClient, CrmClientListResponse, CrmLeadConvertResponse } from '#contracts';
 import {
+  CLIENT_CREATE,
+  CLIENT_DELETE,
+  CLIENT_DETAIL,
+  CLIENT_LIST,
+  CLIENT_STATUS,
+  CLIENT_UPDATE,
+} from '#contracts';
+import {
   parseClientListQuery,
   type CreateClientRequest,
   type UpdateClientRequest,
@@ -23,7 +31,7 @@ import {
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {
-  RequirePermissions,
+  RequireAllPermissions,
   RequirePermissionsGuard,
 } from '../../../../../org-access/index.js';
 import { ConvertLeadHandler } from '../../../leads/index.js';
@@ -75,7 +83,7 @@ export class ClientController {
   ) {}
 
   @Get()
-  @RequirePermissions('clients.read')
+  @RequireAllPermissions(...CLIENT_LIST)
   @ApiOperation({ summary: 'List clients' })
   @ApiOkResponse({
     schema: toOpenApiSchema(
@@ -102,7 +110,7 @@ export class ClientController {
   }
 
   @Post('from-lead/:leadId')
-  @RequirePermissions('clients.create', 'leads.update')
+  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', ...CLIENT_CREATE)
   @ApiOperation({ summary: 'Convert a lead into a client' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadConvertResponseSchema) })
   async fromLead(
@@ -118,7 +126,7 @@ export class ClientController {
   }
 
   @Get('reference-preview')
-  @RequirePermissions('clients.create')
+  @RequireAllPermissions(...CLIENT_CREATE)
   @ApiOperation({ summary: 'Preview the next client reference number (not reserved until create)' })
   @ApiOkResponse({
     schema: toOpenApiSchema(
@@ -133,7 +141,7 @@ export class ClientController {
   }
 
   @Get(':clientId')
-  @RequirePermissions('clients.read')
+  @RequireAllPermissions(...CLIENT_DETAIL)
   @ApiOperation({ summary: 'Get a client' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmClientResponseSchema) })
   async get(
@@ -145,7 +153,7 @@ export class ClientController {
   }
 
   @Post()
-  @RequirePermissions('clients.create')
+  @RequireAllPermissions(...CLIENT_CREATE)
   @ApiOperation({ summary: 'Create a client' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmClientResponseSchema) })
   async create(
@@ -160,7 +168,7 @@ export class ClientController {
   }
 
   @Patch(':clientId/status')
-  @RequirePermissions('clients.update')
+  @RequireAllPermissions(...CLIENT_STATUS)
   @ApiOperation({ summary: 'Change client status' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmClientResponseSchema) })
   async changeStatus(
@@ -177,7 +185,7 @@ export class ClientController {
   }
 
   @Patch(':clientId')
-  @RequirePermissions('clients.update')
+  @RequireAllPermissions(...CLIENT_UPDATE)
   @ApiOperation({ summary: 'Update a client' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmClientResponseSchema) })
   async update(
@@ -194,7 +202,7 @@ export class ClientController {
   }
 
   @Delete(':clientId')
-  @RequirePermissions('clients.delete')
+  @RequireAllPermissions(...CLIENT_DELETE)
   @ApiOperation({ summary: 'Permanently delete a client' })
   async delete(
     @CrmContext() ctx: CrmRequestContext,

@@ -63,6 +63,7 @@ import { ClientFormModal } from '../components/client-form-modal';
 import { ClientStatusBadge } from '../components/client-status-badge';
 import {
   useChangeClientStatus,
+  useClientPagePermissions,
   useClients,
   useDeleteClient,
 } from '../hooks';
@@ -105,8 +106,10 @@ export function ClientsPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingClient, setEditingClient] = useState<CrmClient | null>(null);
   const [detailClientId, setDetailClientId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const perms = useClientPagePermissions();
 
   const [deleteTarget, setDeleteTarget] = useState<CrmClient | null>(null);
   const [deleteBlockedMessage, setDeleteBlockedMessage] = useState<string | null>(null);
@@ -137,7 +140,10 @@ export function ClientsPage() {
     typeFilter,
   ]);
 
-  const { clients, total, loading, error, refetch } = useClients({ query: listQuery });
+  const { clients, total, loading, error, refetch } = useClients({
+    query: listQuery,
+    enabled: perms.canViewPage,
+  });
   const { changeClientStatus, pending: statusPending } = useChangeClientStatus();
   const { deleteClient, pending: deletePending } = useDeleteClient();
   const pending = statusPending || deletePending;
@@ -156,10 +162,10 @@ export function ClientsPage() {
 
   useEffect(() => {
     const clientId = searchParams.get('clientId');
-    if (!clientId) return;
+    if (!clientId || !perms.canViewDetails) return;
     setDetailClientId(clientId);
     setDetailsOpen(true);
-  }, [searchParams]);
+  }, [searchParams, perms.canViewDetails]);
 
   const filtersActive =
     search.trim().length > 0 ||
@@ -195,18 +201,33 @@ export function ClientsPage() {
       : 'Add a client to manage contacts, billing details, and quotations.';
 
   const openCreate = () => {
+    if (!perms.canCreate) return;
     setEditingId(null);
+    setEditingClient(null);
     setFormOpen(true);
   };
 
   const openEdit = (client: CrmClient) => {
+    if (!perms.canEdit) return;
+    setDetailsOpen(false);
+    setDetailClientId(null);
     setEditingId(client.id);
+    setEditingClient(client);
     setFormOpen(true);
   };
 
   const openDetails = (client: CrmClient) => {
+    if (!perms.canViewDetails) return;
     setDetailClientId(client.id);
     setDetailsOpen(true);
+  };
+
+  const openEditFromDetails = (clientId: string) => {
+    if (!perms.canEdit) return;
+    const client = clients.find((row) => row.id === clientId) ?? null;
+    setDetailsOpen(false);
+    setDetailClientId(null);
+    if (client) openEdit(client);
   };
 
   const clearFilters = () => {
@@ -440,15 +461,17 @@ export function ClientsPage() {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-                  onClick={openCreate}
-                >
-                  <Plus aria-hidden="true" />
-                  Add client
-                </Button>
+                {perms.canCreate ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                    onClick={openCreate}
+                  >
+                    <Plus aria-hidden="true" />
+                    Add client
+                  </Button>
+                ) : null}
               </>
             }
           />
@@ -468,7 +491,7 @@ export function ClientsPage() {
             tableClassName="table-fixed [&_[data-slot=table-head]]:h-auto [&_[data-slot=table-head]]:py-3 [&_[data-slot=table-cell]]:py-3"
             tableBodyClassName="[&_[data-slot=table-row]]:border-0 [&_[data-slot=table-row]:hover]:bg-[#f5f5f5]"
             phase={tablePhase}
-            colSpan={6}
+            colSpan={perms.showRowActions ? 6 : 5}
             skeletonColumns={CRM_CLIENTS_TABLE_SKELETON}
             header={
               <TableRow className="hover:bg-transparent">
@@ -477,9 +500,11 @@ export function ClientsPage() {
                 <TableHead className={CRM_CLIENTS_TABLE_COLUMN_CLASS.email}>Email</TableHead>
                 <TableHead className={CRM_CLIENTS_TABLE_COLUMN_CLASS.phone}>Phone</TableHead>
                 <TableHead className={CRM_CLIENTS_TABLE_COLUMN_CLASS.status}>Status</TableHead>
-                <TableHead className={cn(CRM_CLIENTS_TABLE_COLUMN_CLASS.actions, 'text-right')}>
-                  Actions
-                </TableHead>
+                {perms.showRowActions ? (
+                  <TableHead className={cn(CRM_CLIENTS_TABLE_COLUMN_CLASS.actions, 'text-right')}>
+                    Actions
+                  </TableHead>
+                ) : null}
               </TableRow>
             }
             empty={{
@@ -513,13 +538,19 @@ export function ClientsPage() {
                 <TableCell className={cn(CRM_CLIENTS_TABLE_COLUMN_CLASS.name, 'min-w-0 align-middle')}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="text-foreground hover:text-primary block max-w-full truncate text-left text-sm font-medium"
-                        onClick={() => openDetails(client)}
-                      >
-                        {client.name}
-                      </button>
+                      {perms.canViewDetails ? (
+                        <button
+                          type="button"
+                          className="text-foreground hover:text-primary block max-w-full truncate text-left text-sm font-medium"
+                          onClick={() => openDetails(client)}
+                        >
+                          {client.name}
+                        </button>
+                      ) : (
+                        <span className="text-foreground block max-w-full truncate text-sm font-medium">
+                          {client.name}
+                        </span>
+                      )}
                     </TooltipTrigger>
                     <TooltipContent side="top">{client.name}</TooltipContent>
                   </Tooltip>
@@ -554,39 +585,55 @@ export function ClientsPage() {
                 <TableCell className={cn(CRM_CLIENTS_TABLE_COLUMN_CLASS.status, 'align-middle')}>
                   <ClientStatusBadge status={client.status} />
                 </TableCell>
-                <TableCell className={cn(CRM_CLIENTS_TABLE_COLUMN_CLASS.actions, 'align-middle')}>
-                  <ClientActions
-                    client={client}
-                    disabled={pending}
-                    onView={openDetails}
-                    onEdit={openEdit}
-                    onToggleStatus={setStatusTarget}
-                    onDelete={setDeleteTarget}
-                  />
-                </TableCell>
+                {perms.showRowActions ? (
+                  <TableCell className={cn(CRM_CLIENTS_TABLE_COLUMN_CLASS.actions, 'align-middle')}>
+                    <ClientActions
+                      client={client}
+                      disabled={pending}
+                      canViewDetails={perms.canViewDetails}
+                      canStatus={perms.canStatus}
+                      canEdit={perms.canEdit}
+                      canDelete={perms.canDelete}
+                      onView={openDetails}
+                      onEdit={openEdit}
+                      onToggleStatus={setStatusTarget}
+                      onDelete={setDeleteTarget}
+                    />
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </DataTable>
         </div>
       </section>
 
-      <ClientFormModal
-        open={formOpen}
-        editingId={editingId}
-        onOpenChange={setFormOpen}
-        onSaved={() => refetch()}
-      />
+      {perms.canCreate || perms.canEdit ? (
+        <ClientFormModal
+          open={formOpen}
+          editingId={editingId}
+          editingSeed={editingClient}
+          onOpenChange={(nextOpen) => {
+            setFormOpen(nextOpen);
+            if (!nextOpen) setEditingClient(null);
+          }}
+          onSaved={() => refetch()}
+        />
+      ) : null}
 
-      <ClientDetailsModal
-        clientId={detailClientId}
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-        onEdit={(id) => {
-          setEditingId(id);
-          setFormOpen(true);
-        }}
-        onUpdated={() => refetch()}
-      />
+      {perms.canViewDetails ? (
+        <ClientDetailsModal
+          clientId={detailClientId}
+          open={detailsOpen}
+          canEdit={perms.canEdit}
+          canStatus={perms.canStatus}
+          onOpenChange={(open) => {
+            setDetailsOpen(open);
+            if (!open) setDetailClientId(null);
+          }}
+          onEdit={openEditFromDetails}
+          onUpdated={() => refetch()}
+        />
+      ) : null}
 
       <AlertDialog open={Boolean(statusTarget)} onOpenChange={(open) => !open && setStatusTarget(null)}>
         <AlertDialogContent>
