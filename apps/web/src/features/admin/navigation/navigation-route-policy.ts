@@ -1,10 +1,13 @@
-import type { PermissionKey } from '@techwin/contracts';
+import {
+  PM_DAILY_TASKS_VIEW_KEY,
+  PM_TASK_CALENDAR_VIEW_KEY,
+  type PermissionKey,
+} from '@techwin/contracts';
 import type { MembershipAccessContext } from '@/features/auth/membership/membership-access';
 import {
   canAccessWorkspaceDashboard,
   canUseEmployeeSelfService,
 } from '@/features/auth/membership/membership-access';
-import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
 
 /**
@@ -29,29 +32,22 @@ const ORGANIZATION_WORKSPACE_ROUTES: readonly string[] = [
   '/admin/whatsapp/inbox',
 ];
 
-/** Self-service task URLs hidden when the user can view organization task boards. */
-const EMPLOYEE_TASK_DUPLICATES: ReadonlySet<string> = new Set([
-  '/employee/dashboard',
-  '/employee/daily-tasks',
-  '/employee/task-calendar',
-]);
+const EMPLOYEE_DAILY_TASKS_ROUTE = '/employee/daily-tasks';
+const EMPLOYEE_TASK_CALENDAR_ROUTE = '/employee/task-calendar';
 
-/**
- * Organization daily-task board routes hidden for self-service task accounts.
- * `/admin/project-tasks` is intentionally excluded — Projects & Tasks View
- * (`projects.read` / `tasks.read`) controls that page independently.
- */
-const ADMIN_TASK_DUPLICATES: ReadonlySet<string> = new Set([
+const ADMIN_DAILY_TASK_ROUTES: ReadonlySet<string> = new Set([
   '/admin/daily-tasks',
-  '/admin/task-calendar',
   '/admin/my-tasks',
 ]);
 
-function hasOrganizationTaskView(permissions: ReadonlySet<PermissionKey>): boolean {
-  return canViewOrganizationDailyTasks(
-    (key) => permissions.has(key),
-    (...keys) => keys.some((key) => permissions.has(key)),
-  );
+const ADMIN_TASK_CALENDAR_ROUTES: ReadonlySet<string> = new Set(['/admin/task-calendar']);
+
+function hasOrganizationDailyTasksView(permissions: ReadonlySet<PermissionKey>): boolean {
+  return permissions.has(PM_DAILY_TASKS_VIEW_KEY);
+}
+
+function hasOrganizationTaskCalendarView(permissions: ReadonlySet<PermissionKey>): boolean {
+  return permissions.has(PM_TASK_CALENDAR_VIEW_KEY);
 }
 
 export function prefersOrganizationWorkspace(
@@ -59,7 +55,9 @@ export function prefersOrganizationWorkspace(
   access?: MembershipAccessContext,
 ): boolean {
   if (access && canAccessWorkspaceDashboard(access)) return true;
-  if (hasOrganizationTaskView(permissions)) return true;
+  if (hasOrganizationDailyTasksView(permissions) || hasOrganizationTaskCalendarView(permissions)) {
+    return true;
+  }
   return ORGANIZATION_WORKSPACE_ROUTES.some((route) =>
     canAccessAppPath(route, permissions, access, undefined),
   );
@@ -74,10 +72,18 @@ export function shouldShowNavHref(
   if (access && href.startsWith('/employee') && !canUseEmployeeSelfService(access)) {
     return false;
   }
-  const orgTasks = hasOrganizationTaskView(permissions);
-  if (orgTasks && EMPLOYEE_TASK_DUPLICATES.has(href)) return false;
-  if (!orgTasks && ADMIN_TASK_DUPLICATES.has(href)) return false;
-  // Keep admin org calendar out of pure self-service sessions (they use /employee/calendar).
+  if (hasOrganizationDailyTasksView(permissions) && href === EMPLOYEE_DAILY_TASKS_ROUTE) {
+    return false;
+  }
+  if (hasOrganizationTaskCalendarView(permissions) && href === EMPLOYEE_TASK_CALENDAR_ROUTE) {
+    return false;
+  }
+  if (!hasOrganizationDailyTasksView(permissions) && ADMIN_DAILY_TASK_ROUTES.has(href)) {
+    return false;
+  }
+  if (!hasOrganizationTaskCalendarView(permissions) && ADMIN_TASK_CALENDAR_ROUTES.has(href)) {
+    return false;
+  }
   if (!prefersOrganizationWorkspace(permissions, access) && href === '/admin/calendar') {
     return false;
   }
@@ -88,12 +94,16 @@ export function canonicalDailyTasksPath(
   permissions: ReadonlySet<PermissionKey>,
   _access?: MembershipAccessContext,
 ): string {
-  return hasOrganizationTaskView(permissions) ? '/admin/daily-tasks' : '/employee/daily-tasks';
+  return hasOrganizationDailyTasksView(permissions)
+    ? '/admin/daily-tasks'
+    : '/employee/daily-tasks';
 }
 
 export function canonicalTaskCalendarPath(
   permissions: ReadonlySet<PermissionKey>,
   _access?: MembershipAccessContext,
 ): string {
-  return hasOrganizationTaskView(permissions) ? '/admin/task-calendar' : '/employee/task-calendar';
+  return hasOrganizationTaskCalendarView(permissions)
+    ? '/admin/task-calendar'
+    : '/employee/task-calendar';
 }

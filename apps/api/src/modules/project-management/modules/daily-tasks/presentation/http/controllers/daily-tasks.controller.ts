@@ -20,6 +20,7 @@ import type {
   DailyTaskDetail,
   DailyTaskListResponse,
   DailyTaskNotesResponse,
+  DailyTaskNoteInboxResponse,
   DailyTaskNoteItem,
   DailyTaskWorkflowStagesResponse,
 } from '#contracts';
@@ -48,6 +49,13 @@ import {
   type CrmRequestContext,
 } from '../../../../../../../platform/tenant-context/index.js';
 import {
+  PM_DAILY_TASK_ASSIGN,
+  PM_DAILY_TASK_DELETE,
+  PM_DAILY_TASK_EDIT,
+  PM_DAILY_TASKS_VIEW_KEY,
+} from '#contracts';
+import {
+  RequireAllPermissions,
   RequirePermissions,
   RequirePermissionsGuard,
   toOrgAccessActor,
@@ -68,6 +76,8 @@ import { AcknowledgeDailyTaskNoteHandler } from '../../../application/acknowledg
 import { CreateDailyTaskNoteHandler } from '../../../application/create-daily-task-note/create-daily-task-note.handler.js';
 import { ListDailyTaskActivitiesHandler } from '../../../application/list-daily-task-activities/list-daily-task-activities.handler.js';
 import { ListDailyTaskNotesHandler } from '../../../application/list-daily-task-notes/list-daily-task-notes.handler.js';
+import { ListDailyTaskNotesInboxHandler } from '../../../application/list-daily-task-notes-inbox/list-daily-task-notes-inbox.handler.js';
+import type { DailyTaskNoteInboxStatus } from '../../../application/list-daily-task-notes-inbox/list-daily-task-notes-inbox.query.js';
 import { DailyTaskAuthorizationService } from '../../../application/services/daily-task-authorization.service.js';
 import { toDailyTaskListQuery } from '../../../application/shared/daily-task-list-query.js';
 import { DailyTaskExceptionFilter } from '../filters/daily-task-exception.filter.js';
@@ -105,6 +115,7 @@ export class DailyTasksController {
     @Inject(AddDailyTaskCommentHandler) private readonly addComment: AddDailyTaskCommentHandler,
     @Inject(CreateDailyTaskNoteHandler) private readonly createTaskNote: CreateDailyTaskNoteHandler,
     @Inject(ListDailyTaskNotesHandler) private readonly listTaskNotes: ListDailyTaskNotesHandler,
+    @Inject(ListDailyTaskNotesInboxHandler) private readonly listNotesInbox: ListDailyTaskNotesInboxHandler,
     @Inject(AcknowledgeDailyTaskNoteHandler)
     private readonly acknowledgeTaskNote: AcknowledgeDailyTaskNoteHandler,
     @Inject(DailyTaskAuthorizationService) private readonly dailyTaskAuthz: DailyTaskAuthorizationService,
@@ -118,7 +129,7 @@ export class DailyTasksController {
   }
 
   @Get('workflow-stages')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   @ApiOperation({ summary: 'List daily task workflow stages' })
   async listStages(@CrmContext() ctx: CrmRequestContext): Promise<DailyTaskWorkflowStagesResponse> {
     const stages = await this.listWorkflowStages.execute({ actor: toDailyTaskActor(ctx) });
@@ -142,7 +153,7 @@ export class DailyTasksController {
   }
 
   @Get('board')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   @ApiOperation({ summary: 'Daily task board for a date' })
   async board(
     @CrmContext() ctx: CrmRequestContext,
@@ -173,7 +184,7 @@ export class DailyTasksController {
   }
 
   @Get()
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   @ApiOperation({ summary: 'List daily tasks' })
   async list(
     @CrmContext() ctx: CrmRequestContext,
@@ -188,8 +199,33 @@ export class DailyTasksController {
     });
   }
 
+  @Get('notes/inbox')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
+  async notesInbox(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: PlatformAuthenticatedRequest & Request,
+  ): Promise<DailyTaskNoteInboxResponse> {
+    const raw = typeof request.query.status === 'string' ? request.query.status.toUpperCase() : 'ALL';
+    const status: DailyTaskNoteInboxStatus =
+      raw === 'UNREAD' || raw === 'ACKNOWLEDGED' ? raw : 'ALL';
+    const items = await this.listNotesInbox.execute({
+      actor: toDailyTaskActor(ctx),
+      accessActor: this.accessActor(ctx, request),
+      status,
+    });
+    return { items };
+  }
+
   @Get(':id/notes')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(
+    PM_DAILY_TASKS_VIEW_KEY,
+    'tasks.read',
+    'daily_tasks.notes.view_own',
+    'daily_tasks.notes.view_all',
+    'daily_tasks.notes.create',
+    'daily_tasks.comment',
+    'tasks.comment',
+  )
   async notes(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -205,6 +241,7 @@ export class DailyTasksController {
 
   @Post(':id/notes')
   @RequirePermissions(
+    PM_DAILY_TASKS_VIEW_KEY,
     'tasks.read',
     'daily_tasks.notes.create',
     'daily_tasks.comment',
@@ -226,7 +263,7 @@ export class DailyTasksController {
   }
 
   @Patch(':id/notes/:noteId/acknowledge')
-  @RequirePermissions('tasks.read', 'daily_tasks.notes.acknowledge', 'tasks.update')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   async acknowledgeNote(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -242,7 +279,7 @@ export class DailyTasksController {
   }
 
   @Get(':id/activities')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   async activities(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -287,7 +324,7 @@ export class DailyTasksController {
   }
 
   @Get(':id')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   async get(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -301,7 +338,7 @@ export class DailyTasksController {
   }
 
   @Post()
-  @RequirePermissions('tasks.create')
+  @RequireAllPermissions(...PM_DAILY_TASK_ASSIGN)
   async create(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -316,7 +353,7 @@ export class DailyTasksController {
   }
 
   @Patch(':id')
-  @RequirePermissions('tasks.update')
+  @RequireAllPermissions(...PM_DAILY_TASK_EDIT)
   async update(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -333,7 +370,7 @@ export class DailyTasksController {
   }
 
   @Patch(':id/stage')
-  @RequirePermissions('tasks.update', 'daily_tasks.update_status', 'tasks.progress')
+  @RequirePermissions(PM_DAILY_TASKS_VIEW_KEY, 'tasks.read')
   async moveStage(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -350,7 +387,7 @@ export class DailyTasksController {
   }
 
   @Patch(':id/reschedule')
-  @RequirePermissions('tasks.update')
+  @RequireAllPermissions(...PM_DAILY_TASK_EDIT)
   async reschedule(
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
@@ -367,7 +404,7 @@ export class DailyTasksController {
   }
 
   @Delete(':id')
-  @RequirePermissions('tasks.delete')
+  @RequireAllPermissions(...PM_DAILY_TASK_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @CrmContext() ctx: CrmRequestContext,

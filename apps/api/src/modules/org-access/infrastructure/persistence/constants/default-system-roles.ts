@@ -70,6 +70,13 @@ export const PROJECT_MANAGEMENT_PERMISSIONS: readonly PermissionKey[] = [
   'tasks.update',
   'tasks.delete',
   'tasks.assign',
+  'project_management.daily_tasks.view',
+  'project_management.daily_tasks.assign',
+  'project_management.daily_tasks.view_details',
+  'project_management.daily_tasks.edit',
+  'project_management.daily_tasks.delete',
+  'project_management.daily_tasks.move',
+  'project_management.task_calendar.view',
 ];
 
 export const SALES_PERMISSIONS: readonly PermissionKey[] = [

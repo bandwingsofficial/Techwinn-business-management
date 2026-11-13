@@ -2,7 +2,6 @@
 
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { hasDailyTaskCommentPermission } from '@techwin/contracts';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { useAdminToast } from '@/features/admin/components/toast';
 import {
   CRM_PIPELINE_DIALOG_CLOSE_CLASS,
@@ -19,25 +17,18 @@ import {
   CRM_PIPELINE_DIALOG_HEADER_CLASS,
   CRM_PIPELINE_DIALOG_TITLE_CLASS,
   CRM_PIPELINE_FORM_DIALOG_CLASS,
-  CRM_PIPELINE_FORM_TEXTAREA_CLASS,
 } from '@/features/admin/crm/constants';
 import { EmployeeAvatar } from '@/features/employees/components/employee-avatar';
-import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { isAbortError } from '@/shared/lib/abort-error';
+import { isApiError } from '@/shared/api/api-error';
 import { cn } from '@/shared/lib/utils';
-import {
-  addDailyTaskComment,
-  fetchDailyTask,
-  fetchDailyTaskActivities,
-} from '../api/daily-tasks';
+import { fetchDailyTask, fetchDailyTaskActivities } from '../api/daily-tasks';
 import type { DailyTaskActivityItem, DailyTaskDetail } from '../types';
 import { priorityBadgeClass } from '../utils/stage-colors';
 import { DailyTaskActivityPanel } from './daily-task-activity-panel';
 
 const BTN_SECONDARY =
   'h-11 shrink-0 rounded-lg border border-input bg-card px-3.5 text-sm font-medium text-foreground shadow-none hover:bg-muted/50';
-const BTN_PRIMARY =
-  'border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900';
-
 function formatCategory(category: DailyTaskDetail['category']): string | null {
   if (!category) return null;
   return category.charAt(0) + category.slice(1).toLowerCase().replaceAll('_', ' ');
@@ -59,6 +50,25 @@ function formatDateTime(value: string | null | undefined): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function formatLoadError(error: unknown): string {
+  if (isApiError(error)) {
+    if (error.status === 403) {
+      return error.message || 'You do not have permission to view this task.';
+    }
+    if (error.status === 404) {
+      return error.message || 'This task is not available.';
+    }
+    if (error.status === 401) {
+      return 'Your session expired. Sign in again and retry.';
+    }
+    if (error.status !== null && error.status >= 500) {
+      return 'The server could not load this task. Try again in a moment.';
+    }
+    return error.message;
+  }
+  return 'Could not load task details.';
 }
 
 function DetailField({ label, children }: { label: string; children: ReactNode }) {
@@ -86,69 +96,70 @@ export function DailyTaskDetailsDialog({
   employeeMode?: boolean;
 }) {
   const toast = useAdminToast();
-  const { has, permissionSet } = usePermissions();
-  const canAddNote =
-    hasDailyTaskCommentPermission(permissionSet) || (!employeeMode && has('tasks.update'));
 
   const [task, setTask] = useState<DailyTaskDetail | null>(null);
   const [activities, setActivities] = useState<readonly DailyTaskActivityItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [noteDraft, setNoteDraft] = useState('');
-  const [noteSaving, setNoteSaving] = useState(false);
-  const noteRequestRef = useRef(false);
-
-  useEffect(() => {
-    setNoteDraft('');
-  }, [taskId, open]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  const loadGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!open || !taskId) {
       setTask(null);
       setActivities([]);
+      setLoadError(null);
+      setActivitiesError(null);
       return;
     }
-    const controller = new AbortController();
-    setLoading(true);
-    void Promise.all([
-      fetchDailyTask(taskId, controller.signal),
-      fetchDailyTaskActivities(taskId, controller.signal),
-    ])
-      .then(([detail, activityResponse]) => {
-        setTask(detail);
-        setActivities(activityResponse.items);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) toast.error('Could not load task details.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [open, taskId, toast]);
 
-  const onAddNote = async () => {
-    if (!task || !noteDraft.trim() || noteRequestRef.current) return;
-    noteRequestRef.current = true;
-    setNoteSaving(true);
-    try {
-      const scope = employeeMode ? 'employee' : has('tasks.update') ? 'admin' : 'employee';
-      await addDailyTaskComment(task.id, { text: noteDraft.trim(), scope });
-      setNoteDraft('');
-      const [detail, activityResponse] = await Promise.all([
-        fetchDailyTask(task.id),
-        fetchDailyTaskActivities(task.id),
-      ]);
-      setTask(detail);
-      setActivities(activityResponse.items);
-      toast.success('Note saved.');
-      await onChanged();
-    } catch {
-      toast.error('Could not save note.');
-    } finally {
-      noteRequestRef.current = false;
-      setNoteSaving(false);
-    }
-  };
+    const generation = loadGenerationRef.current + 1;
+    loadGenerationRef.current = generation;
+    const controller = new AbortController();
+
+    setLoading(true);
+    setLoadError(null);
+    setActivitiesError(null);
+    setTask(null);
+    setActivities([]);
+
+    void (async () => {
+      try {
+        const detail = await fetchDailyTask(taskId, controller.signal);
+        if (loadGenerationRef.current !== generation || controller.signal.aborted) return;
+        setTask(detail);
+        try {
+          const activityResponse = await fetchDailyTaskActivities(taskId, controller.signal);
+          if (loadGenerationRef.current !== generation || controller.signal.aborted) return;
+          setActivities(activityResponse.items);
+        } catch (activityErr) {
+          if (isAbortError(activityErr)) return;
+          if (loadGenerationRef.current !== generation) return;
+          setActivities([]);
+          setActivitiesError(
+            isApiError(activityErr) && activityErr.status === 403
+              ? 'Activity timeline is not available for your role.'
+              : 'Could not load activity timeline.',
+          );
+        }
+      } catch (error) {
+        if (isAbortError(error)) return;
+        if (loadGenerationRef.current !== generation) return;
+        setTask(null);
+        const message = formatLoadError(error);
+        setLoadError(message);
+        toast.error(message);
+      } finally {
+        if (loadGenerationRef.current === generation && !controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [open, taskId, toast]);
 
   const categoryLabel = task?.type === 'GENERAL' ? formatCategory(task.category) : null;
   const statusLabel = task?.workflowStageName ?? task?.stageName ?? '—';
@@ -172,6 +183,8 @@ export function DailyTaskDetailsDialog({
               <Loader2 className="size-4 animate-spin" aria-hidden />
               Loading task…
             </div>
+          ) : loadError ? (
+            <p className="text-muted-foreground py-12 text-center text-sm">{loadError}</p>
           ) : task ? (
             <div className="space-y-6">
               <section className="space-y-4">
@@ -234,45 +247,17 @@ export function DailyTaskDetailsDialog({
                 <h3 className="text-foreground text-sm font-semibold tracking-tight">
                   Activity timeline
                 </h3>
-                <DailyTaskActivityPanel items={activities} newestFirst />
+                {activitiesError ? (
+                  <p className="text-muted-foreground text-sm">{activitiesError}</p>
+                ) : (
+                  <DailyTaskActivityPanel items={activities} newestFirst />
+                )}
               </section>
-
-              {canAddNote ? (
-                <section className="border-border/70 space-y-3 border-t pt-5">
-                  <h3 className="text-foreground text-sm font-semibold tracking-tight">
-                    Administrative notes
-                  </h3>
-                  <Textarea
-                    value={noteDraft}
-                    onChange={(event) => setNoteDraft(event.target.value)}
-                    placeholder={
-                      employeeMode
-                        ? 'Report progress, blockers or questions…'
-                        : 'Add an administrative note…'
-                    }
-                    rows={3}
-                    className={CRM_PIPELINE_FORM_TEXTAREA_CLASS}
-                  />
-                  <Button
-                    type="button"
-                    className={cn('h-10 px-4', BTN_PRIMARY)}
-                    disabled={noteSaving || !noteDraft.trim()}
-                    onClick={() => void onAddNote()}
-                  >
-                    {noteSaving ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                        Saving…
-                      </>
-                    ) : (
-                      'Add Note'
-                    )}
-                  </Button>
-                </section>
-              ) : null}
             </div>
           ) : (
-            <p className="text-muted-foreground py-12 text-center text-sm">Task not found.</p>
+            <p className="text-muted-foreground py-12 text-center text-sm">
+              This task is not available.
+            </p>
           )}
         </div>
 

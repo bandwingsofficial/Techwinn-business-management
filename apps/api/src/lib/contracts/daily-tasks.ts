@@ -11,6 +11,7 @@ export const DAILY_TASK_ROUTES = {
   myTasks: `${API_PREFIX}/daily-tasks/my`,
   activities: (id: string) => `${API_PREFIX}/daily-tasks/${id}/activities`,
   comments: (id: string) => `${API_PREFIX}/daily-tasks/${id}/comments`,
+  notesInbox: `${API_PREFIX}/daily-tasks/notes/inbox`,
   notes: (id: string) => `${API_PREFIX}/daily-tasks/${id}/notes`,
   noteAcknowledge: (taskId: string, noteId: string) =>
     `${API_PREFIX}/daily-tasks/${taskId}/notes/${noteId}/acknowledge`,
@@ -36,6 +37,17 @@ export interface DailyTaskNoteItem {
 export interface DailyTaskNotesResponse {
   readonly items: readonly DailyTaskNoteItem[];
 }
+
+export interface DailyTaskNoteInboxItem extends DailyTaskNoteItem {
+  readonly taskTitle: string;
+  readonly taskWorkflowStageName: string | null;
+}
+
+export interface DailyTaskNoteInboxResponse {
+  readonly items: readonly DailyTaskNoteInboxItem[];
+}
+
+export type DailyTaskNoteInboxStatus = 'ALL' | 'UNREAD' | 'ACKNOWLEDGED';
 
 export interface DailyTaskNotesCardSummary {
   readonly unreadCount: number;
@@ -165,6 +177,7 @@ export interface DailyTaskListItem {
   readonly unreadEmployeeNoteCount: number;
   readonly orgTaskNotes: DailyTaskNotesCardSummary | null;
   readonly myTaskNotes: DailyTaskNotesCardSummary | null;
+  readonly canAddTaskNote?: boolean;
   readonly createdByDisplayName: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;

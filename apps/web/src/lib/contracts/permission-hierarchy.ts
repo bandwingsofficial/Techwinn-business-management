@@ -4,6 +4,11 @@ import { CRM_SERVICE_PACKAGES_PERMISSION_KEYS } from './crm-service-packages-per
 import { CRM_QUOTATIONS_PERMISSION_KEYS } from './crm-quotations-permissions';
 import { CRM_CLIENTS_PERMISSION_KEYS, LEGACY_CLIENTS_PERMISSION_KEYS } from './crm-clients-permissions';
 import {
+  DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
+  PM_DAILY_TASKS_PERMISSION_KEYS,
+} from './pm-daily-tasks-permissions';
+import { PM_TASK_CALENDAR_PERMISSION_KEYS } from './pm-task-calendar-permissions';
+import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
   type PermissionDefinition,
@@ -156,28 +161,13 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'daily-tasks',
             label: 'Daily Tasks',
             href: '/admin/daily-tasks',
-            permissionKeys: [
-              'tasks.read',
-              'tasks.create',
-              'tasks.update',
-              'tasks.delete',
-              'tasks.assign',
-              'tasks.progress',
-              'tasks.comment',
-              'daily_tasks.update_status',
-              'daily_tasks.comment',
-              'daily_tasks.manage_workflow',
-              'daily_tasks.notes.create',
-              'daily_tasks.notes.view_own',
-              'daily_tasks.notes.view_all',
-              'daily_tasks.notes.acknowledge',
-            ],
+            permissionKeys: PM_DAILY_TASKS_PERMISSION_KEYS,
           },
           {
             id: 'task-calendar',
             label: 'Task Calendar',
             href: '/admin/task-calendar',
-            permissionKeys: ['tasks.read', 'projects.read'],
+            permissionKeys: PM_TASK_CALENDAR_PERMISSION_KEYS,
           },
           {
             id: 'project-tasks',
@@ -414,6 +404,7 @@ export function uniqueHierarchyPermissionKeys(
 const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_LEADS_PERMISSION_KEYS,
   ...LEGACY_CLIENTS_PERMISSION_KEYS,
+  ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);
 
 /** Ensures every catalog key appears on at least one hierarchy page. Keys may appear on multiple pages when backend shares them. */

@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { stageKanbanColumnTheme } from '@/features/admin/crm/utils/stage-color';
 import { useAdminToast } from '@/features/admin/components/toast';
 import { cn } from '@/shared/lib/utils';
-import { hasDailyTaskUpdateStatusPermission } from '@techwin/contracts';
+import { hasDailyTaskUpdateStatusPermission, hasPmDailyTaskMovePermission } from '@techwin/contracts';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { isApiError } from '@/shared/api/api-error';
 import { moveDailyTaskStage } from '../api/daily-tasks';
@@ -151,6 +151,7 @@ export function DailyTaskKanbanBoard({
   onEditTask,
   onAssignTask,
   onManageWorkflow,
+  onPatchTask,
   employeeMode = false,
   canUpdateStatus: canUpdateStatusProp,
 }: {
@@ -161,14 +162,31 @@ export function DailyTaskKanbanBoard({
   onEditTask: (task: DailyTaskListItem) => void;
   onAssignTask?: (workflowStageId: string) => void;
   onManageWorkflow?: () => void;
+  onPatchTask?: (taskId: string, patch: Partial<DailyTaskListItem>) => void;
   employeeMode?: boolean;
   canUpdateStatus?: boolean;
 }) {
   const toast = useAdminToast();
-  const { permissionSet, has } = usePermissions();
+  const { permissionSet } = usePermissions();
   const canUpdateStatus =
     canUpdateStatusProp ??
-    (has('tasks.update') || hasDailyTaskUpdateStatusPermission(permissionSet));
+    (employeeMode
+      ? hasDailyTaskUpdateStatusPermission(permissionSet)
+      : hasPmDailyTaskMovePermission(permissionSet));
+
+  const patchTaskOnCard = useCallback(
+    (taskId: string, patch: Partial<DailyTaskListItem>) => {
+      setTasksById((previous) => {
+        const current = previous.get(taskId);
+        if (!current) return previous;
+        const next = new Map(previous);
+        next.set(taskId, { ...current, ...patch });
+        return next;
+      });
+      onPatchTask?.(taskId, patch);
+    },
+    [onPatchTask],
+  );
 
   const stageIds = useMemo(
     () => board.columns.map((column) => column.stage.id),
@@ -463,6 +481,7 @@ export function DailyTaskKanbanBoard({
                           onOpen={onOpenTask}
                           onEdit={onEditTask}
                           onChanged={onRefresh}
+                          onTaskPatched={patchTaskOnCard}
                         />
                       );
                     })

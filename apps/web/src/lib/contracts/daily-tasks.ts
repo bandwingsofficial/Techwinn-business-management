@@ -4,6 +4,7 @@ import type { ProjectPhaseStatus } from './projects';
 export const DAILY_TASK_ROUTES = {
   workflowStages: `${API_PREFIX}/daily-tasks/workflow-stages`,
   board: `${API_PREFIX}/daily-tasks/board`,
+  notesInbox: `${API_PREFIX}/daily-tasks/notes/inbox`,
   tasks: `${API_PREFIX}/daily-tasks`,
   task: (id: string) => `${API_PREFIX}/daily-tasks/${id}`,
   moveStage: (id: string) => `${API_PREFIX}/daily-tasks/${id}/stage`,
@@ -36,6 +37,17 @@ export interface DailyTaskNoteItem {
 export interface DailyTaskNotesResponse {
   readonly items: readonly DailyTaskNoteItem[];
 }
+
+export interface DailyTaskNoteInboxItem extends DailyTaskNoteItem {
+  readonly taskTitle: string;
+  readonly taskWorkflowStageName: string | null;
+}
+
+export interface DailyTaskNoteInboxResponse {
+  readonly items: readonly DailyTaskNoteInboxItem[];
+}
+
+export type DailyTaskNoteInboxStatus = 'ALL' | 'UNREAD' | 'ACKNOWLEDGED';
 
 export interface DailyTaskNotesCardSummary {
   readonly unreadCount: number;
@@ -165,6 +177,7 @@ export interface DailyTaskListItem {
   readonly unreadEmployeeNoteCount: number;
   readonly orgTaskNotes: DailyTaskNotesCardSummary | null;
   readonly myTaskNotes: DailyTaskNotesCardSummary | null;
+  readonly canAddTaskNote?: boolean;
   readonly createdByDisplayName: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;

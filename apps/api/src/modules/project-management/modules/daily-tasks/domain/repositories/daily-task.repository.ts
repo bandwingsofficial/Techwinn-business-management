@@ -4,6 +4,7 @@ import type {
   DailyTaskDetail,
   DailyTaskListItem,
   DailyTaskListResponse,
+  DailyTaskNoteInboxItem,
   DailyTaskNoteItem,
   DailyTaskWorkflowStage,
 } from '../read-models/daily-task.models.js';
@@ -115,4 +116,8 @@ export interface DailyTaskRepository {
     taskId: string,
     noteId: string,
   ): Promise<DailyTaskNoteItem>;
+  listOrganizationTaskNotesInbox(
+    organizationId: string,
+    status: 'ALL' | 'UNREAD' | 'ACKNOWLEDGED',
+  ): Promise<readonly DailyTaskNoteInboxItem[]>;
 }

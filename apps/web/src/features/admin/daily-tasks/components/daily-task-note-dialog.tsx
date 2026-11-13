@@ -15,8 +15,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { EmployeeAvatar } from '@/features/employees/components/employee-avatar';
 import { useAdminToast } from '@/features/admin/components/toast';
-import { usePermissions } from '@/features/auth/components/permissions-provider';
-import { hasDailyTaskNoteAcknowledgePermission, hasDailyTaskNoteCreatePermission } from '@techwin/contracts';
+import { useIsPlatformSuperAdmin } from '@/features/auth/hooks/use-is-platform-super-admin';
+import { canShowDailyTaskAddNoteButton } from '@techwin/contracts';
 import { isApiError } from '@/shared/api/api-error';
 import {
   acknowledgeDailyTaskNote,
@@ -32,19 +32,20 @@ export function DailyTaskNoteDialog({
   onOpenChange,
   mode,
   employeeMode,
-  onChanged,
+  isReviewer,
+  onNoteCreated,
 }: {
   task: DailyTaskListItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'view';
   employeeMode: boolean;
-  onChanged: () => void | Promise<void>;
+  isReviewer: boolean;
+  onNoteCreated?: (note: DailyTaskNoteItem) => void;
 }) {
   const toast = useAdminToast();
-  const { permissionSet } = usePermissions();
-  const canCreate = hasDailyTaskNoteCreatePermission(permissionSet);
-  const canAcknowledge = hasDailyTaskNoteAcknowledgePermission(permissionSet);
+  const isPlatformSuperAdmin = useIsPlatformSuperAdmin();
+  const canCreate = canShowDailyTaskAddNoteButton(isPlatformSuperAdmin);
 
   const [draft, setDraft] = useState('');
   const [notes, setNotes] = useState<readonly DailyTaskNoteItem[]>([]);
@@ -76,43 +77,42 @@ export function DailyTaskNoteDialog({
   }, [loadNotes, mode, open, task]);
 
   const submitNote = async () => {
-    if (!task) return;
+    if (!task || submitting) return;
     const text = draft.trim();
     if (!text) {
-      toast.error('Enter a note before submitting.');
+      toast.error('Enter a note before sending.');
       return;
     }
     setSubmitting(true);
     try {
-      await createDailyTaskNote(task.id, { text });
-      toast.success('Note submitted.');
+      const created = await createDailyTaskNote(task.id, { text });
+      toast.success('Note sent.');
       setDraft('');
       onOpenChange(false);
-      await onChanged();
+      onNoteCreated?.(created);
     } catch (error) {
-      toast.error(isApiError(error) ? error.message : 'Could not submit note.');
+      toast.error(isApiError(error) ? error.message : 'Could not send note.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const markNoted = async (note: DailyTaskNoteItem) => {
-    if (!task) return;
+  const markSeen = async (note: DailyTaskNoteItem) => {
+    if (!task || !isReviewer) return;
     setAcknowledgingId(note.id);
     try {
       await acknowledgeDailyTaskNote(task.id, note.id);
-      toast.success('Marked as noted.');
+      toast.success('Marked as Seen.');
       await loadNotes();
-      await onChanged();
     } catch (error) {
-      toast.error(isApiError(error) ? error.message : 'Could not acknowledge note.');
+      toast.error(isApiError(error) ? error.message : 'Could not mark as seen.');
     } finally {
       setAcknowledgingId(null);
     }
   };
 
-  const title = mode === 'create' ? 'Add Task Note' : employeeMode ? 'Your task note' : 'Employee Task Note';
   const statusLabel = task?.workflowStageName ?? task?.stageName ?? '—';
+  const title = mode === 'create' ? 'Add Note' : 'Task notes';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -124,7 +124,8 @@ export function DailyTaskNoteDialog({
               <p className="text-foreground font-medium">{task?.title ?? 'Task'}</p>
               {task ? (
                 <p className="text-muted-foreground text-xs">
-                  Task ID: <span className="font-mono">{task.id.slice(0, 8)}…</span> · Status: {statusLabel}
+                  Task ID: <span className="font-mono">{task.id.slice(0, 8)}…</span> · Status:{' '}
+                  {statusLabel}
                 </p>
               ) : null}
             </div>
@@ -179,26 +180,18 @@ export function DailyTaskNoteDialog({
                           : 'rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800'
                       }
                     >
-                      {note.acknowledgementStatus === 'UNREAD' ? 'Awaiting acknowledgement' : 'Seen by Admin'}
+                      {note.acknowledgementStatus === 'UNREAD' ? 'Not Seen' : 'Seen'}
                     </span>
                   </div>
                   <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">{note.text}</p>
-                  {note.acknowledgementStatus === 'ACKNOWLEDGED' && note.acknowledgedAt ? (
-                    <p className="text-muted-foreground text-xs">
-                      Acknowledged by {note.acknowledgedByDisplayName ?? 'Admin'} ·{' '}
-                      {new Date(note.acknowledgedAt).toLocaleString()}
-                    </p>
-                  ) : null}
-                  {!employeeMode &&
-                  canAcknowledge &&
-                  note.acknowledgementStatus === 'UNREAD' ? (
+                  {isReviewer && note.acknowledgementStatus === 'UNREAD' ? (
                     <Button
                       type="button"
                       size="sm"
                       disabled={acknowledgingId === note.id}
-                      onClick={() => void markNoted(note)}
+                      onClick={() => void markSeen(note)}
                     >
-                      {acknowledgingId === note.id ? 'Saving…' : 'Mark as Noted'}
+                      {acknowledgingId === note.id ? 'Saving…' : 'Mark as Seen'}
                     </Button>
                   ) : null}
                 </article>
@@ -213,7 +206,7 @@ export function DailyTaskNoteDialog({
           </Button>
           {mode === 'create' && canCreate ? (
             <Button type="button" disabled={submitting} onClick={() => void submitNote()}>
-              {submitting ? 'Submitting…' : 'Submit Note'}
+              {submitting ? 'Sending…' : 'Send Note'}
             </Button>
           ) : null}
         </DialogFooter>

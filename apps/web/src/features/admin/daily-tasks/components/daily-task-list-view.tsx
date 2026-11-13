@@ -11,6 +11,7 @@ import {
 } from '@/features/admin/components/data-table';
 import { TablePagination } from '@/features/admin/components/table-pagination';
 import { DailyTaskAssigneeAvatarGroup } from './daily-task-assignee-avatar-group';
+import { DailyTaskCardNotes } from './daily-task-card-notes';
 import type { DailyTaskListItem, DailyTaskListResponse } from '../types';
 import { priorityBadgeClass } from '../utils/stage-colors';
 
@@ -34,6 +35,7 @@ export function DailyTaskListView({
   onPageSizeChange,
   onRetry,
   onOpenTask,
+  onTaskPatched,
   employeeMode = false,
 }: {
   data: DailyTaskListResponse | null;
@@ -44,6 +46,7 @@ export function DailyTaskListView({
   onPageSizeChange: (size: number) => void;
   onRetry: () => void;
   onOpenTask: (task: DailyTaskListItem) => void;
+  onTaskPatched?: (taskId: string, patch: Partial<DailyTaskListItem>) => void;
   employeeMode?: boolean;
 }) {
   if (error) {
@@ -156,9 +159,16 @@ export function DailyTaskListView({
             {task.dueDate ?? '—'}
           </TableCell>
           <TableCell className="text-right align-middle">
-            <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => onOpenTask(task)}>
-              View
-            </Button>
+            <div className="inline-flex items-center justify-end gap-2">
+              <DailyTaskCardNotes
+                task={task}
+                employeeMode={employeeMode}
+                onTaskPatched={onTaskPatched}
+              />
+              <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => onOpenTask(task)}>
+                View
+              </Button>
+            </div>
           </TableCell>
         </TableRow>
       ))}

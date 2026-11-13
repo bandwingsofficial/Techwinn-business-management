@@ -32,7 +32,7 @@ import {
 } from '@/features/admin/crm/components/kanban-lead-priority-badge';
 import { DailyTaskAssigneeAvatarGroup } from './daily-task-assignee-avatar-group';
 import { useAdminToast } from '@/features/admin/components/toast';
-import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { useDailyTaskPagePermissions } from '../hooks/use-daily-task-page-permissions';
 import { cn } from '@/shared/lib/utils';
 import { deleteDailyTask } from '../api/daily-tasks';
 import type { DailyTaskListItem } from '../types';
@@ -86,12 +86,9 @@ function TaskKanbanCardActions({
   onDelete: () => void;
   employeeMode?: boolean;
 }) {
-  const { has } = usePermissions();
+  const { canViewDetails, canEdit, canDelete, showCardMenu } = useDailyTaskPagePermissions();
   if (employeeMode) return null;
-  const canRead = has('tasks.read');
-  const canUpdate = has('tasks.update');
-  const canDelete = has('tasks.delete');
-  if (!canRead && !canUpdate && !canDelete) return null;
+  if (!showCardMenu) return null;
   return (
     <div onPointerDown={stopCardPointer} onClick={(event) => event.stopPropagation()}>
       <DropdownMenu>
@@ -108,13 +105,13 @@ function TaskKanbanCardActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[10rem]">
-          {canRead ? (
+          {canViewDetails ? (
             <DropdownMenuItem onSelect={onView}>
               <Eye className="size-3.5" aria-hidden="true" />
               View Details
             </DropdownMenuItem>
           ) : null}
-          {canUpdate ? (
+          {canEdit ? (
             <DropdownMenuItem onSelect={onEdit}>
               <Pencil className="size-3.5" aria-hidden="true" />
               Edit
@@ -122,7 +119,7 @@ function TaskKanbanCardActions({
           ) : null}
           {canDelete ? (
             <>
-              {canRead || canUpdate ? <DropdownMenuSeparator /> : null}
+              {canViewDetails || canEdit ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
                 <Trash2 className="size-3.5" aria-hidden="true" />
                 Delete
@@ -143,7 +140,7 @@ export function DailyTaskKanbanCardSurface({
   onEdit,
   onDelete,
   employeeMode = false,
-  onNotesChanged,
+  onTaskPatched,
 }: {
   task: DailyTaskListItem;
   columnStageName?: string;
@@ -152,7 +149,7 @@ export function DailyTaskKanbanCardSurface({
   onEdit: () => void;
   onDelete: () => void;
   employeeMode?: boolean;
-  onNotesChanged?: () => void | Promise<void>;
+  onTaskPatched?: (taskId: string, patch: Partial<DailyTaskListItem>) => void;
 }) {
   const dateKind = task.dueDate ? 'due' : 'assigned';
   const dateValue = task.dueDate ?? task.assignDate;
@@ -247,37 +244,39 @@ export function DailyTaskKanbanCardSurface({
         </div>
 
         <div className="border-border/60 border-t pt-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            {onNotesChanged ? (
+          <div className="flex w-full items-end justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              {workflowStatusLabel ? (
+                <span className="border-border bg-muted/40 text-foreground inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold tracking-tight">
+                  <span className="truncate">{workflowStatusLabel}</span>
+                </span>
+              ) : null}
+              {task.isOverdue ? (
+                <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">
+                  Overdue
+                </span>
+              ) : null}
+              {task.assigneeLeaveConflicts.length > 0 ? (
+                <span
+                  className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900"
+                  title={task.assigneeLeaveConflicts
+                    .map((conflict) => {
+                      const leaveType = conflict.leaveTypeName?.trim() || 'approved leave';
+                      return `${conflict.employeeDisplayName} is on ${leaveType}`;
+                    })
+                    .join('; ')}
+                >
+                  On Leave conflict
+                </span>
+              ) : null}
+            </div>
+            <div className="ml-auto shrink-0">
               <DailyTaskCardNotes
                 task={task}
                 employeeMode={employeeMode}
-                onChanged={onNotesChanged}
+                onTaskPatched={onTaskPatched}
               />
-            ) : null}
-            {workflowStatusLabel ? (
-              <span className="border-border bg-muted/40 text-foreground inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold tracking-tight">
-                <span className="truncate">{workflowStatusLabel}</span>
-              </span>
-            ) : null}
-            {task.isOverdue ? (
-              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800">
-                Overdue
-              </span>
-            ) : null}
-            {task.assigneeLeaveConflicts.length > 0 ? (
-              <span
-                className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900"
-                title={task.assigneeLeaveConflicts
-                  .map((conflict) => {
-                    const leaveType = conflict.leaveTypeName?.trim() || 'approved leave';
-                    return `${conflict.employeeDisplayName} is on ${leaveType}`;
-                  })
-                  .join('; ')}
-              >
-                On Leave conflict
-              </span>
-            ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -291,6 +290,7 @@ export function DailyTaskKanbanCard({
   onOpen,
   onEdit,
   onChanged,
+  onTaskPatched,
   dragging = false,
   employeeMode = false,
   dragDisabled = false,
@@ -301,6 +301,7 @@ export function DailyTaskKanbanCard({
   onOpen: (task: DailyTaskListItem) => void;
   onEdit?: (task: DailyTaskListItem) => void;
   onChanged?: () => void | Promise<void>;
+  onTaskPatched?: (taskId: string, patch: Partial<DailyTaskListItem>) => void;
   dragging?: boolean;
   employeeMode?: boolean;
   dragDisabled?: boolean;
@@ -366,7 +367,7 @@ export function DailyTaskKanbanCard({
           onOpen={() => onOpen(task)}
           onEdit={() => (onEdit ?? onOpen)(task)}
           onDelete={() => setDeleteOpen(true)}
-          onNotesChanged={onChanged ? () => void onChanged() : undefined}
+          onTaskPatched={onTaskPatched}
         />
       </div>
 

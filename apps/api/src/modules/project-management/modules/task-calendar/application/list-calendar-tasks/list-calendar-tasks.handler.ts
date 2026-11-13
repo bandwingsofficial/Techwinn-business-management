@@ -1,5 +1,10 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import type { TaskCalendarDayBucketDto, TaskCalendarResponse, TaskCalendarTaskDto } from '#contracts';
+import {
+  canViewOrganizationTaskCalendar,
+  type TaskCalendarDayBucketDto,
+  type TaskCalendarResponse,
+  type TaskCalendarTaskDto,
+} from '#contracts';
 import { projectTaskStatusSchema } from '#validation';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { DailyTaskAuthorizationService } from '../../../daily-tasks/application/services/daily-task-authorization.service.js';
@@ -72,7 +77,14 @@ export class ListCalendarTasksHandler {
   async execute(input: ListCalendarTasksQuery): Promise<TaskCalendarResponse> {
     const { organizationId, clientToday, accessActor, query } = input;
     const effective = await this.dailyTaskAuthz.resolveEffective(accessActor);
-    const orgWide = this.dailyTaskAuthz.canViewOrganizationTasks(accessActor, effective);
+    const orgWide = canViewOrganizationTaskCalendar(
+      effective,
+      accessActor.isPlatformSuperAdmin,
+    );
+    const canSeeOrgDailyTasks = this.dailyTaskAuthz.canViewOrganizationTasks(
+      accessActor,
+      effective,
+    );
 
     const effectiveToday = query.clientToday ?? clientToday;
     const startDate = query.startDate;
@@ -96,7 +108,8 @@ export class ListCalendarTasksHandler {
 
     const noteAttach = await this.dailyTaskAuthz.resolveNoteAttach(accessActor);
 
-    const includeDaily = !query.source || query.source === 'DAILY_TASK';
+    const includeDaily =
+      canSeeOrgDailyTasks && (!query.source || query.source === 'DAILY_TASK');
     const includeProject = !query.source || query.source === 'PROJECT_TASK';
 
     let workflowStageId = query.workflowStageId;

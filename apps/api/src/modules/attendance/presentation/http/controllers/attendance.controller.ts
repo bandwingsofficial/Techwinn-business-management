@@ -93,7 +93,12 @@ export class AttendanceController {
   ) {}
 
   @Get('settings')
-  @RequirePermissions('attendance.manage_settings', 'calendar.view', 'attendance.view_own')
+  @RequirePermissions(
+    'attendance.manage_settings',
+    'calendar.view',
+    'calendar.view_all',
+    'attendance.view_own',
+  )
   @ApiOperation({ summary: 'Get attendance settings' })
   getAttendanceSettings(
     @CrmContext() ctx: CrmRequestContext,

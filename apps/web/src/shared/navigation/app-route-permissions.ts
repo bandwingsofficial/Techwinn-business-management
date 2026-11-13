@@ -19,7 +19,6 @@ import {
  */
 const ORGANIZATION_DAILY_TASK_BOARD_ROUTES: ReadonlySet<string> = new Set([
   '/admin/daily-tasks',
-  '/admin/task-calendar',
   '/admin/my-tasks',
 ]);
 
@@ -61,9 +60,9 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/clients': ['crm.clients.view'],
   '/admin/projects': ['projects.read'],
   '/admin/project-tasks': ['tasks.read', 'projects.read'],
-  '/admin/daily-tasks': ['tasks.read'],
-  '/admin/my-tasks': ['tasks.read'],
-  '/admin/task-calendar': ['tasks.read'],
+  '/admin/daily-tasks': ['project_management.daily_tasks.view'],
+  '/admin/my-tasks': ['project_management.daily_tasks.view'],
+  '/admin/task-calendar': ['project_management.task_calendar.view'],
   '/admin/whatsapp/inbox': ['whatsapp.read'],
   '/admin/whatsapp/channels': ['whatsapp.channels.manage'],
   '/admin/whatsapp/templates': ['whatsapp.templates.manage', 'whatsapp.broadcasts.manage'],

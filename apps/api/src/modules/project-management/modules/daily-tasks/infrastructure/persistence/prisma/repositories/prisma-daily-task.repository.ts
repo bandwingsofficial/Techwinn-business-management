@@ -88,4 +88,10 @@ export class PrismaDailyTaskRepository implements DailyTaskRepository {
   acknowledgeTaskNote(...args: Parameters<DailyTaskPrismaStore['acknowledgeTaskNote']>) {
     return this.store.acknowledgeTaskNote(...args);
   }
+
+  listOrganizationTaskNotesInbox(
+    ...args: Parameters<DailyTaskPrismaStore['listOrganizationTaskNotesInbox']>
+  ) {
+    return this.store.listOrganizationTaskNotesInbox(...args);
+  }
 }

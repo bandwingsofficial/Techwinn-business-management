@@ -92,6 +92,8 @@ export interface DailyTaskListItem {
   readonly unreadEmployeeNoteCount: number;
   readonly orgTaskNotes: DailyTaskNotesCardSummary | null;
   readonly myTaskNotes: DailyTaskNotesCardSummary | null;
+  /** When set by the API, indicates the signed-in admin may submit an employee task note on this card. */
+  readonly canAddTaskNote?: boolean;
   readonly createdByDisplayName: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -112,6 +114,11 @@ export interface DailyTaskNoteItem {
   readonly acknowledgedByDisplayName: string | null;
   readonly acknowledgedAt: string | null;
   readonly createdAt: string;
+}
+
+export interface DailyTaskNoteInboxItem extends DailyTaskNoteItem {
+  readonly taskTitle: string;
+  readonly taskWorkflowStageName: string | null;
 }
 
 export interface DailyTaskNotesCardSummary {

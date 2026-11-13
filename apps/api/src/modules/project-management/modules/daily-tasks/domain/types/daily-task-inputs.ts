@@ -137,4 +137,6 @@ export type TaskNoteAttachOptions = {
   readonly adminId: string;
   readonly includeOrgUnread: boolean;
   readonly includeOwnSummary: boolean;
+  /** When true, each list item gets `canAddTaskNote` from admin assignment. */
+  readonly includeCanAddNote?: boolean;
 };

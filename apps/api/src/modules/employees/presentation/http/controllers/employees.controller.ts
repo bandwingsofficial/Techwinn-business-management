@@ -140,7 +140,13 @@ export class EmployeesController {
   }
 
   @Get('assignable')
-  @RequirePermissions('employees.read', 'tasks.read', 'tasks.assign', 'projects.read')
+  @RequirePermissions(
+    'employees.read',
+    'tasks.read',
+    'tasks.assign',
+    'projects.read',
+    'project_management.daily_tasks.assign',
+  )
   @ApiOperation({ summary: 'List active employees for task assignment pickers' })
   @ApiOkResponse({ schema: toOpenApiSchema(assignableEmployeeListResponseSchema) })
   async assignable(

@@ -8,6 +8,7 @@ import { AddDailyTaskCommentHandler } from './application/add-daily-task-comment
 import { AcknowledgeDailyTaskNoteHandler } from './application/acknowledge-daily-task-note/acknowledge-daily-task-note.handler.js';
 import { CreateDailyTaskNoteHandler } from './application/create-daily-task-note/create-daily-task-note.handler.js';
 import { ListDailyTaskNotesHandler } from './application/list-daily-task-notes/list-daily-task-notes.handler.js';
+import { ListDailyTaskNotesInboxHandler } from './application/list-daily-task-notes-inbox/list-daily-task-notes-inbox.handler.js';
 import { CreateDailyTaskHandler } from './application/create-daily-task/create-daily-task.handler.js';
 import { ListDailyTaskActivitiesHandler } from './application/list-daily-task-activities/list-daily-task-activities.handler.js';
 import { DailyTaskAuthorizationService } from './application/services/daily-task-authorization.service.js';
@@ -35,6 +36,7 @@ const dailyTaskUseCaseHandlers = [
   AddDailyTaskCommentHandler,
   CreateDailyTaskNoteHandler,
   ListDailyTaskNotesHandler,
+  ListDailyTaskNotesInboxHandler,
   AcknowledgeDailyTaskNoteHandler,
   ListDailyTaskActivitiesHandler,
   CreateDailyTaskHandler,

@@ -9,6 +9,7 @@ import {
   CrmOrganizationGuard,
   type CrmRequestContext,
 } from '../../../../../../../platform/tenant-context/index.js';
+import { PM_TASK_CALENDAR_VIEW_KEY } from '#contracts';
 import {
   RequirePermissions,
   RequirePermissionsGuard,
@@ -36,7 +37,7 @@ export class TaskCalendarController {
   ) {}
 
   @Get()
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_TASK_CALENDAR_VIEW_KEY, 'tasks.read')
   @ApiOperation({
     summary: 'Organization task calendar — daily tasks and project plan tasks (grouped by day)',
   })
@@ -55,7 +56,7 @@ export class TaskCalendarController {
   }
 
   @Get('filters')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions(PM_TASK_CALENDAR_VIEW_KEY, 'tasks.read')
   @ApiOperation({ summary: 'Filter options for task calendar (employees, projects, statuses)' })
   async listFilters(
     @CrmContext() ctx: CrmRequestContext,

@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { CrmIconFilterDropdown, type CrmFilterOption } from '@/components/shared/crm-icon-filter-dropdown';
 import { AdminBreadcrumb } from '@/features/admin/components/admin-page-header';
 import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { useAdminToast } from '@/features/admin/components/toast';
 import { listAssignableEmployees } from '@/features/employees/api/employee.api';
 import { listProjects } from '@/features/admin/projects/api/projects';
@@ -26,13 +27,15 @@ import {
   listDailyTasks,
   listMyDailyTasks,
 } from '../api/daily-tasks';
-import type { OrgCalendarMonthDay } from '@techwin/contracts';
+import { PM_DAILY_TASKS_VIEW_KEY, type OrgCalendarMonthDay } from '@techwin/contracts';
+import { useIsPlatformSuperAdmin } from '@/features/auth/hooks/use-is-platform-super-admin';
 import type {
   DailyTaskBoardResponse,
   DailyTaskListItem,
   DailyTaskWorkflowStage,
 } from '../types';
 import { useDailyTasksPolling } from '../hooks/use-daily-tasks-polling';
+import { useDailyTaskPagePermissions } from '../hooks/use-daily-task-page-permissions';
 import { buildMyTaskBoard } from '../utils/build-my-task-board';
 import {
   canViewOrganizationDailyTasks,
@@ -62,6 +65,8 @@ import {
 } from './daily-task-sort';
 import { DailyTaskDetailsDialog } from './daily-task-details-dialog';
 import { DailyTaskKanbanBoard } from './daily-task-kanban-board';
+import { DailyTaskNotesReviewSheet } from './daily-task-notes-review-sheet';
+import { patchTaskAfterNoteAcknowledged } from '../utils/task-note-summary';
 import { DailyTaskListView } from './daily-task-list-view';
 import { DailyTaskToolbar, DailyTaskToolbarSearch } from './daily-task-toolbar';
 import { DailyTaskWorkflowDialog } from './daily-task-workflow-dialog';
@@ -95,8 +100,16 @@ export function DailyTasksWorkspace({
   const stagesRef = useRef<readonly DailyTaskWorkflowStage[]>([]);
   const boardAbortRef = useRef<AbortController | null>(null);
   const { has, hasAny } = useAdminAccess();
-  const canAssignTasks = has('tasks.create') && has('tasks.assign');
-  const canManageWorkflow = has('tasks.update') || has('daily_tasks.manage_workflow');
+  const { hasAny: hasPermissionAny } = usePermissions();
+  const isPlatformSuperAdmin = useIsPlatformSuperAdmin();
+  const canLoadOrgCalendarMonth = hasPermissionAny('calendar.view_all', 'calendar.view');
+  const {
+    canAssign,
+    canViewDetails,
+    canEdit,
+    canMove,
+    canManageWorkflow,
+  } = useDailyTaskPagePermissions();
   const canViewOrganizationTasks = useMemo(
     () => canViewOrganizationDailyTasks(has, hasAny),
     [has, hasAny],
@@ -194,7 +207,7 @@ export function DailyTasksWorkspace({
   const { data: orgCalendarMonth, loading: orgCalendarLoading } = useOrgCalendarMonth({
     year: orgMonthParts.year,
     month: orgMonthParts.month,
-    enabled: view !== 'list',
+    enabled: view === 'calendar' && dataScope === 'team' && canLoadOrgCalendarMonth,
   });
   const orgDaysByDate = useMemo(() => {
     const map = new Map<string, OrgCalendarMonthDay>();
@@ -301,6 +314,53 @@ export function DailyTasksWorkspace({
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [notesReviewOpen, setNotesReviewOpen] = useState(false);
+
+  const isPlatformNoteReviewer = isPlatformSuperAdmin;
+
+  const patchBoardTask = useCallback((taskId: string, patch: Partial<DailyTaskListItem>) => {
+    setBoard((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        columns: previous.columns.map((column) => ({
+          ...column,
+          tasks: column.tasks.map((task) =>
+            task.id === taskId ? { ...task, ...patch } : task,
+          ),
+        })),
+      };
+    });
+    setListData((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        items: previous.items.map((task) =>
+          task.id === taskId ? { ...task, ...patch } : task,
+        ),
+      };
+    });
+  }, []);
+
+  const onInboxNoteAcknowledged = useCallback(
+    (taskId: string, note: import('@techwin/contracts').DailyTaskNoteInboxItem) => {
+      setBoard((previous) => {
+        if (!previous) return previous;
+        return {
+          ...previous,
+          columns: previous.columns.map((column) => ({
+            ...column,
+            tasks: column.tasks.map((task) =>
+              task.id === taskId
+                ? { ...task, ...patchTaskAfterNoteAcknowledged(task, note) }
+                : task,
+            ),
+          })),
+        };
+      });
+    },
+    [],
+  );
 
   const filterQuery = useMemo(
     () => ({
@@ -361,19 +421,28 @@ export function DailyTasksWorkspace({
               },
               controller.signal,
             );
-      const [stageResponse, taskResponse] = await Promise.all([
+      const [stagesResult, tasksResult] = await Promise.allSettled([
         cachedStages.length > 0
           ? Promise.resolve({ stages: cachedStages })
           : fetchDailyTaskWorkflowStages(controller.signal),
         listCall,
       ]);
       if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
-      if (cachedStages.length === 0) replaceStages(stageResponse.stages);
+      if (tasksResult.status === 'rejected') {
+        throw tasksResult.reason;
+      }
+      const stageResponse =
+        stagesResult.status === 'fulfilled'
+          ? stagesResult.value
+          : { stages: cachedStages.length > 0 ? cachedStages : [] };
+      if (cachedStages.length === 0 && stageResponse.stages.length > 0) {
+        replaceStages(stageResponse.stages);
+      }
       setBoard(
         buildMyTaskBoard({
           assignDate: requestAssignDate,
           stages: stageResponse.stages,
-          tasks: taskResponse.items,
+          tasks: tasksResult.value.items,
         }),
       );
     } catch {
@@ -491,28 +560,44 @@ export function DailyTasksWorkspace({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchDailyTaskWorkflowStages().then((r) => {
-      if (!cancelled) replaceStages(r.stages);
-    });
+    void fetchDailyTaskWorkflowStages()
+      .then((r) => {
+        if (!cancelled) replaceStages(r.stages);
+      })
+      .catch(() => {
+        /* board loader retries stages; avoid surfacing as a global runtime error */
+      });
     if (dataScope !== 'team') {
       return () => {
         cancelled = true;
       };
     }
-    void listAssignableEmployees().then((r) => {
-      if (!cancelled) {
-        setEmployees(r.items.map((e) => ({ id: e.id, displayName: e.displayName })));
-      }
-    });
-    void listProjects({ pageSize: 100, status: 'ACTIVE' }).then((r) => {
-      if (!cancelled) {
-        setProjects(r.items.map((p) => ({ id: p.id, name: p.name })));
-      }
-    });
+    if (canAssign) {
+      void listAssignableEmployees()
+        .then((r) => {
+          if (!cancelled) {
+            setEmployees(r.items.map((e) => ({ id: e.id, displayName: e.displayName })));
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setEmployees([]);
+        });
+    }
+    if (has('projects.read') || has(PM_DAILY_TASKS_VIEW_KEY)) {
+      void listProjects({ pageSize: 100, status: 'ACTIVE' })
+        .then((r) => {
+          if (!cancelled) {
+            setProjects(r.items.map((p) => ({ id: p.id, name: p.name })));
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setProjects([]);
+        });
+    }
     return () => {
       cancelled = true;
     };
-  }, [dataScope, replaceStages]);
+  }, [canAssign, dataScope, has, replaceStages]);
 
   useEffect(() => {
     if (view === 'kanban') void loadBoard();
@@ -541,6 +626,8 @@ export function DailyTasksWorkspace({
 
   useDailyTasksPolling(refreshAll, true);
 
+  const canAssignTasks = dataScope === 'team' && canAssign;
+
   const openAssign = (options?: { date?: string; workflowStageId?: string }) => {
     if (!canAssignTasks) return;
     setEditTask(null);
@@ -550,12 +637,14 @@ export function DailyTasksWorkspace({
   };
 
   const openEdit = (task: DailyTaskListItem) => {
+    if (dataScope === 'team' && !canEdit) return;
     setEditTask(task);
     setAssignPrefillStageId(undefined);
     setAssignOpen(true);
   };
 
   const openTask = (task: DailyTaskListItem) => {
+    if (dataScope === 'team' && !canViewDetails) return;
     setDetailId(task.id);
     setDetailOpen(true);
     const params = new URLSearchParams(searchParams.toString());
@@ -579,9 +668,10 @@ export function DailyTasksWorkspace({
       return;
     }
     if (searchParams.get('focus') === 'board') return;
+    if (dataScope === 'team' && !canViewDetails) return;
     setDetailId(tid);
     setDetailOpen(true);
-  }, [searchParams]);
+  }, [canViewDetails, dataScope, searchParams]);
 
   useEffect(() => {
     if (searchParams.get('focus') !== 'board') return;
@@ -620,6 +710,17 @@ export function DailyTasksWorkspace({
               toolbar={
                 <>
                   <DailyTasksViewTabs value={view} onValueChange={setViewInUrl} includeCalendar={false} />
+                  {isPlatformNoteReviewer ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-9 shrink-0"
+                      onClick={() => setNotesReviewOpen(true)}
+                    >
+                      Review notes
+                    </Button>
+                  ) : null}
                   {canAssignTasks ? (
                     <Button
                       type="button"
@@ -790,8 +891,10 @@ export function DailyTasksWorkspace({
                     <DailyTaskKanbanBoard
                       board={board}
                       employeeMode={employeeMode}
+                      canUpdateStatus={employeeMode ? undefined : canMove}
                       highlightTaskId={highlightTaskId}
                       onRefresh={refreshAll}
+                      onPatchTask={patchBoardTask}
                       onOpenTask={(task) => openTask(task)}
                       onEditTask={employeeMode ? (task) => openTask(task) : openEdit}
                       onAssignTask={
@@ -824,6 +927,7 @@ export function DailyTasksWorkspace({
                 }}
                 onRetry={() => void loadList()}
                 onOpenTask={(task) => openTask(task)}
+                onTaskPatched={patchBoardTask}
               />
             </div>
           ) : null}
@@ -862,6 +966,11 @@ export function DailyTasksWorkspace({
         onCreated={refreshAll}
       />
       <DailyTaskWorkflowDialog open={workflowOpen} onOpenChange={setWorkflowOpen} onSaved={refreshAll} />
+      <DailyTaskNotesReviewSheet
+        open={notesReviewOpen}
+        onOpenChange={setNotesReviewOpen}
+        onNoteAcknowledged={onInboxNoteAcknowledged}
+      />
       <DailyTaskDetailsDialog
         taskId={detailId}
         open={detailOpen}

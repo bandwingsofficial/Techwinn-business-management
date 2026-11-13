@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { TaskCalendarFiltersResponse } from '#contracts';
+import { canViewOrganizationTaskCalendar, type TaskCalendarFiltersResponse } from '#contracts';
 import { DailyTaskAuthorizationService } from '../../../daily-tasks/application/services/daily-task-authorization.service.js';
 import {
   DAILY_TASK_REPOSITORY,
@@ -23,7 +23,10 @@ export class ListCalendarFiltersHandler {
 
   async execute(input: ListCalendarFiltersQuery): Promise<TaskCalendarFiltersResponse> {
     const effective = await this.dailyTaskAuthz.resolveEffective(input.accessActor);
-    const orgWide = this.dailyTaskAuthz.canViewOrganizationTasks(input.accessActor, effective);
+    const orgWide = canViewOrganizationTaskCalendar(
+      effective,
+      input.accessActor.isPlatformSuperAdmin,
+    );
 
     const stages = await this.dailyTasks.listWorkflowStages(input.organizationId);
     const empPage = orgWide

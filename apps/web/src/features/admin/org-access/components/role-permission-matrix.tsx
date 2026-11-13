@@ -8,6 +8,7 @@ import {
   crmServicePackagesPermissionBlockedReason,
   crmQuotationsPermissionBlockedReason,
   crmClientsPermissionBlockedReason,
+  pmDailyTasksPermissionBlockedReason,
   pagePrimaryViewPermissionKey,
   permissionDefinitionForKey,
   type PermissionHierarchyModule,
@@ -416,7 +417,8 @@ export function RolePermissionMatrix({
                                     crmLeadsPermissionBlockedReason(key, selected) ??
                                     crmServicePackagesPermissionBlockedReason(key, selected) ??
                                     crmQuotationsPermissionBlockedReason(key, selected) ??
-                                    crmClientsPermissionBlockedReason(key, selected);
+                                    crmClientsPermissionBlockedReason(key, selected) ??
+                                    pmDailyTasksPermissionBlockedReason(key, selected);
                                   const blocked = needsViewFirst || blockedReason !== null;
                                   return (
                                   <li key={`${page.id}-${key}`}>

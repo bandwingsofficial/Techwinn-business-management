@@ -11,16 +11,13 @@ import {
 
 const ORGANIZATION_DAILY_TASK_NAV_HREFS: ReadonlySet<string> = new Set([
   '/admin/daily-tasks',
-  '/admin/task-calendar',
   '/admin/my-tasks',
 ]);
 
-const DAILY_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
-  'tasks.create',
-  'tasks.assign',
-  'tasks.update',
-  'tasks.delete',
-];
+const ORGANIZATION_TASK_CALENDAR_NAV_HREFS: ReadonlySet<string> = new Set(['/admin/task-calendar']);
+
+const PM_DAILY_TASKS_VIEW_KEY = 'project_management.daily_tasks.view' as const satisfies PermissionKey;
+const PM_TASK_CALENDAR_VIEW_KEY = 'project_management.task_calendar.view' as const satisfies PermissionKey;
 
 export function isDashboardNavConfigHref(href: string): boolean {
   return href === '/admin/dashboard' || href === '/employee/dashboard';
@@ -59,8 +56,11 @@ export function canAccessNavItem(
   }
 
   if (ORGANIZATION_DAILY_TASK_NAV_HREFS.has(configHref)) {
-    if (DAILY_TASK_MANAGE_KEYS.some((key) => permissions.has(key))) return true;
-    if (!permissions.has('tasks.read')) return false;
+    return permissions.has(PM_DAILY_TASKS_VIEW_KEY);
+  }
+
+  if (ORGANIZATION_TASK_CALENDAR_NAV_HREFS.has(configHref)) {
+    return permissions.has(PM_TASK_CALENDAR_VIEW_KEY);
   }
 
   const allRequired = APP_ROUTE_PERMISSIONS_ALL[configHref];

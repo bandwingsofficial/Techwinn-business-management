@@ -28,7 +28,7 @@ import {
   CRM_PIPELINE_FORM_TEXTAREA_CLASS,
 } from '@/features/admin/crm/constants';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
-import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
+import { useDailyTaskPagePermissions } from '../hooks/use-daily-task-page-permissions';
 import { listAssignableEmployees } from '@/features/employees/api/employee.api';
 import { getProject, listProjects } from '@/features/admin/projects/api/projects';
 import type { ProjectPhase } from '@/features/admin/projects/types';
@@ -81,7 +81,7 @@ export function DailyTaskAssignDialog({
 }) {
   const isEdit = Boolean(editTask);
   const toast = useAdminToast();
-  const canAssign = useAdminAccess().has('tasks.assign');
+  const canAssign = useDailyTaskPagePermissions().canAssign;
   const pendingPhaseIdRef = useRef<string | null>(null);
   const { pending, run } = useAsyncAction();
   const [dailyStages, setDailyStages] = useState<readonly DailyTaskWorkflowStage[]>([]);

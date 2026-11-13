@@ -3,6 +3,8 @@ import {
   expandLegacyServicePackagePermissions,
   expandLegacyCrmQuotationsPermissions,
   expandLegacyCrmClientsPermissions,
+  expandLegacyPmDailyTasksPermissions,
+  expandLegacyPmTaskCalendarPermissions,
   ensurePermissionPrerequisites,
   IMMUTABLE_ORG_ROLE_KEYS,
   isPermissionKey,
@@ -83,6 +85,8 @@ export function uniquePermissionKeys(keys: readonly string[]): PermissionKey[] {
   expandLegacyServicePackagePermissions(seen);
   expandLegacyCrmQuotationsPermissions(seen);
   expandLegacyCrmClientsPermissions(seen);
+  expandLegacyPmDailyTasksPermissions(seen);
+  expandLegacyPmTaskCalendarPermissions(seen);
   return [...ensurePermissionPrerequisites([...seen])].sort();
 }
 

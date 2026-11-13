@@ -9,9 +9,16 @@ import {
 } from '../../domain/repositories/daily-task.repository.js';
 import type { TaskNoteAttachOptions } from '../../domain/types/daily-task-inputs.js';
 import {
+  hasPmDailyTaskMovePermission,
+  hasPmDailyTaskViewDetailsPermission,
+  hasUnrestrictedOrgPermissions,
+  PM_DAILY_TASKS_VIEW_KEY,
+} from '#contracts';
+import {
   hasDailyTaskCommentPermission,
   hasDailyTaskNoteAcknowledgePermission,
   hasDailyTaskNoteCreatePermission,
+  hasDailyTaskNoteSubmitPermission,
   hasDailyTaskNoteViewAllPermission,
   hasDailyTaskNoteViewOwnPermission,
   hasDailyTaskUpdateStatusPermission,
@@ -22,6 +29,9 @@ const ORGANIZATION_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
   'tasks.assign',
   'tasks.update',
   'tasks.delete',
+  'project_management.daily_tasks.assign',
+  'project_management.daily_tasks.edit',
+  'project_management.daily_tasks.delete',
 ];
 
 /**
@@ -59,7 +69,9 @@ export class DailyTaskAuthorizationService {
     actor: OrgAccessActor,
     effective: ReadonlySet<PermissionKey>,
   ): boolean {
+    if (actor.isPlatformSuperAdmin) return true;
     if (this.canManageOrganizationTasks(actor, effective)) return true;
+    if (effective.has(PM_DAILY_TASKS_VIEW_KEY)) return true;
     if (!effective.has('tasks.read')) return false;
     if (ORGANIZATION_TASK_COLLABORATOR_KEYS.some((key) => effective.has(key))) return true;
     // Projects View + Tasks View unlocks org boards even when the account also has
@@ -84,7 +96,18 @@ export class DailyTaskAuthorizationService {
 
   async assertCanReadTask(actor: OrgAccessActor, taskId: string): Promise<void> {
     const effective = await this.resolveEffective(actor);
-    if (this.canViewOrganizationTasks(actor, effective)) return;
+    if (this.canViewOrganizationTasks(actor, effective)) {
+      if (
+        actor.isPlatformSuperAdmin ||
+        hasUnrestrictedOrgPermissions(effective) ||
+        hasPmDailyTaskViewDetailsPermission(effective)
+      ) {
+        return;
+      }
+      throw new DailyTaskForbiddenError(
+        'You do not have permission to view daily task details. Enable Daily Tasks → View Card Details for your role.',
+      );
+    }
     const assigned = await this.tasks.isTaskAssignedToAdmin(
       actor.organizationId,
       actor.adminId,
@@ -95,12 +118,16 @@ export class DailyTaskAuthorizationService {
 
   async assertCanUpdateTaskProgress(actor: OrgAccessActor, taskId: string): Promise<void> {
     const effective = await this.resolveEffective(actor);
-    if (effective.has('tasks.update') || this.canManageOrganizationTasks(actor, effective)) {
+    if (actor.isPlatformSuperAdmin) return;
+    if (
+      this.canViewOrganizationTasks(actor, effective) &&
+      hasPmDailyTaskMovePermission(effective)
+    ) {
       return;
     }
     if (!hasDailyTaskUpdateStatusPermission(effective)) {
       throw new DailyTaskForbiddenError(
-        'You do not have permission to update daily task status. Enable Daily Tasks → Update Task Status for your role.',
+        'You do not have permission to move daily tasks. Enable Daily Tasks → Move / Drag & Drop for your role.',
       );
     }
     const assigned = await this.tasks.isTaskAssignedToAdmin(
@@ -140,16 +167,24 @@ export class DailyTaskAuthorizationService {
     return {
       adminId: actor.adminId,
       includeOrgUnread:
-        hasDailyTaskNoteViewAllPermission(effective) &&
-        this.canManageOrganizationTasks(actor, effective),
-      includeOwnSummary: hasDailyTaskNoteViewOwnPermission(effective),
+        actor.isPlatformSuperAdmin ||
+        (hasDailyTaskNoteViewAllPermission(effective) &&
+          this.canManageOrganizationTasks(actor, effective)),
+      includeOwnSummary: !actor.isPlatformSuperAdmin,
+      includeCanAddNote: !actor.isPlatformSuperAdmin,
     };
   }
 
   async assertCanCreateTaskNote(actor: OrgAccessActor, taskId: string): Promise<void> {
+    if (actor.isPlatformSuperAdmin) {
+      throw new DailyTaskForbiddenError('Super Admin cannot submit task notes from task cards.');
+    }
     const effective = await this.resolveEffective(actor);
-    if (!hasDailyTaskNoteCreatePermission(effective)) {
+    if (!hasDailyTaskNoteSubmitPermission(effective)) {
       throw new DailyTaskForbiddenError('You do not have permission to add task notes.');
+    }
+    if (this.canViewOrganizationTasks(actor, effective)) {
+      return;
     }
     const assigned = await this.tasks.isTaskAssignedToAdmin(
       actor.organizationId,
@@ -166,7 +201,13 @@ export class DailyTaskAuthorizationService {
       await this.assertCanReadTask(actor, taskId);
       return true;
     }
-    if (hasDailyTaskNoteViewOwnPermission(effective)) {
+    if (
+      hasDailyTaskNoteViewOwnPermission(effective) ||
+      hasDailyTaskNoteSubmitPermission(effective)
+    ) {
+      if (this.canViewOrganizationTasks(actor, effective)) {
+        return false;
+      }
       const assigned = await this.tasks.isTaskAssignedToAdmin(
         actor.organizationId,
         actor.adminId,
@@ -178,11 +219,16 @@ export class DailyTaskAuthorizationService {
     throw new DailyTaskForbiddenError('You do not have permission to view task notes.');
   }
 
-  async assertCanAcknowledgeTaskNote(actor: OrgAccessActor, taskId: string): Promise<void> {
-    const effective = await this.resolveEffective(actor);
-    if (!hasDailyTaskNoteAcknowledgePermission(effective)) {
-      throw new DailyTaskForbiddenError('You do not have permission to acknowledge task notes.');
+  async assertCanReviewOrganizationTaskNotes(actor: OrgAccessActor): Promise<void> {
+    if (!actor.isPlatformSuperAdmin) {
+      throw new DailyTaskForbiddenError(
+        'Only platform Super Admin can review organization task notes.',
+      );
     }
+  }
+
+  async assertCanAcknowledgeTaskNote(actor: OrgAccessActor, taskId: string): Promise<void> {
+    await this.assertCanReviewOrganizationTaskNotes(actor);
     await this.assertCanReadTask(actor, taskId);
   }
 }

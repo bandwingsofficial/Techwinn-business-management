@@ -19,7 +19,12 @@ import type {
   DailyTaskListResponse,
   DailyTaskWorkflowStagesResponse,
 } from '../types';
-import type { DailyTaskNoteItem, DailyTaskNotesResponse } from '@techwin/contracts';
+import type {
+  DailyTaskNoteInboxResponse,
+  DailyTaskNoteInboxStatus,
+  DailyTaskNoteItem,
+  DailyTaskNotesResponse,
+} from '@techwin/contracts';
 import type { DailyTaskActivitiesResponse } from '@techwin/contracts';
 
 export function fetchDailyTaskBoard(
@@ -149,5 +154,16 @@ export function acknowledgeDailyTaskNote(taskId: string, noteId: string): Promis
   return apiRequest<DailyTaskNoteItem>(DAILY_TASK_ROUTES.noteAcknowledge(taskId, noteId), {
     method: 'PATCH',
     auth: true,
+  });
+}
+
+export function fetchDailyTaskNotesInbox(
+  status: DailyTaskNoteInboxStatus = 'ALL',
+  signal?: AbortSignal,
+): Promise<DailyTaskNoteInboxResponse> {
+  const query = status === 'ALL' ? '' : `?status=${encodeURIComponent(status)}`;
+  return apiRequest<DailyTaskNoteInboxResponse>(`${DAILY_TASK_ROUTES.notesInbox}${query}`, {
+    auth: true,
+    signal,
   });
 }

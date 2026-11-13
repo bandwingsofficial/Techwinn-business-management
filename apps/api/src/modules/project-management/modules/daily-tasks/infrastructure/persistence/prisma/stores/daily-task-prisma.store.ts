@@ -3,6 +3,7 @@ import { EMPLOYEE_ROUTES } from '#contracts';
 import { normalizeWorkflowStageColorToken } from '#validation';
 import type {
   DailyTaskListItem,
+  DailyTaskNoteInboxItem,
   DailyTaskNoteItem,
 } from '../../../../domain/read-models/daily-task.models.js';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
@@ -1266,12 +1267,18 @@ export class DailyTaskPrismaStore {
     >();
     if (attach.includeOwnSummary) {
       const employeeIds = await this.findEmployeeIdsForAdmin(organizationId, attach.adminId);
+      const ownNoteFilters: Array<
+        { employeeId: { in: string[] } } | { authorAdminId: string }
+      > = [{ authorAdminId: attach.adminId }];
       if (employeeIds.length > 0) {
+        ownNoteFilters.push({ employeeId: { in: employeeIds } });
+      }
+      {
         const rows = await this.prisma.dailyTaskNote.findMany({
           where: {
             organizationId,
             dailyTaskId: { in: taskIds },
-            employeeId: { in: employeeIds },
+            OR: ownNoteFilters,
           },
           orderBy: { createdAt: 'desc' },
           include: this.noteInclude(),
@@ -1311,6 +1318,7 @@ export class DailyTaskPrismaStore {
         myTaskNotes: attach.includeOwnSummary
           ? (ownSummaryByTask.get(item.id) ?? null)
           : item.myTaskNotes,
+        ...(attach.includeCanAddNote ? { canAddTaskNote: true } : {}),
       };
     });
   }
@@ -1328,16 +1336,26 @@ export class DailyTaskPrismaStore {
     assertDailyTaskNoteText(trimmed);
 
     const employeeIds = await this.findEmployeeIdsForAdmin(organizationId, adminId);
-    const assignment = await this.prisma.dailyTaskAssignee.findFirst({
-      where: {
-        organizationId,
-        dailyTaskId: taskId,
-        employeeId: { in: employeeIds },
-      },
-      select: { employeeId: true },
-    });
-    if (!assignment?.employeeId) {
-      throw new DailyTaskValidationError('You can only add notes to tasks assigned to you.');
+    let linkedEmployeeId: string | null = null;
+    if (employeeIds.length > 0) {
+      const assignment = await this.prisma.dailyTaskAssignee.findFirst({
+        where: {
+          organizationId,
+          dailyTaskId: taskId,
+          employeeId: { in: employeeIds },
+        },
+        select: { employeeId: true },
+      });
+      linkedEmployeeId = assignment?.employeeId ?? null;
+    }
+
+    let historicalDisplayName = '';
+    if (!linkedEmployeeId) {
+      const author = await this.prisma.platformAdmin.findUnique({
+        where: { id: adminId },
+        select: { displayName: true },
+      });
+      historicalDisplayName = author?.displayName?.trim() ?? '';
     }
 
     const row = await this.prisma.dailyTaskNote.create({
@@ -1345,7 +1363,8 @@ export class DailyTaskPrismaStore {
         id: randomUUID(),
         organizationId,
         dailyTaskId: taskId,
-        employeeId: assignment.employeeId,
+        employeeId: linkedEmployeeId,
+        historicalDisplayName,
         authorAdminId: adminId,
         text: trimmed,
         acknowledgementStatus: 'UNREAD',
@@ -1365,21 +1384,62 @@ export class DailyTaskPrismaStore {
     const task = await this.prisma.dailyTask.findFirst({ where: { id: taskId, organizationId } });
     if (!task) throw new DailyTaskNotFoundError();
 
-    const employeeIds = viewAll
-      ? null
-      : await this.findEmployeeIdsForAdmin(organizationId, adminId);
+    const employeeIds = viewAll ? null : await this.findEmployeeIdsForAdmin(organizationId, adminId);
 
     const rows = await this.prisma.dailyTaskNote.findMany({
       where: {
         organizationId,
         dailyTaskId: taskId,
-        ...(employeeIds ? { employeeId: { in: employeeIds } } : {}),
+        ...(viewAll
+          ? {}
+          : {
+              OR: [
+                { authorAdminId: adminId },
+                ...(employeeIds && employeeIds.length > 0
+                  ? [{ employeeId: { in: employeeIds } }]
+                  : []),
+              ],
+            }),
       },
       orderBy: { createdAt: 'asc' },
       include: this.noteInclude(),
     });
 
     return rows.map((row) => this.mapNoteRow(row));
+  }
+
+  async listOrganizationTaskNotesInbox(
+    organizationId: string,
+    status: 'ALL' | 'UNREAD' | 'ACKNOWLEDGED',
+  ): Promise<readonly DailyTaskNoteInboxItem[]> {
+    const rows = await this.prisma.dailyTaskNote.findMany({
+      where: {
+        organizationId,
+        ...(status === 'ALL'
+          ? {}
+          : { acknowledgementStatus: status === 'UNREAD' ? 'UNREAD' : 'ACKNOWLEDGED' }),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        ...this.noteInclude(),
+        dailyTask: {
+          select: {
+            id: true,
+            title: true,
+            workflowStage: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => {
+      const mapped = this.mapNoteRow(row);
+      return {
+        ...mapped,
+        taskTitle: row.dailyTask.title.trim() || 'Untitled task',
+        taskWorkflowStageName: row.dailyTask.workflowStage?.name ?? null,
+      };
+    });
   }
 
   async acknowledgeTaskNote(

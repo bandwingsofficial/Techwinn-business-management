@@ -1,4 +1,7 @@
-import type { PermissionKey } from '@techwin/contracts';
+import {
+  PM_DAILY_TASKS_VIEW_KEY,
+  type PermissionKey,
+} from '@techwin/contracts';
 
 /** Matches backend manage keys for assign/create/update/delete. */
 const ORGANIZATION_DAILY_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
@@ -6,6 +9,9 @@ const ORGANIZATION_DAILY_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
   'tasks.assign',
   'tasks.update',
   'tasks.delete',
+  'project_management.daily_tasks.assign',
+  'project_management.daily_tasks.edit',
+  'project_management.daily_tasks.delete',
 ];
 
 /**
@@ -17,6 +23,7 @@ export function canViewOrganizationDailyTasks(
   has: (key: PermissionKey) => boolean,
   hasAny: (...keys: PermissionKey[]) => boolean,
 ): boolean {
+  if (has(PM_DAILY_TASKS_VIEW_KEY)) return true;
   if (hasAny(...ORGANIZATION_DAILY_TASK_MANAGE_KEYS)) return true;
   if (!has('tasks.read')) return false;
   if (hasAny('employees.read', 'leads.read', 'clients.read')) return true;
