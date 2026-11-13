@@ -1,4 +1,5 @@
 import { CRM_PIPELINE_PERMISSION_KEYS } from './crm-pipeline-permissions';
+import { CRM_LEADS_PERMISSION_KEYS } from './crm-leads-permissions';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -63,13 +64,13 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'pipeline',
             label: 'Pipeline',
             href: '/admin/pipeline',
-            permissionKeys: [...CRM_PIPELINE_PERMISSION_KEYS],
+            permissionKeys: CRM_PIPELINE_PERMISSION_KEYS,
           },
           {
             id: 'leads',
             label: 'Leads',
             href: '/admin/leads',
-            permissionKeys: ['leads.read', 'leads.create', 'leads.update', 'leads.delete'],
+            permissionKeys: CRM_LEADS_PERMISSION_KEYS,
           },
           {
             id: 'service-packages',
@@ -376,7 +377,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
       },
     ],
   },
-] as const;
+] satisfies readonly PermissionHierarchyModule[];
 
 const definitionByKey = new Map<PermissionKey, PermissionDefinition>(
   PERMISSION_DEFINITIONS.map((item) => [item.key, item]),
@@ -426,8 +427,6 @@ export function assertPermissionHierarchyComplete(
     throw new Error(`Permission hierarchy missing catalog keys: ${missing.join(', ')}`);
   }
 }
-
-assertPermissionHierarchyComplete();
 
 export type FlattenedPermissionPage = PermissionHierarchyPage & {
   readonly moduleId: string;

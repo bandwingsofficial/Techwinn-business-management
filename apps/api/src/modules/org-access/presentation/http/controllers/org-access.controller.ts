@@ -149,6 +149,7 @@ export class OrgAccessController {
       roles: [...snapshot.roles],
       sessionEmployee: snapshot.sessionEmployee,
       revision: snapshot.revision,
+      fullAccess: snapshot.fullAccess,
     };
   }
 

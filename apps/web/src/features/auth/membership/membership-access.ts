@@ -1,4 +1,6 @@
 import {
+  isSuperAdminPortalSlug,
+  LEGACY_SUPER_ADMIN_PORTAL_SLUG,
   SYSTEM_ROLE_KEYS,
   type MyOrganizationRole,
   type MySessionEmployeeSummary,
@@ -18,13 +20,17 @@ export type MembershipAccessContext = {
 };
 
 const WORKSPACE_OVERVIEW_ROLE_KEYS: ReadonlySet<string> = new Set([
-  SYSTEM_ROLE_KEYS.owner,
+  SYSTEM_ROLE_KEYS.superAdmin,
+  LEGACY_SUPER_ADMIN_PORTAL_SLUG,
   SYSTEM_ROLE_KEYS.admin,
 ]);
 
 export function canAccessWorkspaceDashboard(context: MembershipAccessContext): boolean {
   if (context.platformRole === 'SUPER_ADMIN') return true;
-  return context.membershipRoles.some((role) => WORKSPACE_OVERVIEW_ROLE_KEYS.has(role.portalSlug));
+  return context.membershipRoles.some(
+    (role) =>
+      WORKSPACE_OVERVIEW_ROLE_KEYS.has(role.portalSlug) || isSuperAdminPortalSlug(role.portalSlug),
+  );
 }
 
 /**

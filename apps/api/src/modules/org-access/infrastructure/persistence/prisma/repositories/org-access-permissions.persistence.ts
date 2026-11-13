@@ -108,9 +108,9 @@ export class OrgAccessPermissionsPersistence {
         }
         if (admin.role === 'SUPER_ADMIN' && !existing.isOwner) {
           const ownerRoleId =
-            roleIdsByKey.get(SYSTEM_ROLE_KEYS.owner) ??
-            (await findRoleIdByKey(tx, organizationId, SYSTEM_ROLE_KEYS.owner));
-          if (!ownerRoleId) throw new OrgAccessConflictError('Owner role is not configured.');
+            roleIdsByKey.get(SYSTEM_ROLE_KEYS.superAdmin) ??
+            (await findRoleIdByKey(tx, organizationId, SYSTEM_ROLE_KEYS.superAdmin));
+          if (!ownerRoleId) throw new OrgAccessConflictError('Super Admin role is not configured.');
           await tx.organizationMembership.update({
             where: { id: existing.id },
             data: { isOwner: true },
@@ -126,7 +126,7 @@ export class OrgAccessPermissionsPersistence {
         // Do not merge Employee/Member defaults here — that re-adds removed permissions
         // after Role Management saves. Immutable Owner/Admin stay catalog-aligned.
         await mergeSystemRoleDefaultPermissions(tx, organizationId, [
-          SYSTEM_ROLE_KEYS.owner,
+          SYSTEM_ROLE_KEYS.superAdmin,
           SYSTEM_ROLE_KEYS.admin,
         ]);
         await ensureOwnerMembershipRole(tx, organizationId, adminId);
@@ -136,7 +136,7 @@ export class OrgAccessPermissionsPersistence {
 
       const membershipId = randomUUID();
       const isSuperAdmin = admin.role === 'SUPER_ADMIN';
-      const ownerRoleId = roleIdsByKey.get(SYSTEM_ROLE_KEYS.owner);
+      const ownerRoleId = roleIdsByKey.get(SYSTEM_ROLE_KEYS.superAdmin);
       const memberRoleId = roleIdsByKey.get(SYSTEM_ROLE_KEYS.member);
       const assignedRoleId = isSuperAdmin ? ownerRoleId : memberRoleId;
       if (!assignedRoleId) {

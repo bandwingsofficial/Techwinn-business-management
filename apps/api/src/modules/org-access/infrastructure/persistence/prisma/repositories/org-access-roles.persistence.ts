@@ -1,4 +1,4 @@
-import { ensureViewPermissionPrerequisites, type PermissionKey } from '#contracts';
+import { ensurePermissionPrerequisites, type PermissionKey } from '#contracts';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
@@ -73,7 +73,7 @@ export class OrgAccessRolesPersistence {
     actorAdminId: string,
   ): Promise<OrgRoleRecord> {
     const permissionKeys = uniquePermissionKeys(
-      ensureViewPermissionPrerequisites(input.permissionKeys),
+      ensurePermissionPrerequisites(input.permissionKeys),
     );
     await assertActorHoldsPermissions(
       this.prisma,
@@ -202,7 +202,7 @@ export class OrgAccessRolesPersistence {
     assertOrgRoleMutable(role, 'modify');
     // Persist the exact submitted unique set (no silent sibling grants).
     const normalized = uniquePermissionKeys(
-      ensureViewPermissionPrerequisites(permissionKeys),
+      ensurePermissionPrerequisites(permissionKeys),
     );
     await assertActorHoldsPermissions(
       this.prisma,

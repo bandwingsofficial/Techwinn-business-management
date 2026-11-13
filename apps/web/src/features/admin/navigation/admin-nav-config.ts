@@ -1,4 +1,5 @@
 import type { PermissionKey } from '@techwin/contracts';
+import { canonicalPermissionPath } from '@/features/auth/portal/portal-segment';
 import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
@@ -307,7 +308,11 @@ function normalizePath(path: string): string {
 
 function effectivePathname(pathname: string): string {
   const current = normalizePath(pathname);
-  return current === '/admin' ? ADMIN_DASHBOARD_HREF : current;
+  const canonical = canonicalPermissionPath(current);
+  if (canonical === '/admin' || current === '/admin') {
+    return ADMIN_DASHBOARD_HREF;
+  }
+  return canonical;
 }
 
 function hrefMatchesPath(href: string, current: string): boolean {

@@ -12,6 +12,7 @@ import type { OrgAccessActor } from '../../../application/shared/org-access-acto
 import { PermissionCheckerService } from '../../../application/services/permission-checker.service.js';
 import type { CrmAuthenticatedRequest } from '../../../../../platform/tenant-context/crm-organization.guard.js';
 import { REQUIRE_PERMISSIONS_KEY } from '../decorators/require-permissions.decorator.js';
+import { REQUIRE_ALL_PERMISSIONS_KEY } from '../decorators/require-all-permissions.decorator.js';
 
 export type OrgAccessAuthenticatedRequest = CrmAuthenticatedRequest & {
   orgAccess?: OrgAccessActor;
@@ -25,13 +26,18 @@ export class RequirePermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required =
+    const requiredAll =
+      this.reflector.getAllAndOverride<readonly PermissionKey[] | undefined>(
+        REQUIRE_ALL_PERMISSIONS_KEY,
+        [context.getHandler(), context.getClass()],
+      ) ?? [];
+    const requiredAny =
       this.reflector.getAllAndOverride<readonly PermissionKey[] | undefined>(
         REQUIRE_PERMISSIONS_KEY,
         [context.getHandler(), context.getClass()],
       ) ?? [];
 
-    if (required.length === 0) return true;
+    if (requiredAll.length === 0 && requiredAny.length === 0) return true;
 
     const request = context.switchToHttp().getRequest<OrgAccessAuthenticatedRequest>();
     const auth = request.platformAuth;
@@ -51,7 +57,19 @@ export class RequirePermissionsGuard implements CanActivate {
     };
     request.orgAccess = actor;
 
-    await this.permissions.requirePermissions(actor, required);
+    if (requiredAll.length > 0) {
+      const allowed = await this.permissions.hasAllPermissions(actor, requiredAll);
+      if (!allowed) {
+        throw new ApiException(
+          HttpStatus.FORBIDDEN,
+          API_ERROR_CODES.FORBIDDEN,
+          'You do not have permission to perform this action.',
+        );
+      }
+    }
+    if (requiredAny.length > 0) {
+      await this.permissions.requirePermissions(actor, requiredAny);
+    }
     return true;
   }
 }

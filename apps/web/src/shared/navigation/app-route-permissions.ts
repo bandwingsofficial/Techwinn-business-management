@@ -1,4 +1,4 @@
-import type { PermissionKey } from '@techwin/contracts';
+import { hasUnrestrictedOrgPermissions, type PermissionKey } from '@techwin/contracts';
 import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import {
   canAccessWorkspaceDashboard,
@@ -54,7 +54,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   ],
   '/admin/leave': ['leave.requests.read_all'],
   '/admin/pipeline': ['crm.pipeline.view'],
-  '/admin/leads': ['leads.read'],
+  '/admin/leads': ['crm.leads.view'],
   '/admin/packages': ['settings.read'],
   '/admin/quotations': ['leads.read'],
   '/admin/proposals': ['leads.read'],
@@ -90,7 +90,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/project-manager/dashboard': [],
   '/project-manager/profile': [],
   '/project-manager/pipeline': ['crm.pipeline.view'],
-  '/project-manager/leads': ['leads.read'],
+  '/project-manager/leads': ['crm.leads.view'],
   '/project-manager/packages': ['settings.read'],
   '/project-manager/quotations': ['leads.read'],
   '/project-manager/proposals': ['leads.read'],
@@ -101,6 +101,12 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/project-manager/whatsapp/templates': ['whatsapp.templates.manage', 'whatsapp.broadcasts.manage'],
   '/project-manager/whatsapp/broadcasts': ['whatsapp.broadcasts.manage'],
   '/project-manager/whatsapp/reports': ['whatsapp.view_all', 'whatsapp.channels.manage'],
+};
+
+/** Routes that require every listed permission (AND), not any (OR). */
+export const APP_ROUTE_PERMISSIONS_ALL: Readonly<Record<string, readonly PermissionKey[]>> = {
+  '/admin/leads': ['crm.pipeline.view', 'crm.leads.view'],
+  '/project-manager/leads': ['crm.pipeline.view', 'crm.leads.view'],
 };
 
 const EXACT_ONLY_ROUTES: ReadonlySet<string> = new Set([
@@ -136,6 +142,19 @@ export function canAccessAppPath(
   expectedPortalSegment?: string,
 ): boolean {
   const path = normalizePath(pathname);
+
+  if (hasUnrestrictedOrgPermissions(permissions)) {
+    if (expectedPortalSegment) {
+      const pathPortal = pathnamePortalSegment(path);
+      if (pathPortal && pathPortal !== expectedPortalSegment) {
+        return false;
+      }
+    }
+    if (access && (path === '/employee' || path.startsWith('/employee/'))) {
+      return canUseEmployeeSelfService(access);
+    }
+    return true;
+  }
 
   if (expectedPortalSegment) {
     const pathPortal = pathnamePortalSegment(path);
@@ -177,9 +196,14 @@ export function canAccessAppPath(
     );
   }
 
+  const allRequired =
+    APP_ROUTE_PERMISSIONS_ALL[path] ?? APP_ROUTE_PERMISSIONS_ALL[canonical] ?? null;
+  if (allRequired) {
+    return allRequired.every((key) => permissions.has(key));
+  }
+
   let required = permissionsForAppPath(path);
   if (required === null) {
-    const canonical = canonicalPermissionPath(path);
     required = permissionsForAppPath(canonical);
   }
   if (required === null) {

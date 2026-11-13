@@ -33,6 +33,9 @@ export async function refreshSession(): Promise<RefreshOutcome> {
       accessTokenStore.clear();
       return 'unauthenticated';
     }
+    if (isApiError(error) && error.isTransient && accessTokenStore.get()) {
+      return 'refreshed';
+    }
     throw error;
   }
 }

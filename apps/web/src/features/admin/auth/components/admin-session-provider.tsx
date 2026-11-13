@@ -48,6 +48,8 @@ function createInitialSessionState(): AdminSessionState {
 export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const [state, setState] = useState<AdminSessionState>(createInitialSessionState);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -78,7 +80,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       try {
         if (!hasCsrfCookie() && !accessTokenStore.get()) {
           setState({ status: 'unauthenticated' });
-          router.replace(loginPath(undefined, pathname));
+          router.replace(loginPath(undefined, pathnameRef.current));
           return;
         }
         const current = await getCurrentSession(controller.signal);
@@ -108,7 +110,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
             !hadBootstrap
           ) {
             setState({ status: 'unauthenticated' });
-            router.replace(loginPath(undefined, pathname));
+            router.replace(loginPath(undefined, pathnameRef.current));
             return;
           }
           setState({
@@ -126,7 +128,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     })();
 
     return () => controller.abort();
-  }, [reloadKey, pathname, router]);
+  }, [reloadKey, router]);
 
   const reload = useCallback(() => {
     setSignOutError(null);

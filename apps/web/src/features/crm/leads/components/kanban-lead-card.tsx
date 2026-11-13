@@ -59,12 +59,19 @@ function KanbanCardActions({
   onView,
   onEdit,
   onDelete,
+  showView,
+  showEdit,
+  showDelete,
 }: {
   lead: CrmLead;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  showView: boolean;
+  showEdit: boolean;
+  showDelete: boolean;
 }) {
+  if (!showView && !showEdit && !showDelete) return null;
   return (
     <div
       className="relative z-[2] flex shrink-0 items-center pr-1.5"
@@ -85,18 +92,24 @@ function KanbanCardActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[8rem]">
-          <DropdownMenuItem onSelect={onView}>
-            <Eye className="size-3.5" aria-hidden="true" />
-            View
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onEdit}>
-            <Pencil className="size-3.5" aria-hidden="true" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            Delete
-          </DropdownMenuItem>
+          {showView ? (
+            <DropdownMenuItem onSelect={onView}>
+              <Eye className="size-3.5" aria-hidden="true" />
+              View
+            </DropdownMenuItem>
+          ) : null}
+          {showEdit ? (
+            <DropdownMenuItem onSelect={onEdit}>
+              <Pencil className="size-3.5" aria-hidden="true" />
+              Edit
+            </DropdownMenuItem>
+          ) : null}
+          {showDelete ? (
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={onDelete}>
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Delete
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -153,6 +166,10 @@ export function KanbanLeadCard({
   onEdit,
   onDelete,
   onStageChange,
+  showView = true,
+  showEdit = true,
+  showDelete = true,
+  showStageChange = true,
 }: {
   lead: CrmLead;
   stages: readonly CrmPipelineStage[];
@@ -161,6 +178,10 @@ export function KanbanLeadCard({
   onEdit: () => void;
   onDelete: () => void;
   onStageChange: (stageId: string) => void;
+  showView?: boolean;
+  showEdit?: boolean;
+  showDelete?: boolean;
+  showStageChange?: boolean;
 }) {
   const phone = lead.phone?.trim() ?? '';
   const email = lead.email?.trim() ?? '';
@@ -197,6 +218,9 @@ export function KanbanLeadCard({
                 onView={onView}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                showView={showView}
+                showEdit={showEdit}
+                showDelete={showDelete}
               />
             </div>
           </div>
@@ -246,14 +270,18 @@ export function KanbanLeadCard({
             <div className="flex shrink-0 items-center gap-0">
               <LeadWhatsAppIconButton phone={lead.phone} />
               <LeadEmailIconButton email={lead.email} />
-              <KanbanStageChangeButton lead={lead} stages={stages} onStageChange={onStageChange} />
+              {showStageChange ? (
+                <KanbanStageChangeButton lead={lead} stages={stages} onStageChange={onStageChange} />
+              ) : null}
             </div>
           </div>
         ) : (
           <div className="border-border/60 flex items-center justify-end gap-0 border-t pt-2.5">
             <LeadWhatsAppIconButton phone={lead.phone} />
             <LeadEmailIconButton email={lead.email} />
-            <KanbanStageChangeButton lead={lead} stages={stages} onStageChange={onStageChange} />
+            {showStageChange ? (
+              <KanbanStageChangeButton lead={lead} stages={stages} onStageChange={onStageChange} />
+            ) : null}
           </div>
         )}
       </div>
@@ -269,6 +297,10 @@ export function SortableKanbanLeadCard({
   onEdit,
   onDelete,
   onStageChange,
+  showView = true,
+  showEdit = true,
+  showDelete = true,
+  showStageChange = true,
 }: {
   lead: CrmLead;
   stages: readonly CrmPipelineStage[];
@@ -277,6 +309,10 @@ export function SortableKanbanLeadCard({
   onEdit: () => void;
   onDelete: () => void;
   onStageChange: (stageId: string) => void;
+  showView?: boolean;
+  showEdit?: boolean;
+  showDelete?: boolean;
+  showStageChange?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: lead.id,
@@ -306,7 +342,7 @@ export function SortableKanbanLeadCard({
         lead={lead}
         stages={stages}
         className={cn(
-          'cursor-grab active:cursor-grabbing',
+          disabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
           isDragging && 'opacity-40 shadow-none',
           isOver && !isDragging && 'ring-primary/25 ring-2',
         )}
@@ -314,6 +350,10 @@ export function SortableKanbanLeadCard({
         onEdit={onEdit}
         onDelete={onDelete}
         onStageChange={onStageChange}
+        showView={showView}
+        showEdit={showEdit}
+        showDelete={showDelete}
+        showStageChange={showStageChange}
       />
     </div>
   );

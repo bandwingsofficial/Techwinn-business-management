@@ -79,27 +79,35 @@ function KanbanColumnDropZone({
 export function KanbanBoard({
   stages,
   leads,
-  disabled,
+  dragDisabled,
   onPersistMove,
   onAddLead,
   onView,
   onEdit,
   onDelete,
   onStageChange,
+  showView = true,
+  showEdit = true,
+  showDelete = true,
+  showStageChange = true,
 }: {
   stages: readonly CrmPipelineStage[];
   leads: readonly CrmLead[];
-  disabled?: boolean;
+  dragDisabled?: boolean;
   onPersistMove: (input: {
     leadId: string;
     stageId: string;
     beforeLeadId: string | null;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   onAddLead?: (stageId: string) => void;
   onView: (leadId: string) => void;
   onEdit: (leadId: string) => void;
   onDelete: (leadId: string) => void;
   onStageChange: (leadId: string, stageId: string) => void;
+  showView?: boolean;
+  showEdit?: boolean;
+  showDelete?: boolean;
+  showStageChange?: boolean;
 }) {
   const leadById = useMemo(() => new Map(leads.map((lead) => [lead.id, lead])), [leads]);
   const serverItems = useMemo(() => buildKanbanItems(stages, leads), [stages, leads]);
@@ -174,7 +182,10 @@ export function KanbanBoard({
     const { active, over } = event;
     setActiveId(null);
     setOverStageId(null);
-    if (!over || disabled) return;
+    if (!over || dragDisabled) {
+      setLocalItems(null);
+      return;
+    }
 
     const activeContainer = findContainer(String(active.id));
     const overContainer = findContainer(String(over.id));
@@ -212,12 +223,14 @@ export function KanbanBoard({
     }
 
     try {
-      await onPersistMove({
+      const committed = await onPersistMove({
         leadId: String(active.id),
         stageId: overContainer,
         beforeLeadId,
       });
-      setLocalItems(null);
+      if (committed) {
+        setLocalItems(null);
+      }
     } catch {
       setLocalItems(null);
     }
@@ -285,11 +298,15 @@ export function KanbanBoard({
                           key={leadId}
                           lead={lead}
                           stages={stages}
-                          disabled={disabled}
+                          disabled={dragDisabled}
                           onView={() => onView(leadId)}
                           onEdit={() => onEdit(leadId)}
                           onDelete={() => onDelete(leadId)}
                           onStageChange={(value) => onStageChange(leadId, value)}
+                          showView={showView}
+                          showEdit={showEdit}
+                          showDelete={showDelete}
+                          showStageChange={showStageChange}
                         />
                       );
                     })

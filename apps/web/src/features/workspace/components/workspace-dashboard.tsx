@@ -22,7 +22,7 @@ export function WorkspaceDashboard() {
         ) : null}
         <p className="text-muted-foreground text-sm leading-relaxed">
           {roleLabel
-            ? `You are logged in as ${roleLabel}. Use the sidebar to open modules your organization has enabled for your role.`
+            ? `You are logged in as ${roleLabel}. Use the sidebar to access all available modules.`
             : 'Your account does not have an organization role assigned yet. Contact an administrator.'}
         </p>
       </header>

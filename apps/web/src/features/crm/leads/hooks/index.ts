@@ -1,4 +1,5 @@
 export { leadKeys } from './lead.keys';
+export { useLeadPagePermissions } from './use-lead-page-permissions';
 export { useLeads } from './use-leads';
 export { useLead } from './use-lead';
 export { useLeadActivities } from './use-lead-activities';

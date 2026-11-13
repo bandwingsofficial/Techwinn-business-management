@@ -20,4 +20,5 @@ export {
 export { RequirePermissionsGuard } from './presentation/http/guards/require-permissions.guard.js';
 export { OrgAccessExceptionFilter } from './presentation/http/filters/org-access-exception.filter.js';
 export { RequirePermissions } from './presentation/http/decorators/require-permissions.decorator.js';
+export { RequireAllPermissions } from './presentation/http/decorators/require-all-permissions.decorator.js';
 export { toOrgAccessActor } from './presentation/http/mappers/org-access-actor.mapper.js';

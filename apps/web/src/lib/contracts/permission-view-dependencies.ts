@@ -1,5 +1,11 @@
 import type { PermissionKey } from './permissions';
 import {
+  CRM_PIPELINE_VIEW_KEY,
+  CRM_LEADS_PERMISSION_KEYS,
+  isCrmLeadsPermissionKey,
+} from './crm-leads-permissions';
+import { applyCrmLeadsCrossPagePrerequisites } from './permission-crm-leads-prerequisites';
+import {
   PERMISSION_HIERARCHY,
   permissionDefinitionForKey,
   type PermissionHierarchyPage,
@@ -86,7 +92,13 @@ export function ensureViewPermissionPrerequisites(
 ): PermissionKey[] {
   const next = new Set(uniqueKeys(keys));
   stripActionPermissionsWithoutView(next);
+  applyCrmLeadsCrossPagePrerequisites(next);
   return [...next];
+}
+
+/** View prerequisites plus CRM Leads cross-page rules (Pipeline View). */
+export function ensurePermissionPrerequisites(keys: readonly PermissionKey[]): PermissionKey[] {
+  return ensureViewPermissionPrerequisites(keys);
 }
 
 export type MissingViewPrerequisite = {
@@ -146,6 +158,9 @@ export function applyPermissionKeyChange(
   const next = new Set(selected);
 
   if (checked) {
+    if (isCrmLeadsPermissionKey(key) && !next.has(CRM_PIPELINE_VIEW_KEY)) {
+      return [...selected];
+    }
     for (const page of pages) {
       const viewKey = pagePrimaryViewPermissionKey(page);
       if (viewKey && key !== viewKey && !next.has(viewKey)) {
@@ -157,12 +172,16 @@ export function applyPermissionKeyChange(
   }
 
   next.delete(key);
+  if (key === CRM_PIPELINE_VIEW_KEY) {
+    for (const leadsKey of CRM_LEADS_PERMISSION_KEYS) next.delete(leadsKey);
+  }
   for (const page of pages) {
     const viewKey = pagePrimaryViewPermissionKey(page);
     if (viewKey && key === viewKey) {
       for (const pageKey of page.permissionKeys) next.delete(pageKey);
     }
   }
+  applyCrmLeadsCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -179,6 +198,7 @@ export function applyPermissionKeysChecked(
     next = new Set(applyPermissionKeyChange(next, key, checked, grantable));
   }
   stripActionPermissionsWithoutView(next);
+  applyCrmLeadsCrossPagePrerequisites(next);
   return [...next];
 }
 

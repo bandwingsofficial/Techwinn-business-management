@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2, Plus, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,12 +17,14 @@ import { useLeadTags } from '../hooks/use-lead-tags';
 import { describeCrmError } from '../utils/errors';
 import { LeadTagBadge } from './lead-tag-badge';
 
+const EMPTY_KNOWN_TAGS: readonly CrmLeadTag[] = [];
+
 export function LeadTagSelector({
   value,
   onChange,
   disabled,
   className,
-  knownTags = [],
+  knownTags = EMPTY_KNOWN_TAGS,
 }: {
   value: readonly string[];
   onChange: (tagIds: string[]) => void;
@@ -42,15 +44,6 @@ export function LeadTagSelector({
     if (!query) return loadedTags;
     return loadedTags.filter((tag) => tag.name.toLowerCase().includes(query));
   }, [loadedTags, search]);
-
-  useEffect(() => {
-    setResolvedById((current) => {
-      const next = new Map(current);
-      for (const tag of knownTags) next.set(tag.id, tag);
-      for (const tag of loadedTags) next.set(tag.id, tag);
-      return next;
-    });
-  }, [knownTags, loadedTags]);
 
   const catalog = useMemo(() => {
     const byId = new Map<string, CrmLeadTag>(resolvedById);

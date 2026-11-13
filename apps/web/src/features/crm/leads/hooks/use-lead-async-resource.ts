@@ -41,6 +41,14 @@ class LeadAsyncResource<T> {
     this.notify();
   }
 
+  /** Update cached data without entering the loading state (optimistic commits). */
+  patch(updater: (current: T | null) => T | null): void {
+    const next = updater(this.snapshot.data);
+    if (next === this.snapshot.data) return;
+    this.snapshot = { ...this.snapshot, data: next, loading: false, error: null };
+    this.notify();
+  }
+
   run(loader: () => Promise<T>): void {
     const generation = (this.generation += 1);
     this.snapshot = { ...this.snapshot, loading: true, error: null };
@@ -77,7 +85,10 @@ export function useLeadAsyncResource<T>(
   cacheKey: string,
   enabled: boolean,
   loader: () => Promise<T>,
-): LeadAsyncSnapshot<T> & { readonly refetch: () => void } {
+): LeadAsyncSnapshot<T> & {
+  readonly refetch: () => void;
+  readonly patch: (updater: (current: T | null) => T | null) => void;
+} {
   const resource = getLeadAsyncResource<T>(cacheKey);
 
   const subscribe = useCallback(
@@ -104,5 +115,12 @@ export function useLeadAsyncResource<T>(
     resource.run(loader);
   }, [enabled, loader, resource]);
 
-  return { ...snapshot, refetch };
+  const patch = useCallback(
+    (updater: (current: T | null) => T | null) => {
+      resource.patch(updater);
+    },
+    [resource],
+  );
+
+  return { ...snapshot, refetch, patch };
 }

@@ -53,6 +53,8 @@ type SessionRuntime = {
   inFlight: Promise<RefreshOutcome> | null;
   /** Soft cooldown after refresh 429 so we do not immediately re-storm. */
   refreshCooldownUntilMs: number;
+  /** After 5xx / network refresh failures, pause new refresh attempts briefly. */
+  refreshTransientCooldownUntilMs: number;
   sessionEndedListeners: Set<SessionEndedListener>;
   accessDeniedListeners: Set<AccessDeniedListener>;
 };
@@ -65,6 +67,7 @@ function sessionRuntime(): SessionRuntime {
     refresher: null,
     inFlight: null,
     refreshCooldownUntilMs: 0,
+    refreshTransientCooldownUntilMs: 0,
     sessionEndedListeners: new Set(),
     accessDeniedListeners: new Set(),
   };
@@ -129,10 +132,30 @@ function rateLimitedRefreshError(retryAfterSeconds: number): ApiError {
   );
 }
 
+const REFRESH_TRANSIENT_COOLDOWN_MS = 3_000;
+
+function transientRefreshCooldownError(retryAfterSeconds: number): ApiError {
+  return new ApiError(
+    'http',
+    'Unable to refresh your session right now. Try again in a moment.',
+    503,
+    null,
+    [],
+    null,
+    retryAfterSeconds,
+  );
+}
+
+function isRefreshPath(path: string): boolean {
+  return path.includes('/auth/platform/refresh');
+}
+
 /** Single-flight refresh shared by every caller in this tab (and across chunk copies). */
 export function refreshAccessToken(): Promise<RefreshOutcome> {
   const state = sessionRuntime();
   if (!state.refresher) return Promise.resolve('unauthenticated');
+
+  if (state.inFlight) return state.inFlight;
 
   const now = Date.now();
   if (now < state.refreshCooldownUntilMs) {
@@ -140,8 +163,18 @@ export function refreshAccessToken(): Promise<RefreshOutcome> {
     return Promise.reject(rateLimitedRefreshError(retryAfterSeconds));
   }
 
+  if (now < state.refreshTransientCooldownUntilMs) {
+    const existing = accessTokenStore.get();
+    if (existing) return Promise.resolve('refreshed');
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((state.refreshTransientCooldownUntilMs - now) / 1000),
+    );
+    return Promise.reject(transientRefreshCooldownError(retryAfterSeconds));
+  }
+
   const refresher = state.refresher;
-  state.inFlight ??= withCrossTabLock(async () => {
+  state.inFlight = withCrossTabLock(async () => {
     try {
       const outcome = await refresher();
       if (outcome === 'unauthenticated') notifySessionEnded();
@@ -150,6 +183,8 @@ export function refreshAccessToken(): Promise<RefreshOutcome> {
       if (isApiError(error) && error.status === 429) {
         const waitSeconds = Math.max(1, error.retryAfterSeconds ?? 5);
         state.refreshCooldownUntilMs = Date.now() + waitSeconds * 1000;
+      } else if (isApiError(error) && error.isTransient) {
+        state.refreshTransientCooldownUntilMs = Date.now() + REFRESH_TRANSIENT_COOLDOWN_MS;
       }
       throw error;
     }
@@ -215,6 +250,10 @@ async function retryAfterRefresh<T>(
   firstError: ApiError,
   afterOk: (response: Response) => Promise<T>,
 ): Promise<T> {
+  if (isRefreshPath(path)) {
+    throw firstError;
+  }
+
   const outcome = await refreshAccessToken();
   if (outcome === 'unauthenticated') {
     if (shouldNotifySessionEnded(firstError)) notifySessionEnded();

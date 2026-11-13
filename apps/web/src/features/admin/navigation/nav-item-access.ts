@@ -1,10 +1,13 @@
-import type { PermissionKey } from '@techwin/contracts';
+import { hasUnrestrictedOrgPermissions, type PermissionKey } from '@techwin/contracts';
 import {
   canAccessWorkspaceDashboard,
   canUseEmployeeSelfService,
   type MembershipAccessContext,
 } from '@/features/auth/membership/membership-access';
-import { permissionsForAppPath } from '@/shared/navigation/app-route-permissions';
+import {
+  APP_ROUTE_PERMISSIONS_ALL,
+  permissionsForAppPath,
+} from '@/shared/navigation/app-route-permissions';
 
 const ORGANIZATION_DAILY_TASK_NAV_HREFS: ReadonlySet<string> = new Set([
   '/admin/daily-tasks',
@@ -34,6 +37,16 @@ export function canAccessNavItem(
 ): boolean {
   if (permissions.size === 0) return false;
 
+  if (hasUnrestrictedOrgPermissions(permissions)) {
+    if (configHref === '/employee/dashboard' || configHref.startsWith('/employee/')) {
+      return access ? canUseEmployeeSelfService(access) : false;
+    }
+    if (configHref === '/admin/dashboard') {
+      return access ? canAccessWorkspaceDashboard(access) : true;
+    }
+    return true;
+  }
+
   if (configHref === '/admin/dashboard') {
     return access ? canAccessWorkspaceDashboard(access) : false;
   }
@@ -48,6 +61,11 @@ export function canAccessNavItem(
   if (ORGANIZATION_DAILY_TASK_NAV_HREFS.has(configHref)) {
     if (DAILY_TASK_MANAGE_KEYS.some((key) => permissions.has(key))) return true;
     if (!permissions.has('tasks.read')) return false;
+  }
+
+  const allRequired = APP_ROUTE_PERMISSIONS_ALL[configHref];
+  if (allRequired) {
+    return allRequired.every((key) => permissions.has(key));
   }
 
   const required = permissionsForAppPath(configHref);

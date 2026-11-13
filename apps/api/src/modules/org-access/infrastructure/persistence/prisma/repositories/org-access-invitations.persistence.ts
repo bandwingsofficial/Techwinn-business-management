@@ -1,4 +1,4 @@
-import { SYSTEM_ROLE_KEYS } from '#contracts';
+import { isSuperAdminPortalSlug } from '#contracts';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import {
@@ -260,7 +260,7 @@ export class OrgAccessInvitationsPersistence {
               select: { id: true, portalSlug: true },
             })
           : [];
-      const isOwner = roles.some((role) => role.portalSlug === SYSTEM_ROLE_KEYS.owner);
+      const isOwner = roles.some((role) => isSuperAdminPortalSlug(role.portalSlug));
       const membershipId = randomUUID();
 
       await tx.organizationMembership.create({

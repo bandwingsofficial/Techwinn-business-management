@@ -30,7 +30,7 @@ export const labelLoginStatus = (access: EmployeeLoginAccess | null): string =>
 
 export const labelLoginRoles = (access: EmployeeLoginAccess | null): string => {
   if (!access) return '—';
-  if (access.isOwner && access.roles.length === 0) return 'Owner';
+  if (access.isOwner && access.roles.length === 0) return 'Super Admin';
   return access.roles.map((role) => role.name).join(', ') || 'No role';
 };
 

@@ -5,6 +5,7 @@ import type {
   OrgRoleListItem,
   PermissionKey,
 } from '#contracts';
+import { resolveOrganizationRoleDisplayName } from '#contracts';
 import type { OrgMemberRecord, OrgRoleRecord } from '../../../domain/repositories/org-access.repository.js';
 
 export function toOrgMemberListItem(record: OrgMemberRecord): OrgMemberListItem {
@@ -18,7 +19,10 @@ export function toOrgMemberListItem(record: OrgMemberRecord): OrgMemberListItem 
     roles: record.roles.map((role) => ({
       id: role.id,
       portalSlug: role.portalSlug,
-      name: role.name,
+      name: resolveOrganizationRoleDisplayName({
+        portalSlug: role.portalSlug,
+        name: role.name,
+      }),
       isSystem: role.isSystem,
     })),
     employeeId: record.employeeId,
@@ -46,7 +50,10 @@ export function toOrgRoleListItem(record: OrgRoleRecord): OrgRoleListItem {
   return {
     id: record.id,
     portalSlug: record.portalSlug,
-    name: record.name,
+    name: resolveOrganizationRoleDisplayName({
+      portalSlug: record.portalSlug,
+      name: record.name,
+    }),
     description: record.description,
     isSystem: record.isSystem,
     status: record.status,

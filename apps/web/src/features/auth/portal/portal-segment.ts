@@ -1,4 +1,9 @@
-import type { MyOrganizationRole, PlatformAdminProfile } from '@techwin/contracts';
+import {
+  isSuperAdminPortalSlug,
+  SYSTEM_ROLE_KEYS,
+  type MyOrganizationRole,
+  type PlatformAdminProfile,
+} from '@techwin/contracts';
 import { primaryOrganizationRole } from '../membership/organization-role-label';
 
 /** Normalizes legacy role keys in URLs (`project_manager` → `project-manager`). */
@@ -8,15 +13,16 @@ export function normalizePortalUrlSegment(segment: string): string {
 
 /**
  * Trusted portal segment from authenticated membership roles (not display names or URL input).
- * Platform super admins use the admin portal.
+ * Platform super admins use the Super Admin portal (`super-admin`).
  */
 export function resolvePortalSegment(
   admin: PlatformAdminProfile,
   roles: readonly MyOrganizationRole[],
 ): string {
-  if (admin.role === 'SUPER_ADMIN') return 'admin';
+  if (admin.role === 'SUPER_ADMIN') return SYSTEM_ROLE_KEYS.superAdmin;
   const primary = primaryOrganizationRole(roles);
-  if (!primary) return 'admin';
+  if (!primary) return SYSTEM_ROLE_KEYS.admin;
+  if (isSuperAdminPortalSlug(primary.portalSlug)) return SYSTEM_ROLE_KEYS.superAdmin;
   return primary.portalSlug;
 }
 
@@ -75,5 +81,37 @@ export function canonicalPermissionPath(pathname: string): string {
   if (head === 'admin' || head === 'employee') {
     return normalized;
   }
+  if (isSuperAdminPortalSlug(head)) {
+    return `/admin/${parts.slice(1).join('/')}`;
+  }
   return `/admin/${parts.slice(1).join('/')}`;
+}
+
+/**
+ * Rewrites mistaken portal prefixes (`/admin`, legacy `/owner`) to the member's trusted segment.
+ */
+export function rewriteMismatchedPortalPrefix(
+  pathname: string,
+  portalSegment: string,
+): string | null {
+  const normalized =
+    pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+  const head = parts[0]!;
+  if (head === portalSegment) return null;
+
+  if (portalSegment === SYSTEM_ROLE_KEYS.superAdmin) {
+    if (head === SYSTEM_ROLE_KEYS.admin || isSuperAdminPortalSlug(head)) {
+      parts[0] = portalSegment;
+      return `/${parts.join('/')}`;
+    }
+    return null;
+  }
+
+  if (head === SYSTEM_ROLE_KEYS.superAdmin || isSuperAdminPortalSlug(head)) {
+    return null;
+  }
+
+  return null;
 }

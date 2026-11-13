@@ -4,6 +4,7 @@ import {
   PERMISSION_HIERARCHY,
   applyPermissionKeyChange,
   applyPermissionKeysChecked,
+  crmLeadsPermissionBlockedReason,
   pagePrimaryViewPermissionKey,
   permissionDefinitionForKey,
   type PermissionHierarchyModule,
@@ -408,22 +409,25 @@ export function RolePermissionMatrix({
                                     pageViewKey !== null &&
                                     key !== pageViewKey &&
                                     !selected.has(pageViewKey);
+                                  const blockedReason = crmLeadsPermissionBlockedReason(key, selected);
+                                  const blocked = needsViewFirst || blockedReason !== null;
                                   return (
                                   <li key={`${page.id}-${key}`}>
                                     <label
                                       className={cn(
                                         'flex items-start gap-3 py-2.5 pr-3 pl-10',
-                                        readOnly || needsViewFirst
+                                        readOnly || blocked
                                           ? 'opacity-90'
                                           : 'hover:bg-muted/25 cursor-pointer',
                                       )}
+                                      title={blockedReason ?? undefined}
                                     >
                                       <Checkbox
                                         className="mt-0.5"
                                         checked={selected.has(key)}
                                         disabled={
                                           readOnly ||
-                                          needsViewFirst ||
+                                          blocked ||
                                           (grantable ? !grantable.has(key) : false)
                                         }
                                         onCheckedChange={(value) => toggleKey(key, value === true)}
@@ -433,7 +437,12 @@ export function RolePermissionMatrix({
                                         <span className="text-sm font-medium">{def.action}</span>
                                         <span className="text-muted-foreground text-xs leading-snug">
                                           {def.description}
-                                          {def.action !== 'View' && !def.action.startsWith('View ')
+                                          {blockedReason ? ` ${blockedReason}` : ''}
+                                          {!blockedReason &&
+                                          def.action !== 'View' &&
+                                          !def.action.startsWith('View ') &&
+                                          pageViewKey &&
+                                          key !== pageViewKey
                                             ? ' Requires View for this page.'
                                             : ''}
                                           {grantable && !grantable.has(key)

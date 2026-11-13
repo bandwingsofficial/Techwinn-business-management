@@ -8,7 +8,10 @@ import {
 
 export { SYSTEM_ROLE_KEYS };
 
-export const OWNER_PERMISSIONS: readonly PermissionKey[] = PERMISSION_KEYS;
+export const SUPER_ADMIN_PERMISSIONS: readonly PermissionKey[] = PERMISSION_KEYS;
+
+/** @deprecated Use {@link SUPER_ADMIN_PERMISSIONS}. */
+export const OWNER_PERMISSIONS = SUPER_ADMIN_PERMISSIONS;
 
 const USER_ADMIN_SET = new Set<string>(USER_ADMINISTRATION_PERMISSIONS);
 
@@ -17,6 +20,13 @@ export const ORG_ADMIN_PERMISSIONS: readonly PermissionKey[] = PERMISSION_KEYS.f
 );
 
 export const PROJECT_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
+  'crm.pipeline.view',
+  'crm.leads.view',
+  'crm.leads.create',
+  'crm.leads.edit',
+  'crm.leads.move',
+  'crm.leads.delete',
+  'crm.leads.import',
   'leads.read',
   'leads.create',
   'leads.update',
@@ -50,6 +60,13 @@ export const PROJECT_MANAGEMENT_PERMISSIONS: readonly PermissionKey[] = [
 ];
 
 export const SALES_PERMISSIONS: readonly PermissionKey[] = [
+  'crm.pipeline.view',
+  'crm.leads.view',
+  'crm.leads.create',
+  'crm.leads.edit',
+  'crm.leads.move',
+  'crm.leads.delete',
+  'crm.leads.import',
   'leads.read',
   'leads.create',
   'leads.update',
@@ -91,10 +108,10 @@ export const DEFAULT_SYSTEM_ROLES: readonly {
   permissions: readonly PermissionKey[];
 }[] = [
   {
-    portalSlug: SYSTEM_ROLE_KEYS.owner,
-    name: 'Owner',
+    portalSlug: SYSTEM_ROLE_KEYS.superAdmin,
+    name: 'Super Admin',
     description: 'Full organization administration including users and roles.',
-    permissions: OWNER_PERMISSIONS,
+    permissions: SUPER_ADMIN_PERMISSIONS,
   },
   {
     portalSlug: SYSTEM_ROLE_KEYS.admin,

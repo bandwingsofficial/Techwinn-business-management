@@ -1,13 +1,21 @@
-import { IMMUTABLE_ORG_ROLE_KEYS, SYSTEM_ROLE_KEYS, type PermissionKey } from '@techwin/contracts';
+import {
+  IMMUTABLE_ORG_ROLE_KEYS,
+  isSuperAdminPortalSlug,
+  SYSTEM_ROLE_KEYS,
+  type PermissionKey,
+} from '@techwin/contracts';
 import type { OrgRoleListItem } from '../types';
 
 export function isImmutableOrgRole(role: { readonly portalSlug: string }): boolean {
-  return IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug);
+  return IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug) || isSuperAdminPortalSlug(role.portalSlug);
 }
 
-export function isOwnerOrgRole(role: { readonly portalSlug: string }): boolean {
-  return role.portalSlug === SYSTEM_ROLE_KEYS.owner;
+export function isSuperAdminOrgRole(role: { readonly portalSlug: string }): boolean {
+  return isSuperAdminPortalSlug(role.portalSlug);
 }
+
+/** @deprecated Use {@link isSuperAdminOrgRole}. */
+export const isOwnerOrgRole = isSuperAdminOrgRole;
 
 export function isEditableOrgRole(role: OrgRoleListItem): boolean {
   return !isImmutableOrgRole(role);
@@ -17,8 +25,8 @@ export function immutableRoleReason(role: { readonly portalSlug: string }): stri
   if (role.portalSlug === SYSTEM_ROLE_KEYS.admin) {
     return 'The Admin role is protected and cannot be changed, deactivated, or deleted.';
   }
-  if (role.portalSlug === SYSTEM_ROLE_KEYS.owner) {
-    return 'The Owner role is protected and cannot be changed, deactivated, or deleted.';
+  if (isSuperAdminPortalSlug(role.portalSlug)) {
+    return 'The Super Admin role is protected and cannot be changed, deactivated, or deleted.';
   }
   return 'This role is protected.';
 }

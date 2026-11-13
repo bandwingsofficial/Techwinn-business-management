@@ -1,5 +1,6 @@
 import type { PermissionKey } from '@techwin/contracts';
 import { permissionsForAdminPath } from '@/features/admin/navigation/admin-route-permissions';
+import { APP_ROUTE_PERMISSIONS_ALL } from '@/shared/navigation/app-route-permissions';
 
 /**
  * Project Manager portal routes reuse the same permission keys as admin feature routes.
@@ -10,8 +11,8 @@ export const PROJECT_MANAGER_ROUTE_PERMISSIONS: Readonly<Record<string, readonly
     '/project-manager': [],
     '/project-manager/dashboard': [],
     '/project-manager/profile': [],
-    '/project-manager/pipeline': ['leads.read'],
-    '/project-manager/leads': ['leads.read'],
+    '/project-manager/pipeline': ['crm.pipeline.view'],
+    '/project-manager/leads': ['crm.leads.view'],
     '/project-manager/packages': ['settings.read'],
     '/project-manager/quotations': ['leads.read'],
     '/project-manager/proposals': ['leads.read'],
@@ -55,6 +56,11 @@ export function canAccessProjectManagerPath(
   permissions: ReadonlySet<PermissionKey>,
 ): boolean {
   const path = normalizePath(pathname);
+  const allRequired = APP_ROUTE_PERMISSIONS_ALL[path];
+  if (allRequired) {
+    return allRequired.every((key) => permissions.has(key));
+  }
+
   const required = permissionsForProjectManagerPath(path);
   if (required === null) {
     if (!path.startsWith('/project-manager')) return false;

@@ -139,6 +139,8 @@ export interface MyPermissionsResponse {
    * reconnects; never treat the revision (or event payload) as authorization.
    */
   readonly revision: string;
+  /** Centralized full-access flag for the protected Super Admin identity. */
+  readonly fullAccess: boolean;
 }
 
 export interface MyPermissionEventsResponse {

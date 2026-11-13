@@ -2,6 +2,7 @@
 
 import {
   API_ERROR_CODES,
+  hasUnrestrictedOrgPermissions,
   type MyOrganizationRole,
   type MySessionEmployeeSummary,
   type PermissionKey,
@@ -65,6 +66,7 @@ export type PermissionsContextValue = {
   readonly refresh: () => Promise<void>;
   readonly defaultDashboard: string;
   readonly portalDashboard: string;
+  readonly fullAccess: boolean;
 };
 
 const PermissionsContext = createContext<PermissionsContextValue | null>(null);
@@ -74,6 +76,7 @@ type AccessSnapshot = {
   readonly roles: readonly MyOrganizationRole[];
   readonly sessionEmployee: MySessionEmployeeSummary | null;
   readonly revision: string;
+  readonly fullAccess: boolean;
 };
 
 function readBootstrapSnapshot(): AccessSnapshot | null {
@@ -84,6 +87,7 @@ function readBootstrapSnapshot(): AccessSnapshot | null {
     roles: bootstrap.roles,
     sessionEmployee: bootstrap.sessionEmployee ?? null,
     revision: '0',
+    fullAccess: hasUnrestrictedOrgPermissions(bootstrap.permissions),
   };
 }
 
@@ -148,6 +152,9 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           roles,
           sessionEmployee: response.sessionEmployee ?? null,
           revision: response.revision ?? '0',
+          fullAccess:
+            response.fullAccess ??
+            hasUnrestrictedOrgPermissions(response.permissions),
         });
         if (revalidateRoute) {
           router.refresh();
@@ -170,7 +177,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           if (previous && previous.permissions.length > 0) {
             return previous;
           }
-          return { permissions: [], roles: [], sessionEmployee: null, revision: '0' };
+          return {
+            permissions: [],
+            roles: [],
+            sessionEmployee: null,
+            revision: '0',
+            fullAccess: false,
+          };
         });
 
         setFatalError(describeOrgAccessError(failure));
@@ -243,9 +256,13 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     if (!snapshot) return null;
     const { permissions, roles, sessionEmployee } = snapshot;
     const permissionSet = new Set(permissions);
-    const has = (key: PermissionKey) => permissionSet.has(key);
-    const hasAny = (...keys: PermissionKey[]) => keys.some((key) => permissionSet.has(key));
-    const hasAll = (...keys: PermissionKey[]) => keys.every((key) => permissionSet.has(key));
+    const fullAccess =
+      snapshot.fullAccess || hasUnrestrictedOrgPermissions(permissions);
+    const has = (key: PermissionKey) => fullAccess || permissionSet.has(key);
+    const hasAny = (...keys: PermissionKey[]) =>
+      fullAccess || keys.some((key) => permissionSet.has(key));
+    const hasAll = (...keys: PermissionKey[]) =>
+      fullAccess || keys.every((key) => permissionSet.has(key));
     const portal = resolvePortalKind(admin, permissions, roles);
     const portalSegment = resolvePortalSegment(admin, roles);
     const navAccess = membershipAccessContext(admin, roles, sessionEmployee);
@@ -268,6 +285,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
         sessionEmployee,
       }),
       portalDashboard: portalDashboardPath(portalSegment),
+      fullAccess,
       refresh: async () => {
         invalidateMyPermissionsCache();
         const generation = ++loadGenerationRef.current;

@@ -36,6 +36,12 @@ export const PERMISSION_KEYS = [
   'crm.pipeline.import',
   'crm.pipeline.export',
   'crm.pipeline.bulk_delete',
+  'crm.leads.view',
+  'crm.leads.create',
+  'crm.leads.edit',
+  'crm.leads.move',
+  'crm.leads.delete',
+  'crm.leads.import',
   'clients.read',
   'clients.create',
   'clients.update',
@@ -220,6 +226,42 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     module: 'CRM',
     action: 'Bulk Delete',
     description: 'Delete multiple selected pipelines together.',
+  },
+  {
+    key: 'crm.leads.view',
+    module: 'CRM',
+    action: 'View',
+    description: 'View the leads board, list, cards and lead details.',
+  },
+  {
+    key: 'crm.leads.create',
+    module: 'CRM',
+    action: 'Add',
+    description: 'Create leads from the board, list or stage actions.',
+  },
+  {
+    key: 'crm.leads.edit',
+    module: 'CRM',
+    action: 'Edit',
+    description: 'Edit lead details and log activities.',
+  },
+  {
+    key: 'crm.leads.move',
+    module: 'CRM',
+    action: 'Move / Drag & Drop',
+    description: 'Move leads between pipeline stages on the Kanban board.',
+  },
+  {
+    key: 'crm.leads.delete',
+    module: 'CRM',
+    action: 'Delete',
+    description: 'Delete individual leads.',
+  },
+  {
+    key: 'crm.leads.import',
+    module: 'CRM',
+    action: 'Import',
+    description: 'Import leads using the supported import workflow.',
   },
   { key: 'leads.create', module: 'Leads', action: 'Create', description: 'Create leads.' },
   { key: 'leads.update', module: 'Leads', action: 'Edit', description: 'Update leads and proposals.' },
@@ -570,9 +612,12 @@ export function isPermissionKey(value: string): value is PermissionKey {
   return PERMISSION_KEY_SET.has(value);
 }
 
+/** Legacy portal slug before Owner was renamed to Super Admin (data migration + URL redirect only). */
+export const LEGACY_SUPER_ADMIN_PORTAL_SLUG = 'owner' as const;
+
 /** Stable portal URL slugs for seeded system roles (also stored on `organization_roles.portal_slug`). */
 export const SYSTEM_ROLE_KEYS = {
-  owner: 'owner',
+  superAdmin: 'super-admin',
   admin: 'admin',
   projectManager: 'project-manager',
   projectManagement: 'project-management',
@@ -604,13 +649,20 @@ export const EMPLOYEE_PORTAL_PERMISSIONS: readonly PermissionKey[] = [
 
 export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[keyof typeof SYSTEM_ROLE_KEYS];
 
-/** Protected system role; only platform super admins receive owner membership automatically. */
+export function isSuperAdminPortalSlug(portalSlug: string): boolean {
+  const normalized = portalSlug.trim().toLowerCase();
+  return (
+    normalized === SYSTEM_ROLE_KEYS.superAdmin || normalized === LEGACY_SUPER_ADMIN_PORTAL_SLUG
+  );
+}
+
+/** Protected system role; only platform super admins receive Super Admin membership automatically. */
 export const PROTECTED_SYSTEM_ROLE_KEYS: ReadonlySet<string> = new Set([
-  SYSTEM_ROLE_KEYS.owner,
+  SYSTEM_ROLE_KEYS.superAdmin,
 ]);
 
 /** Organization roles that cannot be edited, deactivated, or deleted (stable portal slugs, not display names). */
 export const IMMUTABLE_ORG_ROLE_KEYS: ReadonlySet<string> = new Set([
   SYSTEM_ROLE_KEYS.admin,
-  SYSTEM_ROLE_KEYS.owner,
+  SYSTEM_ROLE_KEYS.superAdmin,
 ]);

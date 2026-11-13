@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EMPLOYEE_ROUTES, SYSTEM_ROLE_KEYS } from '#contracts';
+import {
+  EMPLOYEE_ROUTES,
+  hasUnrestrictedOrgPermissions,
+  SYSTEM_ROLE_KEYS,
+} from '#contracts';
 import type {
   MyOrganizationRole,
   MySessionEmployeeSummary,
@@ -18,6 +22,7 @@ export type MyAccessSnapshot = {
   readonly roles: readonly MyOrganizationRole[];
   readonly sessionEmployee: MySessionEmployeeSummary | null;
   readonly revision: string;
+  readonly fullAccess: boolean;
 };
 
 @Injectable()
@@ -37,16 +42,19 @@ export class GetMyPermissionsHandler {
       query.actor.organizationId,
       query.actor.adminId,
     );
+    const fullAccess =
+      query.actor.isPlatformSuperAdmin || hasUnrestrictedOrgPermissions(permissions);
     if (query.actor.isPlatformSuperAdmin) {
       return {
         permissions,
         sessionEmployee,
         revision,
+        fullAccess: true,
         roles: [
           {
-            id: SYSTEM_ROLE_KEYS.owner,
-            portalSlug: SYSTEM_ROLE_KEYS.owner,
-            name: 'Owner',
+            id: SYSTEM_ROLE_KEYS.superAdmin,
+            portalSlug: SYSTEM_ROLE_KEYS.superAdmin,
+            name: 'Super Admin',
           },
         ],
       };
@@ -55,7 +63,7 @@ export class GetMyPermissionsHandler {
       query.actor.organizationId,
       query.actor.adminId,
     );
-    return { permissions, roles: [...roles], sessionEmployee, revision };
+    return { permissions, roles: [...roles], sessionEmployee, revision, fullAccess };
   }
 
   private async resolveSessionEmployee(

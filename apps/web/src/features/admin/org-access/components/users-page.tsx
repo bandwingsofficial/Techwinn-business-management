@@ -583,7 +583,7 @@ export function UsersPage() {
                       </Tooltip>
                       {member.isOwner ? (
                         <Badge variant="outline" className="mt-1 text-[10px] font-normal">
-                          Owner
+                          Super Admin
                         </Badge>
                       ) : null}
                     </TableCell>

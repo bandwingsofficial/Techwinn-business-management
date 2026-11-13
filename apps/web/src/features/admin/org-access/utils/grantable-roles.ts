@@ -1,4 +1,4 @@
-import { SYSTEM_ROLE_KEYS } from '@techwin/contracts';
+import { isSuperAdminPortalSlug } from '@techwin/contracts';
 import type { OrgRoleListItem } from '../types';
 import type { GrantableRoleActor } from './role-policy';
 
@@ -14,7 +14,7 @@ export function selectGrantableRoles(
   return roles.filter(
     (role) =>
       role.status === 'ACTIVE' &&
-      role.portalSlug !== SYSTEM_ROLE_KEYS.owner &&
+      !isSuperAdminPortalSlug(role.portalSlug) &&
       role.permissionKeys.every((key) => actor.permissions.has(key)),
   );
 }

@@ -1,8 +1,13 @@
 import {
+  expandLegacyCrmLeadsPermissions,
+  ensurePermissionPrerequisites,
   IMMUTABLE_ORG_ROLE_KEYS,
   isPermissionKey,
+  isSuperAdminPortalSlug,
+  LEGACY_SUPER_ADMIN_PORTAL_SLUG,
   PERMISSION_KEYS,
   PROTECTED_SYSTEM_ROLE_KEYS,
+  resolveOrganizationRoleDisplayName,
   SYSTEM_ROLE_KEYS,
   type PermissionKey,
 } from '#contracts';
@@ -71,7 +76,8 @@ export function uniquePermissionKeys(keys: readonly string[]): PermissionKey[] {
   for (const key of keys) {
     if (isPermissionKey(key)) seen.add(key);
   }
-  return [...seen].sort();
+  expandLegacyCrmLeadsPermissions(seen);
+  return [...ensurePermissionPrerequisites([...seen])].sort();
 }
 
 export async function writeAudit(
@@ -235,10 +241,37 @@ export async function ensureSystemRoles(
 /**
  * Ensures immutable system roles (Owner, Admin) exist. Does not recreate roles an administrator deleted.
  */
+export async function migrateLegacySuperAdminPortalSlug(
+  tx: Pick<PrismaService, 'organizationRole'>,
+  organizationId: string,
+): Promise<void> {
+  const legacy = await tx.organizationRole.findFirst({
+    where: { organizationId, portalSlug: LEGACY_SUPER_ADMIN_PORTAL_SLUG, isSystem: true },
+    select: { id: true },
+  });
+  if (!legacy) return;
+
+  const modern = await tx.organizationRole.findFirst({
+    where: { organizationId, portalSlug: SYSTEM_ROLE_KEYS.superAdmin, isSystem: true },
+    select: { id: true },
+  });
+  if (modern && modern.id !== legacy.id) return;
+
+  await tx.organizationRole.update({
+    where: { id: legacy.id },
+    data: {
+      portalSlug: SYSTEM_ROLE_KEYS.superAdmin,
+      name: 'Super Admin',
+      description: 'Full organization administration including users and roles.',
+    },
+  });
+}
+
 export async function ensureProtectedSystemRoles(
   tx: Pick<PrismaService, 'organizationRole' | 'organizationRolePermission'>,
   organizationId: string,
 ): Promise<Map<string, string>> {
+  await migrateLegacySuperAdminPortalSlug(tx, organizationId);
   const existing = await tx.organizationRole.findMany({
     where: { organizationId },
     select: { id: true, portalSlug: true, isSystem: true },
@@ -299,7 +332,7 @@ export async function ensureOrganizationRoleBootstrap(
   // Only immutable roles receive catalog merges on every request. Editable system
   // roles (Employee, Member, …) keep administrator-saved permission sets intact.
   await mergeSystemRoleDefaultPermissions(tx, organizationId, [
-    SYSTEM_ROLE_KEYS.owner,
+    SYSTEM_ROLE_KEYS.superAdmin,
     SYSTEM_ROLE_KEYS.admin,
   ]);
   return map;
@@ -324,7 +357,11 @@ export async function ensureOwnerMembershipRole(
   });
   if (!membership?.isOwner) return false;
 
-  const ownerRoleId = await ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.owner);
+  const ownerRoleId = await ensureSystemRoleByPortalSlug(
+    tx,
+    organizationId,
+    SYSTEM_ROLE_KEYS.superAdmin,
+  );
   const hasOwnerRole = membership.roleLinks.some((link) => link.roleId === ownerRoleId);
   if (hasOwnerRole) return false;
 
@@ -421,7 +458,15 @@ export async function findRoleIdByPortalSlug(
     where: { organizationId, portalSlug },
     select: { id: true },
   });
-  return row?.id ?? null;
+  if (row) return row.id;
+  if (portalSlug === SYSTEM_ROLE_KEYS.superAdmin) {
+    const legacy = await tx.organizationRole.findFirst({
+      where: { organizationId, portalSlug: LEGACY_SUPER_ADMIN_PORTAL_SLUG, isSystem: true },
+      select: { id: true },
+    });
+    return legacy?.id ?? null;
+  }
+  return null;
 }
 
 /** @deprecated Use {@link findRoleIdByPortalSlug}. */
@@ -472,7 +517,7 @@ export async function assertActorIsOwner(
     select: { isOwner: true },
   });
   if (!actor?.isOwner) {
-    throw new OrgAccessForbiddenError('Only organization owners can manage the owner role.');
+    throw new OrgAccessForbiddenError('Only Super Admins can manage the Super Admin role.');
   }
 }
 
@@ -507,15 +552,20 @@ export async function assertRolesAssignable(
   return roles;
 }
 
-export function rolesIncludeOwner(roles: readonly { portalSlug: string }[]): boolean {
-  return roles.some((role) => role.portalSlug === SYSTEM_ROLE_KEYS.owner);
+export function rolesIncludeSuperAdmin(roles: readonly { portalSlug: string }[]): boolean {
+  return roles.some((role) => isSuperAdminPortalSlug(role.portalSlug));
 }
+
+/** @deprecated Use {@link rolesIncludeSuperAdmin}. */
+export const rolesIncludeOwner = rolesIncludeSuperAdmin;
 
 export function assertOrgRoleMutable(
   role: { readonly portalSlug: string },
   action: 'modify' | 'delete',
 ): void {
-  if (!IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug)) return;
+  if (!IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug) && !isSuperAdminPortalSlug(role.portalSlug)) {
+    return;
+  }
   if (role.portalSlug === SYSTEM_ROLE_KEYS.admin) {
     throw new OrgAccessForbiddenError(
       action === 'delete'
@@ -525,8 +575,8 @@ export function assertOrgRoleMutable(
   }
   throw new OrgAccessForbiddenError(
     action === 'delete'
-      ? 'The Owner role is protected and cannot be deleted.'
-      : 'The Owner role is protected and cannot be modified or deactivated.',
+      ? 'The Super Admin role is protected and cannot be deleted.'
+      : 'The Super Admin role is protected and cannot be modified or deactivated.',
   );
 }
 
@@ -558,15 +608,18 @@ export async function resolveActiveMembershipRolesFromDb(
     .map((link) => ({
       id: link.role.id,
       portalSlug: link.role.portalSlug,
-      name: link.role.name,
+      name: resolveOrganizationRoleDisplayName({
+        portalSlug: link.role.portalSlug,
+        name: link.role.name,
+      }),
     }));
 
   if (activeRoles.length === 0 && membership.isOwner) {
     return [
       {
-        id: SYSTEM_ROLE_KEYS.owner,
-        portalSlug: SYSTEM_ROLE_KEYS.owner,
-        name: 'Owner',
+        id: SYSTEM_ROLE_KEYS.superAdmin,
+        portalSlug: SYSTEM_ROLE_KEYS.superAdmin,
+        name: 'Super Admin',
       },
     ];
   }
@@ -597,11 +650,19 @@ export async function resolvePermissionsFromDb(
   }
 
   const keys: string[] = [];
+  let hasSuperAdminRole = false;
   for (const link of membership.roleLinks) {
     if (link.role.status !== 'ACTIVE') continue;
+    if (isSuperAdminPortalSlug(link.role.portalSlug)) {
+      hasSuperAdminRole = true;
+      break;
+    }
     for (const permission of link.role.permissions) {
       keys.push(permission.permissionKey);
     }
+  }
+  if (hasSuperAdminRole) {
+    return uniquePermissionKeys([...PERMISSION_KEYS]);
   }
 
   // Effective permissions come only from assigned active roles (plus isOwner above).
@@ -633,7 +694,7 @@ export async function assertActorCanGrantRoles(
   for (const role of roles) {
     if (
       PROTECTED_SYSTEM_ROLE_KEYS.has(role.portalSlug) &&
-      role.portalSlug === SYSTEM_ROLE_KEYS.owner
+      isSuperAdminPortalSlug(role.portalSlug)
     ) {
       await assertActorIsOwner(prisma, organizationId, actorAdminId);
     }

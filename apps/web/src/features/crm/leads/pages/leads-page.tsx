@@ -52,6 +52,7 @@ import {
   useBulkDeleteLeads,
   useChangeLeadStage,
   useDeleteLead,
+  useLeadPagePermissions,
   useLeads,
 } from '../hooks';
 import { usePipelines } from '@/features/crm/pipelines/hooks';
@@ -108,6 +109,7 @@ export function LeadsPage() {
   const leadsHref = toPortalPath('/admin/leads');
   const searchParams = useSearchParams();
   const toast = useAdminToast();
+  const perms = useLeadPagePermissions();
   const { changeLeadStage: changeLeadStageMutation, pending: stagePending } =
     useChangeLeadStage();
   const { deleteLead: deleteLeadMutation, pending: deletePending } = useDeleteLead();
@@ -128,7 +130,7 @@ export function LeadsPage() {
     loading: pipelinesLoading,
     error: pipelinesError,
     refetch: refetchPipelines,
-  } = usePipelines({ query: {} });
+  } = usePipelines({ query: {}, enabled: perms.canViewBoard });
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
   const [editLeadId, setEditLeadId] = useState<string | null>(null);
 
@@ -243,6 +245,7 @@ export function LeadsPage() {
     loading: leadsLoading,
     error: leadsError,
     refetch: refetchLeads,
+    replaceLeadInList,
   } = useLeads({ query, enabled: Boolean(query) });
 
   const stages = useMemo(
@@ -273,14 +276,19 @@ export function LeadsPage() {
     leadId: string;
     stageId: string;
     beforeLeadId: string | null;
-  }) => {
+  }): Promise<boolean> => {
+    if (!perms.canMove) return false;
     const lead = pipelineLeads.find((item) => item.id === leadId);
     const nextStageName = stages.find((stage) => stage.id === stageId)?.name ?? 'stage';
     const stageChanged = lead?.stageId !== stageId;
     try {
-      await changeLeadStageMutation(leadId, { stageId, beforeLeadId });
+      const updated = await changeLeadStageMutation(leadId, { stageId, beforeLeadId });
+      if (updated) replaceLeadInList(updated);
+      else if (lead) {
+        replaceLeadInList({ ...lead, stageId });
+      }
       if (stageChanged) toast.success(`Lead moved to ${nextStageName}.`);
-      refetchLeads();
+      return true;
     } catch (failure) {
       toast.error(describeCrmError(failure));
       throw failure;
@@ -288,6 +296,7 @@ export function LeadsPage() {
   };
 
   const moveLeadToStage = async (leadId: string, nextStageId: string) => {
+    if (!perms.canMove) return;
     const lead = pipelineLeads.find((item) => item.id === leadId);
     if (lead?.stageId === nextStageId) return;
     await persistLeadKanbanMove({ leadId, stageId: nextStageId, beforeLeadId: null });
@@ -312,7 +321,7 @@ export function LeadsPage() {
   };
 
   const openCreate = (preferredStageId?: string) => {
-    if (!selectedPipeline) return;
+    if (!perms.canCreate || !selectedPipeline) return;
     setCreateInitialStageId(preferredStageId);
     setCreateOpen(true);
   };
@@ -493,27 +502,31 @@ export function LeadsPage() {
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9 shrink-0"
-                  disabled={activePipelines.length === 0}
-                  onClick={() => setImportOpen(true)}
-                >
-                  <Upload aria-hidden="true" />
-                  Import
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-                  disabled={!selectedPipeline || stages.length === 0}
-                  onClick={() => openCreate()}
-                >
-                  <Plus aria-hidden="true" />
-                  New Lead
-                </Button>
+                {perms.canImport ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0"
+                    disabled={activePipelines.length === 0}
+                    onClick={() => setImportOpen(true)}
+                  >
+                    <Upload aria-hidden="true" />
+                    Import
+                  </Button>
+                ) : null}
+                {perms.canCreate ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                    disabled={!selectedPipeline || stages.length === 0}
+                    onClick={() => openCreate()}
+                  >
+                    <Plus aria-hidden="true" />
+                    New Lead
+                  </Button>
+                ) : null}
               </>
             }
           />
@@ -543,7 +556,7 @@ export function LeadsPage() {
             </div>
           ) : view === 'list' ? (
             <>
-              {selectedCount > 0 ? (
+              {perms.showListBulkDelete && selectedCount > 0 ? (
                 <div className="border-border flex flex-wrap items-center gap-2 border-b bg-[#f7faff] px-4 py-2.5 sm:px-5">
                   <span className="text-foreground text-sm font-medium tabular-nums">
                     {selectedCount} selected
@@ -580,20 +593,26 @@ export function LeadsPage() {
               tableClassName="table-fixed min-w-[52rem] [&_[data-slot=table-head]]:h-auto [&_[data-slot=table-head]]:py-3 [&_[data-slot=table-cell]]:py-3"
               tableBodyClassName="[&_[data-slot=table-row]]:border-0 [&_[data-slot=table-row]:hover]:bg-[#f5f5f5]"
               phase={listTablePhase}
-              colSpan={8}
+              colSpan={perms.showListBulkDelete ? 8 : 7}
               skeletonColumns={CRM_LEADS_TABLE_SKELETON}
               header={
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className={CRM_LEADS_TABLE_COLUMN_CLASS.select}>
-                    <Checkbox
-                      aria-label="Select all leads on this page"
-                      checked={
-                        allPageLeadsSelected ? true : somePageLeadsSelected ? 'indeterminate' : false
-                      }
-                      disabled={pageLeadIds.length === 0}
-                      onCheckedChange={() => toggleAllPageLeads()}
-                    />
-                  </TableHead>
+                  {perms.showListBulkDelete ? (
+                    <TableHead className={CRM_LEADS_TABLE_COLUMN_CLASS.select}>
+                      <Checkbox
+                        aria-label="Select all leads on this page"
+                        checked={
+                          allPageLeadsSelected
+                            ? true
+                            : somePageLeadsSelected
+                              ? 'indeterminate'
+                              : false
+                        }
+                        disabled={pageLeadIds.length === 0}
+                        onCheckedChange={() => toggleAllPageLeads()}
+                      />
+                    </TableHead>
+                  ) : null}
                   <TableHead className={CRM_LEADS_TABLE_COLUMN_CLASS.lead}>Lead</TableHead>
                   <TableHead className={CRM_LEADS_TABLE_COLUMN_CLASS.phone}>Phone</TableHead>
                   <TableHead className={CRM_LEADS_TABLE_COLUMN_CLASS.email}>Email</TableHead>
@@ -651,13 +670,15 @@ export function LeadsPage() {
                 const contactEmail = lead.email?.trim() ?? '';
                 return (
                   <TableRow key={lead.id} className="border-0">
-                    <TableCell className={CRM_LEADS_TABLE_COLUMN_CLASS.select}>
-                      <Checkbox
-                        aria-label={`Select ${displayName}`}
-                        checked={selectedLeadIds.has(lead.id)}
-                        onCheckedChange={() => toggleLeadSelected(lead.id)}
-                      />
-                    </TableCell>
+                    {perms.showListBulkDelete ? (
+                      <TableCell className={CRM_LEADS_TABLE_COLUMN_CLASS.select}>
+                        <Checkbox
+                          aria-label={`Select ${displayName}`}
+                          checked={selectedLeadIds.has(lead.id)}
+                          onCheckedChange={() => toggleLeadSelected(lead.id)}
+                        />
+                      </TableCell>
+                    ) : null}
                     <TableCell className={cn(CRM_LEADS_TABLE_COLUMN_CLASS.lead, 'min-w-0 align-top')}>
                       <div className="grid max-w-full min-w-0 gap-0.5">
                         <Tooltip>
@@ -731,30 +752,36 @@ export function LeadsPage() {
                     </TableCell>
                     <TableCell className={cn(CRM_LEADS_TABLE_COLUMN_CLASS.actions, 'min-w-0')}>
                       <div className="flex w-full shrink-0 items-center justify-end gap-1">
-                        <TableIconButton
-                          label={`View ${lead.fullName}`}
-                          onClick={() => openLeadDetail(lead.id, 'view')}
-                        >
-                          <Eye className="size-4 stroke-[2]" aria-hidden="true" />
-                        </TableIconButton>
-                        <TableIconButton
-                          label={`Edit ${lead.fullName}`}
-                          tone="default"
-                          className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
-                          disabled={Boolean(lead.convertedClientId)}
-                          onClick={() => openLeadDetail(lead.id, 'edit')}
-                        >
-                          <SquarePen className="size-4" aria-hidden="true" />
-                        </TableIconButton>
-                        <TableIconButton
-                          label={`Delete ${lead.fullName}`}
-                          tone="default"
-                          className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black"
-                          disabled={pending}
-                          onClick={() => setDeleteLeadId(lead.id)}
-                        >
-                          <Trash2 className="size-4" aria-hidden="true" />
-                        </TableIconButton>
+                        {perms.canViewBoard ? (
+                          <TableIconButton
+                            label={`View ${lead.fullName}`}
+                            onClick={() => openLeadDetail(lead.id, 'view')}
+                          >
+                            <Eye className="size-4 stroke-[2]" aria-hidden="true" />
+                          </TableIconButton>
+                        ) : null}
+                        {perms.canEdit ? (
+                          <TableIconButton
+                            label={`Edit ${lead.fullName}`}
+                            tone="default"
+                            className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+                            disabled={Boolean(lead.convertedClientId)}
+                            onClick={() => openLeadDetail(lead.id, 'edit')}
+                          >
+                            <SquarePen className="size-4" aria-hidden="true" />
+                          </TableIconButton>
+                        ) : null}
+                        {perms.canDelete ? (
+                          <TableIconButton
+                            label={`Delete ${lead.fullName}`}
+                            tone="default"
+                            className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black"
+                            disabled={pending}
+                            onClick={() => setDeleteLeadId(lead.id)}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </TableIconButton>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -774,13 +801,17 @@ export function LeadsPage() {
               <KanbanBoard
                 stages={stages}
                 leads={pipelineLeads}
-                disabled={pending}
+                dragDisabled={!perms.canDragKanban}
                 onPersistMove={persistLeadKanbanMove}
-                onAddLead={(stageId) => openCreate(stageId)}
+                onAddLead={perms.canCreate ? (stageId) => openCreate(stageId) : undefined}
                 onView={(leadId) => openLeadDetail(leadId, 'view')}
                 onEdit={(leadId) => openLeadDetail(leadId, 'edit')}
                 onDelete={setDeleteLeadId}
                 onStageChange={(leadId, stageId) => void moveLeadToStage(leadId, stageId)}
+                showView={perms.canViewBoard}
+                showEdit={perms.canEdit}
+                showDelete={perms.canDelete}
+                showStageChange={perms.canMove}
               />
             </div>
           ) : null}
@@ -796,7 +827,7 @@ export function LeadsPage() {
           if (!open) setDetailLeadId(null);
         }}
         onUpdated={() => refetchLeads()}
-        onEditLead={(leadId) => openLeadDetail(leadId, 'edit')}
+        onEditLead={perms.canEdit ? (leadId) => openLeadDetail(leadId, 'edit') : undefined}
       />
 
       <LeadEditDialog

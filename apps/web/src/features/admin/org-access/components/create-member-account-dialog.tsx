@@ -330,8 +330,9 @@ export function CreateMemberAccountDialog({
                 >
                   <legend className="sr-only">Assigned roles</legend>
                   <p className="text-muted-foreground mb-2 text-xs leading-snug">
-                    Choose the roles this member can use after sign-in. Owner is the built-in role and
-                    is never assigned automatically. Only roles you are allowed to assign are listed.
+                    Choose the roles this member can use after sign-in. Super Admin is the protected
+                    system role and is never assigned automatically. Only roles you are allowed to assign
+                    are listed.
                   </p>
                   {selectedRoles.length > 0 ? (
                     <div className="mb-2 flex min-w-0 flex-wrap gap-1" aria-live="polite">

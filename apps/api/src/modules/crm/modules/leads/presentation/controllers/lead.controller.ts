@@ -49,9 +49,36 @@ import {
 import { z } from 'zod';
 import { PlatformAdminGuard } from '../../../../../auth/index.js';
 import {
+  RequireAllPermissions,
   RequirePermissions,
   RequirePermissionsGuard,
 } from '../../../../../org-access/index.js';
+
+const LEAD_READ: readonly ['crm.pipeline.view', 'crm.leads.view'] = [
+  'crm.pipeline.view',
+  'crm.leads.view',
+];
+const LEAD_CREATE: readonly ['crm.pipeline.view', 'crm.leads.create'] = [
+  'crm.pipeline.view',
+  'crm.leads.create',
+];
+const LEAD_EDIT: readonly ['crm.pipeline.view', 'crm.leads.edit'] = [
+  'crm.pipeline.view',
+  'crm.leads.edit',
+];
+const LEAD_MOVE: readonly ['crm.pipeline.view', 'crm.leads.view', 'crm.leads.move'] = [
+  'crm.pipeline.view',
+  'crm.leads.view',
+  'crm.leads.move',
+];
+const LEAD_DELETE: readonly ['crm.pipeline.view', 'crm.leads.delete'] = [
+  'crm.pipeline.view',
+  'crm.leads.delete',
+];
+const LEAD_IMPORT: readonly ['crm.pipeline.view', 'crm.leads.import'] = [
+  'crm.pipeline.view',
+  'crm.leads.import',
+];
 import { ChangeLeadStageHandler } from '../../application/change-stage/change-lead-stage.handler.js';
 import { ConvertLeadHandler } from '../../application/convert/convert-lead.handler.js';
 import { LinkLeadToClientHandler } from '../../application/link-client/link-lead-to-client.handler.js';
@@ -130,7 +157,7 @@ export class LeadController {
   ) {}
 
   @Get()
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...LEAD_READ)
   @ApiOperation({ summary: 'List and filter leads' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadListResponseSchema) })
   async list(
@@ -151,7 +178,7 @@ export class LeadController {
   }
 
   @Get('tags')
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...LEAD_READ)
   @ApiOperation({ summary: 'List organization lead tags' })
   async listTags(
     @CrmContext() ctx: CrmRequestContext,
@@ -175,7 +202,7 @@ export class LeadController {
   }
 
   @Post('tags')
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...LEAD_EDIT)
   @ApiOperation({ summary: 'Create a lead tag' })
   async createTag(
     @CrmContext() ctx: CrmRequestContext,
@@ -190,7 +217,7 @@ export class LeadController {
   }
 
   @Post('import/validate')
-  @RequirePermissions('leads.create')
+  @RequireAllPermissions(...LEAD_IMPORT)
   @ApiOperation({ summary: 'Validate lead import rows' })
   async validateImport(
     @CrmContext() ctx: CrmRequestContext,
@@ -205,7 +232,7 @@ export class LeadController {
   }
 
   @Post('import')
-  @RequirePermissions('leads.create')
+  @RequireAllPermissions(...LEAD_IMPORT)
   @ApiOperation({ summary: 'Import validated lead rows' })
   async importLeads(
     @CrmContext() ctx: CrmRequestContext,
@@ -220,7 +247,7 @@ export class LeadController {
   }
 
   @Post('bulk/delete')
-  @RequirePermissions('leads.delete')
+  @RequireAllPermissions(...LEAD_DELETE)
   @ApiOperation({ summary: 'Permanently delete multiple leads' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadBulkActionResponseSchema) })
   async bulkDelete(
@@ -235,7 +262,7 @@ export class LeadController {
   }
 
   @Get(':leadId')
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...LEAD_READ)
   @ApiOperation({ summary: 'Get a lead' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadResponseSchema) })
   async get(
@@ -247,7 +274,7 @@ export class LeadController {
   }
 
   @Post()
-  @RequirePermissions('leads.create')
+  @RequireAllPermissions(...LEAD_CREATE)
   @ApiOperation({ summary: 'Create a lead' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadResponseSchema) })
   async create(
@@ -266,7 +293,7 @@ export class LeadController {
   }
 
   @Patch(':leadId')
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...LEAD_EDIT)
   @ApiOperation({ summary: 'Update a lead' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadResponseSchema) })
   async update(
@@ -287,7 +314,7 @@ export class LeadController {
   }
 
   @Delete(':leadId')
-  @RequirePermissions('leads.delete')
+  @RequireAllPermissions(...LEAD_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Permanently delete a lead' })
   @ApiNoContentResponse()
@@ -299,7 +326,7 @@ export class LeadController {
   }
 
   @Patch(':leadId/stage')
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...LEAD_MOVE)
   @ApiOperation({ summary: 'Move a lead to another stage (kanban)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadResponseSchema) })
   async changeStage(
@@ -317,7 +344,7 @@ export class LeadController {
   }
 
   @Get(':leadId/activities')
-  @RequirePermissions('leads.read')
+  @RequireAllPermissions(...LEAD_READ)
   @ApiOperation({ summary: 'List lead activities' })
   @ApiOkResponse({
     schema: toOpenApiSchema(z.object({ activities: z.array(crmLeadActivityResponseSchema) })),
@@ -334,7 +361,7 @@ export class LeadController {
   }
 
   @Post(':leadId/activities')
-  @RequirePermissions('leads.update')
+  @RequireAllPermissions(...LEAD_EDIT)
   @ApiOperation({ summary: 'Log a lead activity' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadActivityResponseSchema) })
   async createActivity(
@@ -356,7 +383,7 @@ export class LeadController {
   }
 
   @Post(':leadId/convert')
-  @RequirePermissions('leads.update', 'clients.create')
+  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', 'clients.create')
   @ApiOperation({ summary: 'Convert lead to client (idempotent)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadConvertResponseSchema) })
   async convert(
@@ -372,7 +399,7 @@ export class LeadController {
   }
 
   @Post(':leadId/link-client')
-  @RequirePermissions('leads.update', 'clients.create')
+  @RequireAllPermissions('crm.pipeline.view', 'crm.leads.edit', 'clients.create')
   @ApiOperation({ summary: 'Link lead to an existing client (same phone)' })
   @ApiOkResponse({ schema: toOpenApiSchema(crmLeadConvertResponseSchema) })
   async linkClient(

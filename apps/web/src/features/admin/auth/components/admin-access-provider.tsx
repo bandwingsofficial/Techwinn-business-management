@@ -9,6 +9,7 @@ import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
 import {
   pathBelongsToPortalSegment,
   rewriteLegacyPortalPrefix,
+  rewriteMismatchedPortalPrefix,
 } from '@/features/auth/portal/portal-segment';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 
@@ -66,6 +67,8 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
   const redirectTarget = useMemo(() => {
     const legacyRewrite = rewriteLegacyPortalPrefix(pathname, access.portalSegment);
     if (legacyRewrite) return legacyRewrite;
+    const portalRewrite = rewriteMismatchedPortalPrefix(pathname, access.portalSegment);
+    if (portalRewrite) return portalRewrite;
     if (!pathBelongsToPortalSegment(pathname, access.portalSegment)) {
       return access.defaultDashboard;
     }

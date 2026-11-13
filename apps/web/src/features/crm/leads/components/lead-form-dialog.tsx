@@ -49,6 +49,9 @@ import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
 import { CrmFieldLabel, CrmInlineFieldError, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { PipelineStageSelectItems, PipelineStageSelectTrigger } from '@/features/crm/pipelines/components/pipeline-stage-select';
 import { LeadTagSelector } from './lead-tag-selector';
+import type { CrmLeadTag } from '@techwin/contracts';
+
+const EMPTY_LEAD_TAGS: readonly CrmLeadTag[] = [];
 
 export const LEAD_FORM_SECONDARY_BTN =
   'h-11 shrink-0 rounded-lg border border-input bg-card px-3.5 text-sm font-medium text-foreground shadow-none hover:bg-muted/50';
@@ -675,7 +678,7 @@ export function LeadFormDialog({
                   <LeadTagSelector
                     value={selectedTagIds}
                     onChange={setSelectedTagIds}
-                    knownTags={isEdit ? (loadedLead?.leadTags ?? []) : []}
+                    knownTags={isEdit ? (loadedLead?.leadTags ?? EMPTY_LEAD_TAGS) : EMPTY_LEAD_TAGS}
                     disabled={pending || loadingLead}
                   />
                 </div>
