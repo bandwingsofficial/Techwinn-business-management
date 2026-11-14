@@ -15,7 +15,7 @@ export class DeleteLeaveTypeHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, leaveTypeId: string): Promise<void> {
-    await this.authz.requireAnyPermission(actor, ['leave.types.manage']);
+    await this.authz.requireAnyPermission(actor, ['leave_types.delete']);
     const counts = await this.leaveTypes.countDependencies(actor.organizationId, leaveTypeId);
     LeaveTypeDeletionPolicy.assertCanDelete(counts);
     await this.leaveTypes.deleteLeaveType(actor.organizationId, leaveTypeId);

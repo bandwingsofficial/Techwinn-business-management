@@ -19,7 +19,7 @@ export class ChangeLeaveTypeStatusHandler {
     leaveTypeId: string,
     status: LeaveTypeStatus,
   ): Promise<LeaveTypeItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.types.manage']);
+    await this.authz.requireAnyPermission(actor, ['leave_types.toggle_status']);
     return this.leaveTypes.changeLeaveTypeStatus(
       actor.organizationId,
       leaveTypeId,

@@ -16,8 +16,7 @@ export class GetLeaveTypeHandler {
 
   async execute(actor: OrgAccessActor, leaveTypeId: string): Promise<LeaveTypeItem> {
     await this.authz.requireAnyPermission(actor, [
-      'leave.types.read',
-      'leave.types.manage',
+      'leave_types.view',
       'leave.requests.create',
     ]);
     return this.leaveTypes.getLeaveType(actor.organizationId, leaveTypeId);

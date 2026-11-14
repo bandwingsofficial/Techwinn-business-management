@@ -43,7 +43,8 @@ const SEARCH_DEBOUNCE_MS = 350;
 export function EmployeeLeaveRecordsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { dashboardBreadcrumb } = usePortalNavigation();
+  const { dashboardBreadcrumb, toPortalPath } = usePortalNavigation();
+  const recordsBasePath = toPortalPath('/admin/employee-leave-records');
 
   const configurationIdParam = searchParams.get('configurationId') ?? '';
   const searchParam = searchParams.get('search') ?? '';
@@ -70,9 +71,9 @@ export function EmployeeLeaveRecordsPage() {
         if (value === null || value === '') params.delete(key);
         else params.set(key, value);
       }
-      router.replace(`/admin/employee-leave-records?${params.toString()}`);
+      router.replace(`${recordsBasePath}?${params.toString()}`);
     },
-    [router, searchParams],
+    [router, searchParams, recordsBasePath],
   );
 
   useEffect(() => {
@@ -81,9 +82,8 @@ export function EmployeeLeaveRecordsPage() {
       if (configurationIdParam) updateParams({ configurationId: null, page: '1' });
       return;
     }
-    if (configurationIdParam !== selectedConfiguration.id) {
-      updateParams({ configurationId: selectedConfiguration.id, page: '1' });
-    }
+    if (configurationIdParam === selectedConfiguration.id) return;
+    updateParams({ configurationId: selectedConfiguration.id, page: '1' });
   }, [configsLoading, selectedConfiguration, configurationIdParam, updateParams]);
 
   useEffect(() => {

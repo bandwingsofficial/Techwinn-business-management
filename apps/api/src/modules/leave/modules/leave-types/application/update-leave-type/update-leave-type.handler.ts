@@ -22,7 +22,7 @@ export class UpdateLeaveTypeHandler {
     leaveTypeId: string,
     input: UpdateLeaveTypeRequest,
   ): Promise<LeaveTypeItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.types.update', 'leave.types.manage']);
+    await this.authz.requireAnyPermission(actor, ['leave_types.update']);
     const validated = LeaveTypeUpdatePolicy.validate(input);
     if (validated.name) {
       const existingNameId = await this.leaveTypes.findIdByNameInsensitive(

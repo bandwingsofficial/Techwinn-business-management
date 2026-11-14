@@ -50,5 +50,6 @@ export * from './whatsapp';
 export * from './attendance';
 export * from './attendance-permission-keys';
 export * from './org-calendar-permission-keys';
+export * from './leave-types-permission-keys';
 export * from './org-calendar';
 export * from './leave';

@@ -38,12 +38,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/attendance/punch': ['attendance.punch.view'],
   /** Organisation Calendar admin page — read-only access uses `organisation_calendar.view`. */
   '/admin/calendar': ['organisation_calendar.view'],
-  '/admin/leave-types': [
-    'leave.types.read',
-    'leave.types.create',
-    'leave.types.update',
-    'leave.types.manage',
-  ],
+  '/admin/leave-types': ['leave_types.view'],
   '/admin/leave-balances': [
     'leave.config.read',
     'leave.config.manage',

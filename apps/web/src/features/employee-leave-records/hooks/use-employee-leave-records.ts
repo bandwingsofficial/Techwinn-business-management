@@ -45,15 +45,9 @@ export function useEmployeeLeaveRecords(
   }, [refetch]);
 
   useEffect(() => {
-    const unsubscribe = subscribeLeaveDataChanged(() => {
+    return subscribeLeaveDataChanged(() => {
       void refetch();
     });
-    const onFocus = () => void refetch();
-    window.addEventListener('focus', onFocus);
-    return () => {
-      unsubscribe();
-      window.removeEventListener('focus', onFocus);
-    };
   }, [refetch]);
 
   return { data, loading, error, refetch };

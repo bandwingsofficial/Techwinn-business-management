@@ -17,8 +17,7 @@ export class ListLeaveTypesHandler {
 
   async execute(actor: OrgAccessActor, query: LeaveTypeListQuery): Promise<LeaveTypeListResponse> {
     await this.authz.requireAnyPermission(actor, [
-      'leave.types.read',
-      'leave.types.manage',
+      'leave_types.view',
       'leave.requests.create',
     ]);
     return this.leaveTypes.listLeaveTypes(actor.organizationId, query);

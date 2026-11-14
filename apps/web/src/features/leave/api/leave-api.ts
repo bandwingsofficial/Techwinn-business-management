@@ -35,9 +35,14 @@ import type {
 import { apiRequest } from '@/shared/api/api-client';
 import { buildQueryString } from '@/features/admin/crm/utils/query-string';
 import { notifyLeaveDataChanged } from '@/features/leave/lib/leave-data-sync';
+import {
+  invalidateLeaveYearConfigurationsCache,
+  listLeaveYearConfigurationsCached,
+} from './leave-year-configurations-cache';
 
 async function afterLeaveMutation<T>(run: () => Promise<T>): Promise<T> {
   const result = await run();
+  invalidateLeaveYearConfigurationsCache();
   notifyLeaveDataChanged();
   return result;
 }
@@ -72,11 +77,9 @@ export type LeaveBalanceTransactionListResponse = {
 
 export function listLeaveYearConfigurations(
   signal?: AbortSignal,
+  options?: { readonly force?: boolean },
 ): Promise<readonly LeaveYearConfigurationItem[]> {
-  return apiRequest<readonly LeaveYearConfigurationItem[]>(LEAVE_ROUTES.yearConfigurations, {
-    auth: true,
-    signal,
-  });
+  return listLeaveYearConfigurationsCached(signal, options);
 }
 
 export function getLeaveYearConfigurationByYear(

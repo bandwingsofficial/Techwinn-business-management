@@ -7,6 +7,7 @@ import {
   expandLegacyProjectsPermissions,
   expandLegacyEmployeePermissions,
   expandLegacyOrgCalendarPermissions,
+  expandLegacyLeaveTypesPermissions,
   stripOrphanedLegacyCrmPermissionKeys,
   hasUnrestrictedOrgPermissions,
   type MyOrganizationRole,
@@ -55,6 +56,7 @@ import {
 import { portalDashboardPath } from '../portal/portal-segment';
 
 const ACCESS_DENIED_REFRESH_INTERVAL_MS = 5_000;
+const VISIBILITY_PERMISSION_REFRESH_INTERVAL_MS = 120_000;
 
 export type PermissionsContextValue = {
   readonly portal: PortalKind;
@@ -166,6 +168,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
             response.fullAccess ??
             hasUnrestrictedOrgPermissions(response.permissions),
         });
+        lastSuccessfulPermissionLoadAt.current = Date.now();
         if (revalidateRoute) {
           router.refresh();
         }
@@ -227,6 +230,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   );
 
   const lastSilentRefreshAt = useRef(0);
+  const lastSuccessfulPermissionLoadAt = useRef(0);
 
   useEffect(() => {
     return onAccessDenied(() => {
@@ -265,6 +269,10 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastSuccessfulPermissionLoadAt.current < VISIBILITY_PERMISSION_REFRESH_INTERVAL_MS) {
+        return;
+      }
       const generation = ++loadGenerationRef.current;
       void runPermissionLoad({ generation, silent: true });
     };
@@ -292,6 +300,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     expandLegacyEmployeePermissions(permissionSet);
     expandLegacyPmTaskCalendarPermissions(permissionSet);
     expandLegacyOrgCalendarPermissions(permissionSet);
+    expandLegacyLeaveTypesPermissions(permissionSet);
     const fullAccess =
       snapshot.fullAccess || hasUnrestrictedOrgPermissions(permissions);
     const has = (key: PermissionKey) => fullAccess || permissionSet.has(key);

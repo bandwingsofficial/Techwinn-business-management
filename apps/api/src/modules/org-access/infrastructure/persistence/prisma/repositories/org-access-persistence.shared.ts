@@ -7,6 +7,7 @@ import {
   expandLegacyProjectsPermissions,
   expandLegacyEmployeePermissions,
   expandLegacyOrgCalendarPermissions,
+  expandLegacyLeaveTypesPermissions,
   ensurePermissionPrerequisites,
   permissionKeysFromRoleStorage,
   IMMUTABLE_ORG_ROLE_KEYS,
@@ -92,6 +93,7 @@ export function uniquePermissionKeys(keys: readonly string[]): PermissionKey[] {
   expandLegacyProjectsPermissions(seen);
   expandLegacyEmployeePermissions(seen);
   expandLegacyOrgCalendarPermissions(seen);
+  expandLegacyLeaveTypesPermissions(seen);
   return [...ensurePermissionPrerequisites([...seen])].sort();
 }
 

@@ -57,7 +57,9 @@ export function useOrgAccessPermissionRealtime(handlers: {
             continue;
           }
           failures += 1;
-          await sleep(Math.min(MAX_BACKOFF_MS, 1_000 * 2 ** Math.min(failures, 5)));
+          const transientBackoff = isApiError(error) && error.isTransient;
+          const baseMs = transientBackoff ? 5_000 : 1_000;
+          await sleep(Math.min(MAX_BACKOFF_MS, baseMs * 2 ** Math.min(failures, 5)));
         }
       }
     };

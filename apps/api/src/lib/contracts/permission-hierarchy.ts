@@ -9,6 +9,7 @@ import {
 } from './pm-daily-tasks-permissions.js';
 import { PM_TASK_CALENDAR_PERMISSION_KEYS } from './pm-task-calendar-permissions.js';
 import { LEGACY_ORG_CALENDAR_PERMISSION_KEYS } from './org-calendar-permission-keys.js';
+import { LEAVE_TYPES_PERMISSION_KEYS, LEGACY_LEAVE_TYPES_PERMISSION_KEYS } from './leave-types-permission-keys.js';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions.js';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions.js';
 import {
@@ -285,12 +286,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'leave-types',
             label: 'Leave Types',
             href: '/admin/leave-types',
-            permissionKeys: [
-              'leave.types.read',
-              'leave.types.create',
-              'leave.types.update',
-              'leave.types.manage',
-            ],
+            permissionKeys: [...LEAVE_TYPES_PERMISSION_KEYS],
           },
           {
             id: 'leave-balances',
@@ -418,6 +414,7 @@ const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_LEADS_PERMISSION_KEYS,
   ...LEGACY_CLIENTS_PERMISSION_KEYS,
   ...LEGACY_ORG_CALENDAR_PERMISSION_KEYS,
+  ...LEGACY_LEAVE_TYPES_PERMISSION_KEYS,
   ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);

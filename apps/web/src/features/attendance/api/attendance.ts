@@ -22,6 +22,10 @@ import type {
 } from '@techwin/validation';
 import { apiRequest } from '@/shared/api/api-client';
 import { buildQueryString } from '@/features/admin/crm/utils/query-string';
+import {
+  fetchAttendanceSettingsCached,
+  invalidateAttendanceSettingsCache,
+} from './attendance-settings-cache';
 
 export function fetchMyTodayAttendance(signal?: AbortSignal): Promise<AttendanceMyTodayResponse> {
   return apiRequest<AttendanceMyTodayResponse>(ATTENDANCE_ROUTES.myToday, { auth: true, signal });
@@ -72,19 +76,23 @@ export function punchOut(
 }
 
 export function fetchAttendanceSettings(signal?: AbortSignal): Promise<AttendanceSettingsResponse> {
-  return apiRequest<AttendanceSettingsResponse>(ATTENDANCE_ROUTES.settings, { auth: true, signal });
+  return fetchAttendanceSettingsCached(signal);
 }
 
-export function saveAttendanceSettings(
+export { invalidateAttendanceSettingsCache };
+
+export async function saveAttendanceSettings(
   body: UpsertAttendanceSettingsRequest,
   signal?: AbortSignal,
 ): Promise<AttendanceSettingsResponse> {
-  return apiRequest<AttendanceSettingsResponse>(ATTENDANCE_ROUTES.settings, {
+  const response = await apiRequest<AttendanceSettingsResponse>(ATTENDANCE_ROUTES.settings, {
     auth: true,
     method: 'PATCH',
     body,
     signal,
   });
+  invalidateAttendanceSettingsCache();
+  return response;
 }
 
 export function listAttendanceRecords(

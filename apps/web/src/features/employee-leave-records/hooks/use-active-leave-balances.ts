@@ -12,10 +12,10 @@ export function useActiveLeaveBalances() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async (signal?: AbortSignal) => {
+  const refetch = useCallback(async (signal?: AbortSignal, force = false) => {
     setLoading(true);
     try {
-      const rows = await listLeaveYearConfigurations(signal);
+      const rows = await listLeaveYearConfigurations(signal, { force });
       setConfigurations(rows.filter((row) => row.status === 'ACTIVE'));
       setError(null);
     } catch (failure) {
@@ -30,7 +30,7 @@ export function useActiveLeaveBalances() {
     const controller = new AbortController();
     void refetch(controller.signal);
     const unsubscribe = subscribeLeaveDataChanged(() => {
-      void refetch();
+      void refetch(undefined, true);
     });
     return () => {
       controller.abort();

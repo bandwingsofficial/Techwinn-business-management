@@ -19,7 +19,7 @@ export class CreateLeaveTypeHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, input: CreateLeaveTypeRequest): Promise<LeaveTypeItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.types.create', 'leave.types.manage']);
+    await this.authz.requireAnyPermission(actor, ['leave_types.create']);
     const validated = LeaveTypeCreationPolicy.validate(input);
     const existingNameId = await this.leaveTypes.findIdByNameInsensitive(
       actor.organizationId,

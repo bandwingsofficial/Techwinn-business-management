@@ -63,6 +63,14 @@ import {
 } from '@/features/admin/crm/constants';
 import { describeCrmError } from '@/features/admin/crm/utils/errors';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
+import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
+import {
+  LEAVE_TYPES_CREATE,
+  LEAVE_TYPES_DELETE,
+  LEAVE_TYPES_EXPORT,
+  LEAVE_TYPES_TOGGLE_STATUS,
+  LEAVE_TYPES_UPDATE,
+} from '@techwin/contracts';
 import { cn } from '@/shared/lib/utils';
 import { LeaveTypeFormDialog } from '../components/leave-type-form-dialog';
 import {
@@ -92,11 +100,12 @@ function escapeCsvCell(value: string): string {
 }
 
 function downloadLeaveTypesCsv(items: readonly LeaveTypeItem[], filename = 'leave-types.csv') {
-  const headers = ['Leave Type', 'Code', 'Paid/Unpaid', 'Status'];
+  const headers = ['Leave Type', 'Code', 'Description', 'Paid/Unpaid', 'Status'];
   const rows = items.map((row) =>
     [
       escapeCsvCell(row.name),
       escapeCsvCell(row.code),
+      escapeCsvCell(row.description ?? ''),
       row.kind === 'PAID' ? 'Paid' : 'Unpaid',
       row.status,
     ].join(','),
@@ -128,7 +137,14 @@ function sortLeaveTypes(items: LeaveTypeItem[], sortKey: LeaveTypeSortKey): Leav
 
 export function LeaveTypesPage() {
   const toast = useAdminToast();
+  const access = useAdminAccess();
   const { dashboardBreadcrumb } = usePortalNavigation();
+  const canCreate = access.has(LEAVE_TYPES_CREATE);
+  const canUpdate = access.has(LEAVE_TYPES_UPDATE);
+  const canToggle = access.has(LEAVE_TYPES_TOGGLE_STATUS);
+  const canDelete = access.has(LEAVE_TYPES_DELETE);
+  const canExport = access.has(LEAVE_TYPES_EXPORT);
+  const showRowActions = canUpdate || canToggle || canDelete;
   const { changeLeaveTypeStatus, pending: statusPending } = useChangeLeaveTypeStatus();
   const { deleteLeaveType, pending: deletePending } = useDeleteLeaveType();
   const pending = statusPending || deletePending;
@@ -406,25 +422,29 @@ export function LeaveTypesPage() {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="border-input h-9 shrink-0 border bg-neutral-100 text-foreground shadow-none hover:bg-neutral-200/80"
-                  onClick={handleExport}
-                >
-                  <Download aria-hidden="true" />
-                  Export
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-                  onClick={openCreate}
-                >
-                  <Plus aria-hidden="true" />
-                  Add leave type
-                </Button>
+                {canExport ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-input h-9 shrink-0 border bg-neutral-100 text-foreground shadow-none hover:bg-neutral-200/80"
+                    onClick={handleExport}
+                  >
+                    <Download aria-hidden="true" />
+                    Export
+                  </Button>
+                ) : null}
+                {canCreate ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                    onClick={openCreate}
+                  >
+                    <Plus aria-hidden="true" />
+                    Add leave type
+                  </Button>
+                ) : null}
               </>
             }
           />
@@ -444,7 +464,7 @@ export function LeaveTypesPage() {
             tableClassName="table-fixed [&_[data-slot=table-head]]:h-auto [&_[data-slot=table-head]]:py-3 [&_[data-slot=table-cell]]:py-3"
             tableBodyClassName="[&_[data-slot=table-row]]:border-0 [&_[data-slot=table-row]:hover]:bg-[#f5f5f5]"
             phase={tablePhase}
-            colSpan={5}
+            colSpan={showRowActions ? 5 : 4}
             skeletonColumns={CRM_LEAVE_TYPES_TABLE_SKELETON}
             header={
               <TableRow className="hover:bg-transparent">
@@ -456,9 +476,11 @@ export function LeaveTypesPage() {
                 <TableHead className={cn(CRM_LEAVE_TYPES_TABLE_COLUMN_CLASS.status, 'whitespace-nowrap')}>
                   Status
                 </TableHead>
-                <TableHead className={cn(CRM_LEAVE_TYPES_TABLE_COLUMN_CLASS.actions, 'text-right')}>
-                  Actions
-                </TableHead>
+                {showRowActions ? (
+                  <TableHead className={cn(CRM_LEAVE_TYPES_TABLE_COLUMN_CLASS.actions, 'text-right')}>
+                    Actions
+                  </TableHead>
+                ) : null}
               </TableRow>
             }
             empty={{
@@ -514,61 +536,71 @@ export function LeaveTypesPage() {
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell className={cn(CRM_LEAVE_TYPES_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
-                  <div className="flex w-full shrink-0 items-center justify-end gap-1">
-                    <TableIconButton
-                      label={`Edit ${row.name}`}
-                      tone="default"
-                      className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
-                      disabled={pending}
-                      onClick={() => openEdit(row)}
-                    >
-                      <SquarePen className="size-4" aria-hidden="true" />
-                    </TableIconButton>
-                    <TableIconButton
-                      label={
-                        row.status === 'ACTIVE'
-                          ? `Deactivate ${row.name}`
-                          : `Activate ${row.name}`
-                      }
-                      tone="default"
-                      className={
-                        row.status === 'ACTIVE'
-                          ? 'text-red-800 hover:bg-red-800/10 hover:text-red-900'
-                          : 'text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900'
-                      }
-                      disabled={pending}
-                      onClick={() => setStatusTarget(row)}
-                    >
-                      {row.status === 'ACTIVE' ? (
-                        <ToggleRight className="size-4 stroke-[2]" aria-hidden="true" />
-                      ) : (
-                        <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
-                      )}
-                    </TableIconButton>
-                    <TableIconButton
-                      label={`Delete ${row.name}`}
-                      tone="default"
-                      className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black disabled:opacity-100 disabled:hover:bg-transparent"
-                      disabled={pending}
-                      onClick={() => setDeleteTarget(row)}
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </TableIconButton>
-                  </div>
-                </TableCell>
+                {showRowActions ? (
+                  <TableCell className={cn(CRM_LEAVE_TYPES_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
+                    <div className="flex w-full shrink-0 items-center justify-end gap-1">
+                      {canUpdate ? (
+                        <TableIconButton
+                          label={`Edit ${row.name}`}
+                          tone="default"
+                          className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+                          disabled={pending}
+                          onClick={() => openEdit(row)}
+                        >
+                          <SquarePen className="size-4" aria-hidden="true" />
+                        </TableIconButton>
+                      ) : null}
+                      {canToggle ? (
+                        <TableIconButton
+                          label={
+                            row.status === 'ACTIVE'
+                              ? `Deactivate ${row.name}`
+                              : `Activate ${row.name}`
+                          }
+                          tone="default"
+                          className={
+                            row.status === 'ACTIVE'
+                              ? 'text-red-800 hover:bg-red-800/10 hover:text-red-900'
+                              : 'text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900'
+                          }
+                          disabled={pending}
+                          onClick={() => setStatusTarget(row)}
+                        >
+                          {row.status === 'ACTIVE' ? (
+                            <ToggleRight className="size-4 stroke-[2]" aria-hidden="true" />
+                          ) : (
+                            <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
+                          )}
+                        </TableIconButton>
+                      ) : null}
+                      {canDelete ? (
+                        <TableIconButton
+                          label={`Delete ${row.name}`}
+                          tone="default"
+                          className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black disabled:opacity-100 disabled:hover:bg-transparent"
+                          disabled={pending}
+                          onClick={() => setDeleteTarget(row)}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </TableIconButton>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </DataTable>
         </div>
       </section>
 
-      <LeaveTypeFormDialog
-        open={formOpen}
-        editing={editing}
-        onOpenChange={setFormOpen}
-        onSaved={refetch}
-      />
+      {canCreate || (editing && canUpdate) ? (
+        <LeaveTypeFormDialog
+          open={formOpen}
+          editing={editing}
+          onOpenChange={setFormOpen}
+          onSaved={refetch}
+        />
+      ) : null}
 
       <AlertDialog
         open={statusTarget !== null}

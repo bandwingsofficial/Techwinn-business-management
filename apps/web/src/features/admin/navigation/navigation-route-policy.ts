@@ -32,6 +32,7 @@ const ORGANIZATION_WORKSPACE_ROUTES: readonly string[] = [
   '/admin/attendance',
   '/admin/attendance/punch',
   '/admin/calendar',
+  '/admin/leave-types',
   '/admin/whatsapp/inbox',
 ];
 
