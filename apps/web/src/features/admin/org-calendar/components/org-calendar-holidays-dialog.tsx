@@ -34,11 +34,15 @@ export function OrgCalendarHolidaysDialog({
   onOpenChange,
   onChanged,
   onEdit,
+  canEdit = true,
+  canDelete = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void | Promise<void>;
   onEdit: (event: OrgCalendarEventItem) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const toast = useAdminToast();
   const [year, setYear] = useState(new Date().getFullYear());
@@ -88,7 +92,10 @@ export function OrgCalendarHolidaysDialog({
         sourceYear: year,
         targetYear: Number(duplicateTarget),
       });
-      toast.success(`Created ${res.created} holiday(s) for ${duplicateTarget}.`);
+      toast.success(
+        `Copied ${res.created} holiday(s) to ${duplicateTarget}` +
+          (res.skipped > 0 ? `; skipped ${res.skipped} duplicate(s).` : '.'),
+      );
       await onChanged();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Duplicate failed.');
@@ -179,14 +186,25 @@ export function OrgCalendarHolidaysDialog({
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <Button type="button" size="sm" variant="ghost" onClick={() => onEdit(item)}>
-                              Edit
-                            </Button>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => void onDelete(item.id)}>
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
+                          {canEdit || canDelete ? (
+                            <div className="flex gap-1">
+                              {canEdit ? (
+                                <Button type="button" size="sm" variant="ghost" onClick={() => onEdit(item)}>
+                                  Edit
+                                </Button>
+                              ) : null}
+                              {canDelete ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => void onDelete(item.id)}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     ))

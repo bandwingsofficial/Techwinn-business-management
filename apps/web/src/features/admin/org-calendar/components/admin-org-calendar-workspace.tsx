@@ -1,7 +1,17 @@
 'use client';
 
 import type { OrgCalendarEventItem, OrgCalendarMonthDay } from '@techwin/contracts';
-import { Plus } from 'lucide-react';
+import {
+  ORG_CALENDAR_CREATE,
+  ORG_CALENDAR_DELETE,
+  ORG_CALENDAR_EXPORT,
+  ORG_CALENDAR_MANAGE_HOLIDAYS,
+  ORG_CALENDAR_MANAGE_WORKING_DAYS,
+  ORG_CALENDAR_UPDATE,
+  ORG_CALENDAR_VIEW,
+  ORG_CALENDAR_VIEW_ALL,
+} from '@techwin/contracts';
+import { Download, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +27,8 @@ import { OrgCalendarHolidaysDialog } from './org-calendar-holidays-dialog';
 import { OrgCalendarMonthGrid } from './org-calendar-month-grid';
 import { OrgCalendarMonthNav } from './org-calendar-month-nav';
 import { OrgCalendarDateManageDialog } from './org-calendar-date-manage-dialog';
+import { exportOrgCalendar } from '../api/org-calendar-api';
+import { useAdminToast } from '@/features/admin/components/toast';
 
 const PIPELINE_SECONDARY_BTN =
   'border-input h-9 shrink-0 border bg-neutral-100 text-foreground shadow-none hover:bg-neutral-200/80';
@@ -24,8 +36,10 @@ const PIPELINE_SECONDARY_BTN =
 const PIPELINE_PRIMARY_BTN =
   'h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900';
 
-function resolveOrgCalendarScope(has: (key: 'calendar.view' | 'calendar.view_all' | 'calendar.create' | 'calendar.manage_holidays') => boolean) {
-  if (has('calendar.view_all') || has('calendar.create') || has('calendar.manage_holidays')) {
+function resolveOrgCalendarScope(
+  has: (key: typeof ORG_CALENDAR_VIEW | typeof ORG_CALENDAR_VIEW_ALL) => boolean,
+) {
+  if (has(ORG_CALENDAR_VIEW) || has(ORG_CALENDAR_VIEW_ALL)) {
     return 'organization' as const;
   }
   return 'member' as const;
@@ -33,8 +47,15 @@ function resolveOrgCalendarScope(has: (key: 'calendar.view' | 'calendar.view_all
 
 export function AdminOrgCalendarWorkspace() {
   const access = useAdminAccess();
+  const toast = useAdminToast();
   const monthScope = resolveOrgCalendarScope(access.has);
-  const readOnly = monthScope === 'member';
+  const canViewDateDetails = access.has(ORG_CALENDAR_VIEW_ALL);
+  const canManageDate =
+    access.has(ORG_CALENDAR_UPDATE) || access.has(ORG_CALENDAR_MANAGE_WORKING_DAYS);
+  const canCreate = access.has(ORG_CALENDAR_CREATE);
+  const canManageHolidays = access.has(ORG_CALENDAR_MANAGE_HOLIDAYS);
+  const canExport = access.has(ORG_CALENDAR_EXPORT);
+  const readOnly = !canCreate && !canManageDate && !canManageHolidays && !canExport;
   const orgTimeZone = useAttendanceOrgTimeZone();
   const orgTodayKey = useMemo(() => todayKeyInTimeZone(orgTimeZone), [orgTimeZone]);
   const today = orgTodayKey;
@@ -48,9 +69,7 @@ export function AdminOrgCalendarWorkspace() {
   const [holidaysOpen, setHolidaysOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<OrgCalendarEventItem | null>(null);
 
-  const canManageDate = !readOnly && (access.has('calendar.create') || access.has('calendar.update'));
-  const canCreate = !readOnly && access.has('calendar.create');
-  const canManageHolidays = !readOnly && access.has('calendar.manage_holidays');
+  const [exporting, setExporting] = useState(false);
 
   const { data, loading, error, reload } = useOrgCalendarMonth({
     year,
@@ -75,12 +94,49 @@ export function AdminOrgCalendarWorkspace() {
 
   function handleSelectDate(dateKey: string) {
     setSelectedDate(dateKey);
-    openDateManage(dateKey);
+    if (canManageDate || canViewDateDetails) {
+      openDateManage(dateKey);
+    }
+  }
+
+  async function handleExport() {
+    const from = `${year}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const to = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    setExporting(true);
+    try {
+      const items = await exportOrgCalendar(from, to);
+      const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `organisation-calendar-${monthKey}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success('Calendar exported.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Export failed.');
+    } finally {
+      setExporting(false);
+    }
   }
 
   const headerActions =
-    canCreate || canManageHolidays ? (
+    canCreate || canManageHolidays || canExport ? (
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {canExport ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={PIPELINE_SECONDARY_BTN}
+            disabled={exporting}
+            onClick={() => void handleExport()}
+          >
+            <Download className="size-4" aria-hidden="true" />
+            Export
+          </Button>
+        ) : null}
         {canManageHolidays ? (
           <Button
             type="button"
@@ -179,29 +235,37 @@ export function AdminOrgCalendarWorkspace() {
         canManage={canManageDate}
         onSaved={reload}
         onEditEvent={(ev) => {
+          if (!access.has(ORG_CALENDAR_UPDATE)) return;
           setEditEvent(ev);
           setDateManageOpen(false);
           setEventDialogOpen(true);
         }}
       />
 
-      <OrgCalendarEventDialog
-        open={eventDialogOpen}
-        onOpenChange={setEventDialogOpen}
-        initialDate={manageDateKey ?? selectedDate ?? today}
-        editEvent={editEvent}
-        onSaved={reload}
-      />
-      <OrgCalendarHolidaysDialog
-        open={holidaysOpen}
-        onOpenChange={setHolidaysOpen}
-        onChanged={reload}
-        onEdit={(ev) => {
-          setEditEvent(ev);
-          setHolidaysOpen(false);
-          setEventDialogOpen(true);
-        }}
-      />
+      {canCreate || (editEvent && access.has(ORG_CALENDAR_UPDATE)) ? (
+        <OrgCalendarEventDialog
+          open={eventDialogOpen}
+          onOpenChange={setEventDialogOpen}
+          initialDate={manageDateKey ?? selectedDate ?? today}
+          editEvent={editEvent}
+          onSaved={reload}
+        />
+      ) : null}
+      {canManageHolidays ? (
+        <OrgCalendarHolidaysDialog
+          open={holidaysOpen}
+          onOpenChange={setHolidaysOpen}
+          onChanged={reload}
+          canEdit={access.has(ORG_CALENDAR_UPDATE)}
+          canDelete={access.has(ORG_CALENDAR_DELETE)}
+          onEdit={(ev) => {
+            if (!access.has(ORG_CALENDAR_UPDATE)) return;
+            setEditEvent(ev);
+            setHolidaysOpen(false);
+            setEventDialogOpen(true);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

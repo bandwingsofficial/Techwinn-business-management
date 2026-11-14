@@ -36,8 +36,8 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/employees': ['employees.view'],
   '/admin/attendance': ['attendance.records.view'],
   '/admin/attendance/punch': ['attendance.punch.view'],
-  /** Org calendar admin — not the employee self-service `/employee/calendar` (`calendar.view`). */
-  '/admin/calendar': ['calendar.view_all', 'calendar.manage_holidays'],
+  /** Organisation Calendar admin page — read-only access uses `organisation_calendar.view`. */
+  '/admin/calendar': ['organisation_calendar.view'],
   '/admin/leave-types': [
     'leave.types.read',
     'leave.types.create',
@@ -85,7 +85,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/employee/task-calendar': ['project_management.task_calendar.view'],
   '/employee/attendance': ['attendance.records.view'],
   '/employee/attendance/punch': ['attendance.punch.view'],
-  '/employee/calendar': ['calendar.view'],
+  '/employee/calendar': ['organisation_calendar.view'],
   '/employee/leave': [
     'leave.requests.create',
     'leave.requests.read_own',

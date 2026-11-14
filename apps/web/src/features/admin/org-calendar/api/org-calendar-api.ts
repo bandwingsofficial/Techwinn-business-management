@@ -99,12 +99,15 @@ export async function deleteOrgCalendarEvent(id: string): Promise<void> {
 
 export async function duplicateOrgCalendarHolidays(
   body: DuplicateOrgCalendarHolidaysRequest,
-): Promise<{ created: number }> {
-  const result = await apiRequest<{ created: number }>(ORG_CALENDAR_ROUTES.holidaysDuplicate, {
-    auth: true,
-    method: 'POST',
-    body,
-  });
+): Promise<{ created: number; skipped: number }> {
+  const result = await apiRequest<{ created: number; skipped: number }>(
+    ORG_CALENDAR_ROUTES.holidaysDuplicate,
+    {
+      auth: true,
+      method: 'POST',
+      body,
+    },
+  );
   notifyOrgCalendarChanged();
   return result;
 }

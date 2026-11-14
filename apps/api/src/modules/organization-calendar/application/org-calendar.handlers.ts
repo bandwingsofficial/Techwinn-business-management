@@ -6,6 +6,16 @@ import type {
   OrgCalendarMonthResponse,
 } from '#contracts';
 import {
+  ORG_CALENDAR_CREATE,
+  ORG_CALENDAR_DELETE,
+  ORG_CALENDAR_EXPORT,
+  ORG_CALENDAR_MANAGE_HOLIDAYS,
+  ORG_CALENDAR_MANAGE_WORKING_DAYS,
+  ORG_CALENDAR_UPDATE,
+  ORG_CALENDAR_VIEW,
+  ORG_CALENDAR_VIEW_ALL,
+} from '#contracts';
+import {
   ORG_CALENDAR_REPOSITORY,
   type OrgCalendarRepository,
 } from '../domain/repositories/org-calendar.repository.js';
@@ -14,6 +24,7 @@ import { OrgCalendarAuthorizationService } from './services/org-calendar-authori
 import { OrgCalendarAttendanceReconcileService } from './services/org-calendar-attendance-reconcile.service.js';
 import { listDateKeysInclusive } from './shared/org-calendar-date-range.js';
 import type { OrgAccessActor } from '../../org-access/index.js';
+import { OrgCalendarValidationError } from '../domain/errors/org-calendar.errors.js';
 
 @Injectable()
 export class ListOrgCalendarEventsHandler {
@@ -26,7 +37,7 @@ export class ListOrgCalendarEventsHandler {
     actor: OrgAccessActor,
     query: Parameters<OrgCalendarRepository['listEvents']>[1],
   ): Promise<OrgCalendarEventListResponse> {
-    await this.authz.requirePermissions(actor, ['calendar.view', 'calendar.view_all']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_VIEW, ORG_CALENDAR_VIEW_ALL]);
     return this.repository.listEvents(actor.organizationId, query);
   }
 }
@@ -42,7 +53,7 @@ export class GetOrgCalendarMonthHandler {
     actor: OrgAccessActor,
     query: Parameters<OrgCalendarRepository['getMonth']>[1],
   ): Promise<OrgCalendarMonthResponse> {
-    await this.authz.requirePermissions(actor, ['calendar.view', 'calendar.view_all']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_VIEW, ORG_CALENDAR_VIEW_ALL]);
     return this.repository.getMonth(actor.organizationId, query);
   }
 }
@@ -58,7 +69,7 @@ export class GetEmployeeOrgCalendarMonthHandler {
     actor: OrgAccessActor,
     query: Parameters<OrgCalendarRepository['getEmployeeMonth']>[2],
   ): Promise<OrgCalendarMonthResponse> {
-    await this.authz.requirePermissions(actor, ['calendar.view']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_VIEW]);
     const employeeId = await this.authz.requireEmployeeId(actor);
     return this.repository.getEmployeeMonth(actor.organizationId, employeeId, query);
   }
@@ -72,7 +83,7 @@ export class GetOrgCalendarEventHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, eventId: string): Promise<OrgCalendarEventItem> {
-    await this.authz.requirePermissions(actor, ['calendar.view', 'calendar.view_all']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_VIEW, ORG_CALENDAR_VIEW_ALL]);
     return this.repository.getEvent(actor.organizationId, eventId);
   }
 }
@@ -89,7 +100,7 @@ export class CreateOrgCalendarEventHandler {
     actor: OrgAccessActor,
     input: OrgCalendarEventWriteInput,
   ): Promise<OrgCalendarEventItem> {
-    await this.authz.requirePermissions(actor, ['calendar.create']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_CREATE]);
     const item = await this.repository.createEvent(actor.organizationId, actor.adminId, input);
     await this.reconcile.reconcileDateRange(
       actor.organizationId,
@@ -113,7 +124,7 @@ export class UpdateOrgCalendarEventHandler {
     eventId: string,
     input: OrgCalendarEventWriteInput,
   ): Promise<OrgCalendarEventItem> {
-    await this.authz.requirePermissions(actor, ['calendar.update']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_UPDATE]);
     const previous = await this.repository.getEvent(actor.organizationId, eventId);
     const item = await this.repository.updateEvent(actor.organizationId, eventId, actor.adminId, input);
     const dates = new Set([
@@ -136,8 +147,13 @@ export class DeleteOrgCalendarEventHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, eventId: string): Promise<void> {
-    await this.authz.requirePermissions(actor, ['calendar.delete']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_DELETE]);
     const previous = await this.repository.getEvent(actor.organizationId, eventId);
+    if (previous.eventType === 'WEEKLY_OFF') {
+      throw new OrgCalendarValidationError(
+        'Weekly off rules cannot be deleted with ordinary event deletion. Use Manage Date to change the classification instead.',
+      );
+    }
     await this.repository.deleteEvent(actor.organizationId, eventId);
     await this.reconcile.reconcileDateRange(
       actor.organizationId,
@@ -158,7 +174,7 @@ export class ListOrgCalendarHolidaysHandler {
     actor: OrgAccessActor,
     query: Parameters<OrgCalendarRepository['listHolidays']>[1],
   ): Promise<OrgCalendarEventListResponse> {
-    await this.authz.requirePermissions(actor, ['calendar.manage_holidays', 'calendar.view_all']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_MANAGE_HOLIDAYS, ORG_CALENDAR_VIEW_ALL]);
     return this.repository.listHolidays(actor.organizationId, query);
   }
 }
@@ -176,8 +192,8 @@ export class DuplicateOrgCalendarHolidaysHandler {
     sourceYear: number,
     targetYear: number,
     eventTypes?: readonly OrgCalendarEventItem['eventType'][],
-  ): Promise<{ created: number }> {
-    await this.authz.requirePermissions(actor, ['calendar.manage_holidays']);
+  ): Promise<{ created: number; skipped: number }> {
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_MANAGE_HOLIDAYS]);
     const result = await this.repository.duplicateHolidaysToYear(
       actor.organizationId,
       actor.adminId,
@@ -206,7 +222,7 @@ export class ExportOrgCalendarHandler {
     from: string,
     to: string,
   ): Promise<readonly OrgCalendarEventItem[]> {
-    await this.authz.requirePermissions(actor, ['calendar.export', 'calendar.view_all']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_EXPORT, ORG_CALENDAR_VIEW_ALL]);
     return this.repository.exportEvents(actor.organizationId, from, to);
   }
 }
@@ -224,7 +240,7 @@ export class ReplaceOrgCalendarDateClassificationHandler {
     dateKey: string,
     create: OrgCalendarEventWriteInput | null,
   ): Promise<OrgCalendarMonthDay> {
-    await this.authz.requirePermissions(actor, ['calendar.update', 'calendar.create']);
+    await this.authz.requirePermissions(actor, [ORG_CALENDAR_UPDATE, ORG_CALENDAR_MANAGE_WORKING_DAYS]);
     const day = await this.repository.replaceDateClassification(
       actor.organizationId,
       actor.adminId,
@@ -247,7 +263,11 @@ export class ClassifyOrgCalendarDateHandler {
     actor: OrgAccessActor,
     date: string,
   ): Promise<{ date: string; dayKind: 'WORKING' | 'WEEKLY_OFF' | 'HOLIDAY' }> {
-    await this.authz.requirePermissions(actor, ['calendar.view', 'calendar.view_all', 'tasks.assign']);
+    await this.authz.requirePermissions(actor, [
+      ORG_CALENDAR_VIEW,
+      ORG_CALENDAR_VIEW_ALL,
+      'tasks.assign',
+    ]);
     const dayKind = await this.repository.classifyDateForOrganization(actor.organizationId, date);
     return { date, dayKind };
   }

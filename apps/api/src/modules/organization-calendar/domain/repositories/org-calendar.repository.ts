@@ -56,7 +56,7 @@ export interface OrgCalendarRepository {
     sourceYear: number,
     targetYear: number,
     eventTypes?: readonly OrgCalendarEventItem['eventType'][],
-  ): Promise<{ created: number }>;
+  ): Promise<{ created: number; skipped: number }>;
 
   exportEvents(
     organizationId: string,

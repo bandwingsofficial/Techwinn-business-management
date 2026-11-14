@@ -103,7 +103,10 @@ export function DailyTasksWorkspace({
   const { has, hasAny } = useAdminAccess();
   const { hasAny: hasPermissionAny } = usePermissions();
   const isPlatformSuperAdmin = useIsPlatformSuperAdmin();
-  const canLoadOrgCalendarMonth = hasPermissionAny('calendar.view_all', 'calendar.view');
+  const canLoadOrgCalendarMonth = hasPermissionAny(
+    'organisation_calendar.view_all',
+    'organisation_calendar.view',
+  );
   const {
     canAssign,
     canViewDetails,

@@ -4,6 +4,9 @@ import {
   ATTENDANCE_RECORDS_MANAGE_SETTINGS,
   ATTENDANCE_RECORDS_PAGE_VIEW,
   hasAttendancePermission,
+  hasOrgCalendarPermission,
+  ORG_CALENDAR_VIEW,
+  ORG_CALENDAR_VIEW_ALL,
   type AttendanceSettingsResponse,
 } from '#contracts';
 import type { OrgAccessActor } from '../../../org-access/index.js';
@@ -26,8 +29,8 @@ export class GetAttendanceSettingsHandler {
     const canRead =
       actor.isPlatformSuperAdmin ||
       hasAttendancePermission(effective, ATTENDANCE_RECORDS_MANAGE_SETTINGS) ||
-      effective.has('calendar.view') ||
-      effective.has('calendar.view_all') ||
+      hasOrgCalendarPermission(effective, ORG_CALENDAR_VIEW) ||
+      hasOrgCalendarPermission(effective, ORG_CALENDAR_VIEW_ALL) ||
       hasAttendancePermission(effective, ATTENDANCE_PUNCH_PAGE_VIEW) ||
       hasAttendancePermission(effective, ATTENDANCE_RECORDS_PAGE_VIEW);
     if (!canRead) {

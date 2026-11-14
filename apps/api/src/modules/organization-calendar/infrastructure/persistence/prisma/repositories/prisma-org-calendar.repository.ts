@@ -188,45 +188,72 @@ export class PrismaOrgCalendarRepository implements OrgCalendarRepository {
     sourceYear: number,
     targetYear: number,
     eventTypes?: readonly OrgCalendarEventItem['eventType'][],
-  ): Promise<{ created: number }> {
-    if (sourceYear === targetYear) return { created: 0 };
+  ): Promise<{ created: number; skipped: number }> {
+    if (sourceYear === targetYear) return { created: 0, skipped: 0 };
     const from = `${sourceYear}-01-01`;
     const to = `${sourceYear}-12-31`;
+    const targetFrom = `${targetYear}-01-01`;
+    const targetTo = `${targetYear}-12-31`;
     const types = eventTypes?.length ? eventTypes : [...HOLIDAY_FILTER_TYPES];
     const rows = await this.loadRawEvents(organizationId, from, to, {
       eventTypes: types,
       activeOnly: true,
     });
+    const targetPeers = await this.loadExpandedForConflict(organizationId, targetFrom, targetTo);
     let created = 0;
-    for (const item of rows) {
-      const startMd = item.startDate.slice(5);
-      const endMd = item.endDate.slice(5);
-      const newStart = `${targetYear}-${startMd}`;
-      const yearSpan = item.startDate.slice(0, 4) !== item.endDate.slice(0, 4);
-      const newEnd = yearSpan ? `${targetYear + 1}-${endMd}` : `${targetYear}-${endMd}`;
-      const input: OrgCalendarEventWriteInput = {
-        title: item.title,
-        description: item.description,
-        eventType: item.eventType,
-        startDate: newStart,
-        endDate: newEnd,
-        isFullDay: item.isFullDay,
-        startTimeMinutes: item.startTimeMinutes,
-        endTimeMinutes: item.endTimeMinutes,
-        color: item.color,
-        isActive: true,
-        appliesToAllEmployees: item.appliesToAllEmployees,
-        employeeIds: item.employeeIds,
-        recurrence: item.recurrence,
-      };
-      try {
-        await this.createEvent(organizationId, adminId, input);
+    let skipped = 0;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of rows) {
+        const startMd = item.startDate.slice(5);
+        const endMd = item.endDate.slice(5);
+        const newStart = `${targetYear}-${startMd}`;
+        const yearSpan = item.startDate.slice(0, 4) !== item.endDate.slice(0, 4);
+        const newEnd = yearSpan ? `${targetYear + 1}-${endMd}` : `${targetYear}-${endMd}`;
+        const duplicateExists = targetPeers.some(
+          (peer) =>
+            peer.isActive &&
+            peer.eventType === item.eventType &&
+            peer.startDate === newStart &&
+            peer.title.trim().toLowerCase() === item.title.trim().toLowerCase(),
+        );
+        if (duplicateExists) {
+          skipped += 1;
+          continue;
+        }
+        const input: OrgCalendarEventWriteInput = {
+          title: item.title,
+          description: item.description,
+          eventType: item.eventType,
+          startDate: newStart,
+          endDate: newEnd,
+          isFullDay: item.isFullDay,
+          startTimeMinutes: item.startTimeMinutes,
+          endTimeMinutes: item.endTimeMinutes,
+          color: item.color,
+          isActive: true,
+          appliesToAllEmployees: item.appliesToAllEmployees,
+          employeeIds: item.employeeIds,
+          recurrence: item.recurrence,
+        };
+        try {
+          assertNoCalendarConflicts(input, targetPeers);
+        } catch {
+          skipped += 1;
+          continue;
+        }
+        const row = await tx.organizationCalendarEvent.create({
+          data: this.toCreateData(organizationId, adminId, input),
+        });
+        const createdItem = toOrgCalendarEventItem(row);
+        targetPeers.push({
+          ...createdItem,
+          startDate: newStart,
+          endDate: newEnd,
+        });
         created += 1;
-      } catch {
-        // skip duplicates / conflicts
       }
-    }
-    return { created };
+    });
+    return { created, skipped };
   }
 
   async exportEvents(

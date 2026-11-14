@@ -65,7 +65,7 @@ export class AttendanceSelfServiceGuard implements CanActivate {
       'attendance.punch.punch_out',
       'attendance.view_summary',
       'attendance.manage_devices',
-      'calendar.view',
+      'organisation_calendar.view',
     ]);
     if (required.some((key) => selfServiceKeys.has(key))) {
       try {

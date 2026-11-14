@@ -95,8 +95,8 @@ export class AttendanceController {
   @Get('settings')
   @RequirePermissions(
     'attendance.records.manage_settings',
-    'calendar.view',
-    'calendar.view_all',
+    'organisation_calendar.view',
+    'organisation_calendar.view_all',
     'attendance.punch.view',
     'attendance.records.view',
   )

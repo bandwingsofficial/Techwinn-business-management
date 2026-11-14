@@ -12,6 +12,7 @@ export * from './employees.js';
 export * from './media.js';
 export * from './permissions.js';
 export * from './attendance-permission-keys.js';
+export * from './org-calendar-permission-keys.js';
 export * from './org-access-unrestricted.js';
 export * from './organization-role-display.js';
 export * from './crm-pipeline-permissions.js';

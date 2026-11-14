@@ -1,6 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PermissionKey } from '#contracts';
 import {
+  ORG_CALENDAR_VIEW,
+  expandLegacyOrgCalendarPermissions,
+  hasOrgCalendarPermission,
+} from '#contracts';
+import {
   PermissionCheckerService,
   type OrgAccessActor,
 } from '../../../org-access/index.js';
@@ -17,8 +22,9 @@ export class OrgCalendarAuthorizationService {
   async requirePermissions(actor: OrgAccessActor, keys: readonly PermissionKey[]): Promise<void> {
     if (actor.isPlatformSuperAdmin) return;
     const effective = new Set(await this.permissions.resolveEffectivePermissions(actor));
-    if (keys.some((k) => effective.has(k))) return;
-    if (keys.includes('calendar.view')) {
+    expandLegacyOrgCalendarPermissions(effective);
+    if (keys.some((k) => hasOrgCalendarPermission(effective, k))) return;
+    if (keys.includes(ORG_CALENDAR_VIEW)) {
       try {
         await this.requireEmployeeId(actor);
         return;

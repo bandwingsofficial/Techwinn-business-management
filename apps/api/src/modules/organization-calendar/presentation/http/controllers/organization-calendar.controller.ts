@@ -214,7 +214,7 @@ export class OrganizationCalendarController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: PlatformAuthenticatedRequest,
     @Body() body: unknown,
-  ): Promise<{ created: number }> {
+  ): Promise<{ created: number; skipped: number }> {
     const input = duplicateOrgCalendarHolidaysRequestSchema.parse(body);
     return this.duplicateHolidays.execute(
       actorFrom(ctx, request),

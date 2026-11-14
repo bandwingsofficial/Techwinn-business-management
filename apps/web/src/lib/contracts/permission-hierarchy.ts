@@ -8,6 +8,7 @@ import {
   PM_DAILY_TASKS_PERMISSION_KEYS,
 } from './pm-daily-tasks-permissions';
 import { PM_TASK_CALENDAR_PERMISSION_KEYS } from './pm-task-calendar-permissions';
+import { LEGACY_ORG_CALENDAR_PERMISSION_KEYS } from './org-calendar-permission-keys';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions';
 import {
@@ -270,14 +271,14 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             label: 'Organisation Calendar',
             href: '/admin/calendar',
             permissionKeys: [
-              'calendar.view',
-              'calendar.view_all',
-              'calendar.create',
-              'calendar.update',
-              'calendar.delete',
-              'calendar.manage_working_days',
-              'calendar.manage_holidays',
-              'calendar.export',
+              'organisation_calendar.view',
+              'organisation_calendar.view_all',
+              'organisation_calendar.create',
+              'organisation_calendar.update',
+              'organisation_calendar.delete',
+              'organisation_calendar.manage_working_days',
+              'organisation_calendar.manage_holidays',
+              'organisation_calendar.export',
             ],
           },
           {
@@ -416,6 +417,7 @@ export function uniqueHierarchyPermissionKeys(
 const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_LEADS_PERMISSION_KEYS,
   ...LEGACY_CLIENTS_PERMISSION_KEYS,
+  ...LEGACY_ORG_CALENDAR_PERMISSION_KEYS,
   ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);

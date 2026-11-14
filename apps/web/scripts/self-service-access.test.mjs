@@ -55,7 +55,7 @@ const ALL_PERMS = new Set([
   'leave.requests.read_all',
   'attendance.punch.view',
   'attendance.records.view',
-  'calendar.view',
+  'organisation_calendar.view',
   'tasks.read',
 ]);
 
