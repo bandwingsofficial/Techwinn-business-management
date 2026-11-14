@@ -2,7 +2,7 @@
 
 import type { PermissionKey } from '@techwin/contracts';
 import { WorkspaceShellSkeleton } from '@/components/loading/skeletons';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { filterAdminNav, type AdminNavGroupWithAccess } from '@/features/admin/navigation/filter-admin-nav';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
@@ -37,6 +37,7 @@ export function useAdminAccess(): AdminAccessContextValue {
 export function AdminAccessProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const access = usePermissions();
 
   const value = useMemo((): AdminAccessContextValue => {
@@ -82,8 +83,10 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
   }, [access.defaultDashboard, access.navAccess, access.portalSegment, pathname, value]);
 
   useEffect(() => {
-    if (redirectTarget) router.replace(redirectTarget);
-  }, [redirectTarget, router]);
+    if (!redirectTarget) return;
+    const qs = searchParams.toString();
+    router.replace(qs ? `${redirectTarget}?${qs}` : redirectTarget);
+  }, [redirectTarget, router, searchParams]);
 
   if (redirectTarget) {
     return <WorkspaceShellSkeleton />;

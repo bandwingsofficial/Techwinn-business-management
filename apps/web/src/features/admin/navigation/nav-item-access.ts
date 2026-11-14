@@ -1,4 +1,8 @@
-import { hasUnrestrictedOrgPermissions, type PermissionKey } from '@techwin/contracts';
+import {
+  canAccessTaskCalendar,
+  hasUnrestrictedOrgPermissions,
+  type PermissionKey,
+} from '@techwin/contracts';
 import {
   canAccessWorkspaceDashboard,
   canUseEmployeeSelfService,
@@ -17,8 +21,6 @@ const ORGANIZATION_DAILY_TASK_NAV_HREFS: ReadonlySet<string> = new Set([
 const ORGANIZATION_TASK_CALENDAR_NAV_HREFS: ReadonlySet<string> = new Set(['/admin/task-calendar']);
 
 const PM_DAILY_TASKS_VIEW_KEY = 'project_management.daily_tasks.view' as const satisfies PermissionKey;
-const PM_TASK_CALENDAR_VIEW_KEY = 'project_management.task_calendar.view' as const satisfies PermissionKey;
-
 export function isDashboardNavConfigHref(href: string): boolean {
   return href === '/admin/dashboard' || href === '/employee/dashboard';
 }
@@ -60,7 +62,7 @@ export function canAccessNavItem(
   }
 
   if (ORGANIZATION_TASK_CALENDAR_NAV_HREFS.has(configHref)) {
-    return permissions.has(PM_TASK_CALENDAR_VIEW_KEY);
+    return canAccessTaskCalendar(permissions);
   }
 
   const allRequired = APP_ROUTE_PERMISSIONS_ALL[configHref];

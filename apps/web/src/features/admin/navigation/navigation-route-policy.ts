@@ -1,6 +1,6 @@
 import {
+  canAccessTaskCalendar,
   PM_DAILY_TASKS_VIEW_KEY,
-  PM_TASK_CALENDAR_VIEW_KEY,
   type PermissionKey,
 } from '@techwin/contracts';
 import type { MembershipAccessContext } from '@/features/auth/membership/membership-access';
@@ -47,7 +47,7 @@ function hasOrganizationDailyTasksView(permissions: ReadonlySet<PermissionKey>):
 }
 
 function hasOrganizationTaskCalendarView(permissions: ReadonlySet<PermissionKey>): boolean {
-  return permissions.has(PM_TASK_CALENDAR_VIEW_KEY);
+  return canAccessTaskCalendar(permissions);
 }
 
 export function prefersOrganizationWorkspace(

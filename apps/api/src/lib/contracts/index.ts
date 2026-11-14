@@ -28,6 +28,7 @@ export * from './pm-daily-tasks-permissions.js';
 export * from './permission-pm-daily-tasks-prerequisites.js';
 export * from './permission-pm-daily-tasks-tooltips.js';
 export * from './pm-task-calendar-permissions.js';
+export * from './task-calendar-access.js';
 export * from './permission-hierarchy.js';
 import { assertPermissionHierarchyComplete } from './permission-hierarchy.js';
 export * from './permission-view-dependencies.js';

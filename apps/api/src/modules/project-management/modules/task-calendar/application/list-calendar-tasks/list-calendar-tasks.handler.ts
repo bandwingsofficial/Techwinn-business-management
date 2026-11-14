@@ -1,6 +1,9 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
-  canViewOrganizationTaskCalendar,
+  canAccessTaskCalendar,
+  canViewOrganizationProjectTasksOnCalendar,
+  canViewTaskCalendarDailyTasks,
+  canViewTaskCalendarProjectTasks,
   type TaskCalendarDayBucketDto,
   type TaskCalendarResponse,
   type TaskCalendarTaskDto,
@@ -77,14 +80,14 @@ export class ListCalendarTasksHandler {
   async execute(input: ListCalendarTasksQuery): Promise<TaskCalendarResponse> {
     const { organizationId, clientToday, accessActor, query } = input;
     const effective = await this.dailyTaskAuthz.resolveEffective(accessActor);
-    const orgWide = canViewOrganizationTaskCalendar(
-      effective,
-      accessActor.isPlatformSuperAdmin,
-    );
-    const canSeeOrgDailyTasks = this.dailyTaskAuthz.canViewOrganizationTasks(
-      accessActor,
-      effective,
-    );
+    const isSuper = accessActor.isPlatformSuperAdmin;
+
+    if (!canAccessTaskCalendar(effective, isSuper)) {
+      throw new ForbiddenException('You do not have permission to view the task calendar.');
+    }
+
+    const canDaily = canViewTaskCalendarDailyTasks(effective, isSuper);
+    const canProject = canViewTaskCalendarProjectTasks(effective, isSuper);
 
     const effectiveToday = query.clientToday ?? clientToday;
     const startDate = query.startDate;
@@ -96,21 +99,38 @@ export class ListCalendarTasksHandler {
     const range = CalendarDateRange.create(startDate, endDate);
     assertValidCalendarDateRange(range);
 
-    if (!orgWide) {
-      return this.listSelfScoped({
-        organizationId,
-        adminId: accessActor.adminId,
-        clientToday: effectiveToday,
-        query,
-        range,
-      });
+    const includeDaily = canDaily && (!query.source || query.source === 'DAILY_TASK');
+    const includeProject = canProject && (!query.source || query.source === 'PROJECT_TASK');
+
+    if (!includeDaily && !includeProject) {
+      return buildCalendarResponse([], range);
+    }
+
+    const orgWideDaily =
+      includeDaily && this.dailyTaskAuthz.canViewOrganizationTasks(accessActor, effective);
+    const orgWideProject =
+      includeProject && canViewOrganizationProjectTasksOnCalendar(effective, isSuper);
+
+    const employee = await this.prisma.employee.findFirst({
+      where: { organizationId, platformAdminId: accessActor.adminId },
+      select: { id: true },
+    });
+
+    const selfScoped =
+      (includeDaily && !orgWideDaily) || (includeProject && !orgWideProject);
+
+    if (selfScoped) {
+      if (query.employeeId && (!employee || query.employeeId !== employee.id)) {
+        throw new ForbiddenException('You cannot view another employee task calendar.');
+      }
+      if (includeDaily && !orgWideDaily && !employee) {
+        throw new ForbiddenException(
+          'No employee profile is linked to this account. Link an employee record or ask an administrator for organization task visibility.',
+        );
+      }
     }
 
     const noteAttach = await this.dailyTaskAuthz.resolveNoteAttach(accessActor);
-
-    const includeDaily =
-      canSeeOrgDailyTasks && (!query.source || query.source === 'DAILY_TASK');
-    const includeProject = !query.source || query.source === 'PROJECT_TASK';
 
     let workflowStageId = query.workflowStageId;
     if (includeDaily && query.status && !workflowStageId) {
@@ -127,55 +147,81 @@ export class ListCalendarTasksHandler {
     const projectTaskStatusFilter =
       includeProject && projectStatusParsed.success ? projectStatusParsed.data : undefined;
 
-    // Canonical daily-task placement is assignDate (same exact-date rule as Kanban/list).
-    const dailyQuery: DailyTaskListQuery = {
-      page: 1,
-      pageSize: 500,
-      assignDateFrom: range.startDate,
-      assignDateTo: range.endDate,
-      search: query.search?.trim() || undefined,
-      type: query.type,
-      employeeId: query.employeeId,
-      projectId: query.projectId,
-      priority: query.priority,
-      workflowStageId,
-      projectPhaseId: query.projectPhaseId,
-      category: query.category,
-      completedOnly: query.completedOnly,
-      overdueOnly: query.overdueOnly,
-      sortBy: query.sortBy ?? 'assignDate',
-      sortDir: query.sortDir ?? 'asc',
-    };
-
-    const [dailyItems, projectRows] = await Promise.all([
-      includeDaily
-        ? this.data.listDailyTasksInRange(organizationId, dailyQuery, effectiveToday, noteAttach)
-        : Promise.resolve([] as const),
-      includeProject
-        ? this.data.listProjectTasksForCalendar(organizationId, {
-            startDate: range.startDate,
-            endDate: range.endDate,
-            search: query.search,
-            projectId: query.projectId,
-            employeeId: query.employeeId,
-            priority: query.projectTaskPriority,
-            status: projectTaskStatusFilter,
-          })
-        : Promise.resolve([] as const),
-    ]);
-
     let normalized: CalendarNormalizedTask[] = [];
+
     if (includeDaily) {
-      normalized = normalized.concat(
-        dailyItems.map((t) => fromDailyTaskListItem(t, effectiveToday)),
-      );
+      if (orgWideDaily) {
+        const dailyQuery: DailyTaskListQuery = {
+          page: 1,
+          pageSize: 500,
+          assignDateFrom: range.startDate,
+          assignDateTo: range.endDate,
+          search: query.search?.trim() || undefined,
+          type: query.type,
+          employeeId: query.employeeId,
+          projectId: query.projectId,
+          priority: query.priority,
+          workflowStageId,
+          projectPhaseId: query.projectPhaseId,
+          category: query.category,
+          completedOnly: query.completedOnly,
+          overdueOnly: query.overdueOnly,
+          sortBy: query.sortBy ?? 'assignDate',
+          sortDir: query.sortDir ?? 'asc',
+        };
+        const dailyItems = await this.data.listDailyTasksInRange(
+          organizationId,
+          dailyQuery,
+          effectiveToday,
+          noteAttach,
+        );
+        normalized = normalized.concat(
+          dailyItems.map((t) => fromDailyTaskListItem(t, effectiveToday)),
+        );
+      } else if (employee) {
+        const myQuery: MyDailyTasksQuery = {
+          assignDateFrom: range.startDate,
+          assignDateTo: range.endDate,
+          search: query.search?.trim() || undefined,
+          type: query.type,
+          priority: query.priority,
+          workflowStageId,
+          page: 1,
+          pageSize: 500,
+          sortBy: 'assignDate',
+          sortDir: 'asc',
+        };
+        const myDaily = await this.dailyTasks.listMyTasks(
+          organizationId,
+          accessActor.adminId,
+          myQuery,
+          effectiveToday,
+          noteAttach,
+        );
+        normalized = normalized.concat(
+          myDaily.items.map((t) => fromDailyTaskListItem(t, effectiveToday)),
+        );
+      }
     }
+
     if (includeProject) {
-      normalized = normalized.concat(
-        projectRows
-          .map((t) => fromProjectTaskRow(t, effectiveToday))
-          .filter((t): t is CalendarNormalizedTask => t !== null),
-      );
+      const employeeIdForProject = orgWideProject ? query.employeeId : employee?.id;
+      if (orgWideProject || employee) {
+        const projectRows = await this.data.listProjectTasksForCalendar(organizationId, {
+          startDate: range.startDate,
+          endDate: range.endDate,
+          search: query.search,
+          projectId: query.projectId,
+          employeeId: employeeIdForProject,
+          priority: query.projectTaskPriority,
+          status: projectTaskStatusFilter,
+        });
+        normalized = normalized.concat(
+          projectRows
+            .map((t) => fromProjectTaskRow(t, effectiveToday))
+            .filter((t): t is CalendarNormalizedTask => t !== null),
+        );
+      }
     }
 
     if (query.displayStatus) {
@@ -193,109 +239,5 @@ export class ListCalendarTasksHandler {
     }
 
     return buildCalendarResponse(normalized, range);
-  }
-
-  private async listSelfScoped(input: {
-    readonly organizationId: string;
-    readonly adminId: string;
-    readonly clientToday: string;
-    readonly query: ListCalendarTasksQuery['query'];
-    readonly range: CalendarDateRange;
-  }): Promise<TaskCalendarResponse> {
-    const accessActor = {
-      organizationId: input.organizationId,
-      adminId: input.adminId,
-      isPlatformSuperAdmin: false,
-    };
-    const noteAttach = await this.dailyTaskAuthz.resolveNoteAttach(accessActor);
-
-    const employee = await this.prisma.employee.findFirst({
-      where: { organizationId: input.organizationId, platformAdminId: input.adminId },
-      select: { id: true },
-    });
-    if (!employee) {
-      // Self-service calendar requires a linked employee profile. Organization-scoped
-      // viewers never reach this branch (see canViewOrganizationTasks).
-      throw new ForbiddenException(
-        'No employee profile is linked to this account. Link an employee record for self-service task calendar access, or ask an administrator to grant organization task visibility.',
-      );
-    }
-
-    if (input.query.employeeId && input.query.employeeId !== employee.id) {
-      throw new ForbiddenException('You cannot view another employee task calendar.');
-    }
-
-    const includeDaily = !input.query.source || input.query.source === 'DAILY_TASK';
-    const includeProject =
-      (!input.query.source || input.query.source === 'PROJECT_TASK') &&
-      (await this.dailyTaskAuthz.resolveEffective(accessActor)).has('projects.read');
-
-    let workflowStageId = input.query.workflowStageId;
-    if (includeDaily && input.query.status && !workflowStageId) {
-      if (UUID_RE.test(input.query.status)) {
-        workflowStageId = input.query.status;
-      } else {
-        const stages = await this.dailyTasks.listWorkflowStages(input.organizationId);
-        const match = stages.find((s) => s.stageKey === input.query.status);
-        if (match) workflowStageId = match.id;
-      }
-    }
-
-    const myQuery: MyDailyTasksQuery = {
-      assignDateFrom: input.range.startDate,
-      assignDateTo: input.range.endDate,
-      search: input.query.search?.trim() || undefined,
-      type: input.query.type,
-      priority: input.query.priority,
-      workflowStageId,
-      page: 1,
-      pageSize: 500,
-      sortBy: 'assignDate',
-      sortDir: 'asc',
-    };
-
-    const projectStatusParsed = projectTaskStatusSchema.safeParse(input.query.status);
-    const projectTaskStatusFilter =
-      includeProject && projectStatusParsed.success ? projectStatusParsed.data : undefined;
-
-    const [myDaily, projectRows] = await Promise.all([
-      includeDaily
-        ? this.dailyTasks.listMyTasks(
-            input.organizationId,
-            input.adminId,
-            myQuery,
-            input.clientToday,
-            noteAttach,
-          )
-        : Promise.resolve({ items: [] as const, total: 0, page: 1, pageSize: 0 }),
-      includeProject
-        ? this.data.listProjectTasksForCalendar(input.organizationId, {
-            startDate: input.range.startDate,
-            endDate: input.range.endDate,
-            search: input.query.search,
-            projectId: input.query.projectId,
-            employeeId: employee.id,
-            priority: input.query.projectTaskPriority,
-            status: projectTaskStatusFilter,
-          })
-        : Promise.resolve([] as const),
-    ]);
-
-    let normalized: CalendarNormalizedTask[] = myDaily.items.map((t) =>
-      fromDailyTaskListItem(t, input.clientToday),
-    );
-    if (includeProject) {
-      normalized = normalized.concat(
-        projectRows
-          .map((t) => fromProjectTaskRow(t, input.clientToday))
-          .filter((t): t is CalendarNormalizedTask => t !== null),
-      );
-    }
-
-    if (input.query.displayStatus) {
-      normalized = normalized.filter((t) => t.displayStatus === input.query.displayStatus);
-    }
-
-    return buildCalendarResponse(normalized, input.range);
   }
 }

@@ -15,12 +15,11 @@ import { TaskCalendarFilterMenu } from '../components/task-calendar-filter-menu'
 import { TaskCalendarGrid } from '../components/task-calendar-grid';
 import { TaskCalendarHeader } from '../components/task-calendar-header';
 import { TaskCalendarStatusLegend } from '../components/task-calendar-status-legend';
-import { TaskCalendarTaskDetailsModal } from '../components/task-calendar-task-details-modal';
 import { TaskCalendarToolbar } from '../components/task-calendar-toolbar';
 import { addMonths, parseMonthKey } from '../utils/calendar-date.utils';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
-import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
-import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
+import { useTaskCalendarAccess } from '../hooks/use-task-calendar-access';
+import { resolveTaskCalendarNavigationHref } from '../utils/task-calendar-navigation';
 
 const EMPTY_FILTERS: TaskCalendarPageSearch = {};
 
@@ -59,14 +58,21 @@ export function TaskCalendarPage({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { dashboardBreadcrumb } = usePortalNavigation();
-  const { has, hasAny } = useAdminAccess();
-  const resolvedScope =
-    dataScope ??
-    (canViewOrganizationDailyTasks(has, hasAny) ? 'organization' : 'self');
-  const dailyTasksHref =
-    dailyTasksBasePath ??
-    (pathname.startsWith('/employee') ? '/employee/daily-tasks' : '/admin/daily-tasks');
+  const { dashboardBreadcrumb, portal: portalSegment, toPortalPath } = usePortalNavigation();
+  const { organizationScope, canAddDailyTask, canViewDaily } = useTaskCalendarAccess();
+  const resolvedScope = dataScope ?? (organizationScope ? 'organization' : 'self');
+  const dailyTasksHref = useMemo(
+    () =>
+      dailyTasksBasePath ??
+      (portalSegment === 'employee'
+        ? '/employee/daily-tasks'
+        : toPortalPath('/admin/daily-tasks')),
+    [dailyTasksBasePath, portalSegment, toPortalPath],
+  );
+  const projectTaskPath = useCallback(
+    (projectId: string) => toPortalPath(`/admin/project-tasks/${projectId}`),
+    [toPortalPath],
+  );
   const { monthKey, setMonthKey } = useCalendarNavigation();
   const { filters: filterOptions, loading: filtersLoading } = useCalendarFilters();
 
@@ -87,8 +93,6 @@ export function TaskCalendarPage({
   } = useCalendarTasks(monthKey, filters);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [detailTask, setDetailTask] = useState<TaskCalendarTaskDto | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
   const taskTypeOptions = useMemo<CrmFilterOption[]>(
     () => (filterOptions?.taskTypes ?? []).map((t) => ({ value: t.value, label: t.label })),
     [filterOptions],
@@ -168,14 +172,30 @@ export function TaskCalendarPage({
 
   const navigateToDailyKanban = useCallback(
     (date: string) => {
-      router.push(`${dailyTasksHref}?date=${encodeURIComponent(date)}&view=kanban`);
+      if (!canViewDaily) return;
+      const params = new URLSearchParams({
+        date,
+        view: 'kanban',
+      });
+      router.push(`${dailyTasksHref}?${params.toString()}`);
     },
-    [dailyTasksHref, router],
+    [canViewDaily, dailyTasksHref, router],
   );
 
-  const openDetail = (task: TaskCalendarTaskDto) => {
-    setDetailTask(task);
-    setDetailOpen(true);
+  const navigateToTask = useCallback(
+    (task: TaskCalendarTaskDto, calendarDate?: string) => {
+      const href = resolveTaskCalendarNavigationHref(task, {
+        dailyTasksBasePath: dailyTasksHref,
+        projectTaskPath,
+        calendarDate,
+      });
+      router.push(href);
+    },
+    [dailyTasksHref, projectTaskPath, router],
+  );
+
+  const openTaskFromCalendar = (task: TaskCalendarTaskDto) => {
+    navigateToTask(task, selectedDate ?? undefined);
   };
 
   return (
@@ -256,9 +276,9 @@ export function TaskCalendarPage({
             onSelectDate={setSelectedDate}
             daysByDate={daysByDate}
             cellContentLoading={showGridSkeleton}
-            onOpenTask={openDetail}
+            onOpenTask={openTaskFromCalendar}
             onNavigateToDailyKanban={navigateToDailyKanban}
-            showEmptyDayAddTask={resolvedScope !== 'self' && has('tasks.create')}
+            showEmptyDayAddTask={canAddDailyTask && resolvedScope !== 'self'}
           />
           <TaskCalendarStatusLegend />
           {data ? (
@@ -276,12 +296,6 @@ export function TaskCalendarPage({
         </div>
       </section>
 
-      <TaskCalendarTaskDetailsModal
-        task={detailTask}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        dailyTasksBasePath={dailyTasksHref}
-      />
     </div>
   );
 }

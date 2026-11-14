@@ -1,5 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { canViewOrganizationTaskCalendar, type TaskCalendarFiltersResponse } from '#contracts';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+  canAccessTaskCalendar,
+  canViewOrganizationProjectTasksOnCalendar,
+  canViewTaskCalendarDailyTasks,
+  canViewTaskCalendarProjectTasks,
+  type TaskCalendarFiltersResponse,
+} from '#contracts';
 import { DailyTaskAuthorizationService } from '../../../daily-tasks/application/services/daily-task-authorization.service.js';
 import {
   DAILY_TASK_REPOSITORY,
@@ -23,13 +29,24 @@ export class ListCalendarFiltersHandler {
 
   async execute(input: ListCalendarFiltersQuery): Promise<TaskCalendarFiltersResponse> {
     const effective = await this.dailyTaskAuthz.resolveEffective(input.accessActor);
-    const orgWide = canViewOrganizationTaskCalendar(
-      effective,
-      input.accessActor.isPlatformSuperAdmin,
-    );
+    const isSuper = input.accessActor.isPlatformSuperAdmin;
 
-    const stages = await this.dailyTasks.listWorkflowStages(input.organizationId);
-    const empPage = orgWide
+    if (!canAccessTaskCalendar(effective, isSuper)) {
+      throw new ForbiddenException('You do not have permission to view the task calendar.');
+    }
+
+    const canDaily = canViewTaskCalendarDailyTasks(effective, isSuper);
+    const canProject = canViewTaskCalendarProjectTasks(effective, isSuper);
+
+    const orgWideDaily =
+      canDaily && this.dailyTaskAuthz.canViewOrganizationTasks(input.accessActor, effective);
+    const orgWideProject = canProject && canViewOrganizationProjectTasksOnCalendar(effective, isSuper);
+    const orgWideFilters = orgWideDaily || orgWideProject;
+
+    const stages = canDaily
+      ? await this.dailyTasks.listWorkflowStages(input.organizationId)
+      : [];
+    const empPage = orgWideFilters
       ? await this.employees.listEmployees(input.organizationId, {
           page: 1,
           pageSize: 500,
@@ -37,12 +54,26 @@ export class ListCalendarFiltersHandler {
           sortDir: 'asc',
         })
       : { items: [] as const };
-    const projPage = orgWide
-      ? await this.projects.listProjects(input.organizationId, {
-          page: 1,
-          pageSize: 200,
-        })
-      : { items: [] as const };
+    const projPage =
+      orgWideProject && canProject
+        ? await this.projects.listProjects(input.organizationId, {
+            page: 1,
+            pageSize: 200,
+          })
+        : { items: [] as const };
+
+    const taskTypes: Array<{ value: 'GENERAL' | 'PROJECT' | 'PROJECT_PLAN'; label: string }> = [];
+    if (canDaily) {
+      taskTypes.push({ value: 'GENERAL', label: 'General' });
+      taskTypes.push({ value: 'PROJECT', label: 'Project (daily)' });
+    }
+    if (canProject) {
+      taskTypes.push({ value: 'PROJECT_PLAN', label: 'Project plan' });
+    }
+
+    const sources: Array<{ value: 'DAILY_TASK' | 'PROJECT_TASK'; label: string }> = [];
+    if (canDaily) sources.push({ value: 'DAILY_TASK', label: 'Daily tasks' });
+    if (canProject) sources.push({ value: 'PROJECT_TASK', label: 'Project tasks' });
 
     return {
       employees: empPage.items.map((e) => ({ id: e.id, label: e.displayName })),
@@ -50,11 +81,7 @@ export class ListCalendarFiltersHandler {
         id: p.id,
         label: p.name ? `${p.projectNumber} — ${p.name}` : p.projectNumber,
       })),
-      taskTypes: [
-        { value: 'GENERAL', label: 'General' },
-        { value: 'PROJECT', label: 'Project (daily)' },
-        { value: 'PROJECT_PLAN', label: 'Project plan' },
-      ],
+      taskTypes,
       priorities: [
         { value: 'LOW', label: 'Low' },
         { value: 'MEDIUM', label: 'Medium' },
@@ -62,16 +89,15 @@ export class ListCalendarFiltersHandler {
         { value: 'URGENT', label: 'Urgent' },
       ],
       dailyStatuses: stages.map((s) => ({ value: s.stageKey, label: s.name })),
-      projectTaskStatuses: [
-        { value: 'TODO', label: 'To do' },
-        { value: 'IN_PROGRESS', label: 'In progress' },
-        { value: 'IN_REVIEW', label: 'Review' },
-        { value: 'COMPLETED', label: 'Completed' },
-      ],
-      sources: [
-        { value: 'DAILY_TASK', label: 'Daily tasks' },
-        { value: 'PROJECT_TASK', label: 'Project tasks' },
-      ],
+      projectTaskStatuses: canProject
+        ? [
+            { value: 'TODO', label: 'To do' },
+            { value: 'IN_PROGRESS', label: 'In progress' },
+            { value: 'IN_REVIEW', label: 'Review' },
+            { value: 'COMPLETED', label: 'Completed' },
+          ]
+        : [],
+      sources,
     };
   }
 }

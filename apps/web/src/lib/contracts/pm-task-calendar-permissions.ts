@@ -7,13 +7,7 @@ export const PM_TASK_CALENDAR_PERMISSION_KEYS = [
   PM_TASK_CALENDAR_VIEW_KEY,
 ] as const satisfies readonly PermissionKey[];
 
-export function expandLegacyPmTaskCalendarPermissions(keys: Set<PermissionKey>): void {
-  if (keys.has('tasks.read') && keys.has('projects.read')) {
-    if (!keys.has(PM_TASK_CALENDAR_VIEW_KEY)) {
-      keys.add(PM_TASK_CALENDAR_VIEW_KEY);
-    }
-  }
-}
+export function expandLegacyPmTaskCalendarPermissions(_keys: Set<PermissionKey>): void {}
 
 export function canViewOrganizationTaskCalendar(
   effective: ReadonlySet<PermissionKey>,

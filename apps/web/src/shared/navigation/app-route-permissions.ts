@@ -62,7 +62,11 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/project-tasks': ['tasks.read', 'projects.read'],
   '/admin/daily-tasks': ['project_management.daily_tasks.view'],
   '/admin/my-tasks': ['project_management.daily_tasks.view'],
-  '/admin/task-calendar': ['project_management.task_calendar.view'],
+  '/admin/task-calendar': [
+    'project_management.task_calendar.view',
+    'project_management.daily_tasks.view',
+    'projects.read',
+  ],
   '/admin/whatsapp/inbox': ['whatsapp.read'],
   '/admin/whatsapp/channels': ['whatsapp.channels.manage'],
   '/admin/whatsapp/templates': ['whatsapp.templates.manage', 'whatsapp.broadcasts.manage'],
@@ -76,7 +80,11 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
     'leave.requests.create',
   ],
   '/employee/daily-tasks': ['tasks.read'],
-  '/employee/task-calendar': ['tasks.read'],
+  '/employee/task-calendar': [
+    'project_management.daily_tasks.view',
+    'projects.read',
+    'project_management.task_calendar.view',
+  ],
   '/employee/attendance': ['attendance.view_own'],
   '/employee/calendar': ['calendar.view'],
   '/employee/leave': [

@@ -29,6 +29,7 @@ import {
   taskCalendarUiStatusLabel,
   type TaskCalendarChipVisualStatus,
 } from '../utils/calendar-task.utils';
+import { resolveTaskCalendarNavigationHref } from '../utils/task-calendar-navigation';
 
 const STATUS_BADGE: Record<TaskCalendarChipVisualStatus, string> = {
   OPEN: 'border-transparent bg-neutral-100 text-neutral-700',
@@ -59,11 +60,15 @@ export function TaskCalendarTaskDetailsModal({
   open,
   onOpenChange,
   dailyTasksBasePath = '/admin/daily-tasks',
+  projectTaskPath = (projectId: string) => `/admin/project-tasks/${projectId}`,
+  calendarDate,
 }: {
   task: TaskCalendarTaskDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dailyTasksBasePath?: string;
+  projectTaskPath?: (projectId: string) => string;
+  calendarDate?: string;
 }) {
   const router = useRouter();
   if (!task) return null;
@@ -78,10 +83,11 @@ export function TaskCalendarTaskDetailsModal({
     .filter((part, index, all) => all.indexOf(part) === index)
     .join(' · ');
 
-  const primaryHref =
-    task.navigation.kind === 'daily_task'
-      ? `${dailyTasksBasePath}?date=${encodeURIComponent(task.assignDate)}&view=kanban&taskId=${encodeURIComponent(task.navigation.dailyTaskId)}&focus=board`
-      : `/admin/project-tasks/${task.navigation.projectId}?taskId=${encodeURIComponent(task.navigation.projectTaskId)}&focus=board`;
+  const primaryHref = resolveTaskCalendarNavigationHref(task, {
+    dailyTasksBasePath,
+    projectTaskPath,
+    calendarDate,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
