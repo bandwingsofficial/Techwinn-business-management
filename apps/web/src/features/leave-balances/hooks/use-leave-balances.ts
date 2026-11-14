@@ -12,10 +12,10 @@ export function useLeaveBalances() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async (signal?: AbortSignal) => {
+  const refetch = useCallback(async (signal?: AbortSignal, force = false) => {
     setLoading(true);
     try {
-      const rows = await listLeaveYearConfigurations(signal);
+      const rows = await listLeaveYearConfigurations(signal, { force });
       setItems(rows);
       setError(null);
     } catch (failure) {
@@ -28,7 +28,7 @@ export function useLeaveBalances() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void refetch(controller.signal);
+    void refetch(controller.signal, true);
     const unsubscribe = subscribeLeaveDataChanged(() => {
       void refetch();
     });
@@ -38,5 +38,10 @@ export function useLeaveBalances() {
     };
   }, [refetch]);
 
-  return { leaveBalances: items, loading, error, refetch: () => void refetch() };
+  return {
+    leaveBalances: items,
+    loading,
+    error,
+    refetch: () => void refetch(undefined, true),
+  };
 }

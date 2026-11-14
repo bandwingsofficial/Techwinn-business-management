@@ -2101,7 +2101,7 @@ model LeaveYearConfiguration {
   employeeBalances EmployeeLeaveBalance[]
   leaveRequests    LeaveRequest[]
 
-  @@unique([organizationId, calendarYear], map: "leave_year_cfg_org_year_key")
+  @@index([organizationId, calendarYear], map: "leave_year_cfg_org_year_idx")
   @@index([organizationId, status], map: "leave_year_cfg_org_status_idx")
   @@map("leave_year_configurations")
 }

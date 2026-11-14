@@ -32,6 +32,7 @@ import type {
 import type { LeaveRepository } from '../../../../domain/repositories/leave.repository.js';
 import { resolveLeaveRequestDates } from '../../../../domain/policies/leave-request-dates.policy.js';
 import { LeaveBalanceDeletionPolicy } from '../../../../modules/leave-balances/domain/policies/leave-balance-deletion.policy.js';
+import { formatLeaveYearConfigurationPeriod } from '../../../../modules/leave-balances/domain/policies/leave-year-configuration-overlap.policy.js';
 import {
   assertAllocationReductionAllowed,
   assertLeaveTypeRemovalAllowed,
@@ -112,11 +113,14 @@ export class PrismaLeaveRepository implements LeaveRepository {
   }
 
   async getYearConfigurationByYear(organizationId: string, calendarYear: number) {
-    const row = await this.prisma.leaveYearConfiguration.findFirst({
+    const rows = await this.prisma.leaveYearConfiguration.findMany({
       where: { organizationId, calendarYear },
       include: this.yearConfigurationInclude(),
+      orderBy: { yearStartDate: 'desc' },
     });
-    return row ? toLeaveYearConfigurationItem(row) : null;
+    if (rows.length === 0) return null;
+    const active = rows.find((row) => row.status === 'ACTIVE');
+    return toLeaveYearConfigurationItem(active ?? rows[0]!);
   }
 
   async createYearConfiguration(
@@ -124,6 +128,9 @@ export class PrismaLeaveRepository implements LeaveRepository {
     adminId: string,
     input: CreateLeaveYearConfigurationRequest,
   ) {
+    const yearStart = parseDateOnly(input.yearStartDate);
+    const yearEnd = parseDateOnly(input.yearEndDate);
+    await this.assertNoOverlappingLeaveYearConfiguration(organizationId, yearStart, yearEnd);
     try {
       const row = await this.prisma.leaveYearConfiguration.create({
         data: {
@@ -141,7 +148,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
       return toLeaveYearConfigurationItem(row);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
-        throw new LeaveConflictError('A configuration for this calendar year already exists.');
+        throw new LeaveConflictError(this.leaveYearConfigurationUniqueViolationMessage(error));
       }
       throw error;
     }
@@ -167,6 +174,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
         yearStart,
         yearEnd,
       );
+      await this.assertNoOverlappingLeaveYearConfiguration(organizationId, yearStart, yearEnd, id);
     }
     const yearStart = input.yearStartDate
       ? parseDateOnly(input.yearStartDate)
@@ -202,6 +210,8 @@ export class PrismaLeaveRepository implements LeaveRepository {
     if (activeTypes.length !== leaveTypeIds.length) {
       throw new LeaveValidationError('One or more leave types are invalid or inactive.');
     }
+
+    await this.assertNoOverlappingLeaveYearConfiguration(organizationId, yearStart, yearEnd);
 
     try {
       const item = await this.prisma.$transaction(async (tx) => {
@@ -262,9 +272,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
       return this.getYearConfiguration(organizationId, item.id);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
-        throw new LeaveConflictError(
-          'A leave balance configuration already exists for this calendar year.',
-        );
+        throw new LeaveConflictError(this.leaveYearConfigurationUniqueViolationMessage(error));
       }
       throw error;
     }
@@ -295,6 +303,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
         yearStart,
         yearEnd,
       );
+      await this.assertNoOverlappingLeaveYearConfiguration(organizationId, yearStart, yearEnd, id);
     }
 
     if (input.allocations) {
@@ -364,9 +373,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
-        throw new LeaveConflictError(
-          'A leave balance configuration already exists for this calendar year.',
-        );
+        throw new LeaveConflictError(this.leaveYearConfigurationUniqueViolationMessage(error));
       }
       throw error;
     }
@@ -1866,6 +1873,61 @@ export class PrismaLeaveRepository implements LeaveRepository {
         });
       }
     }
+  }
+
+  private async assertNoOverlappingLeaveYearConfiguration(
+    organizationId: string,
+    yearStart: Date,
+    yearEnd: Date,
+    excludeConfigurationId?: string,
+  ): Promise<void> {
+    const conflicting = await this.prisma.leaveYearConfiguration.findFirst({
+      where: {
+        organizationId,
+        ...(excludeConfigurationId ? { id: { not: excludeConfigurationId } } : {}),
+        yearStartDate: { lte: yearEnd },
+        yearEndDate: { gte: yearStart },
+      },
+      select: {
+        id: true,
+        name: true,
+        calendarYear: true,
+        yearStartDate: true,
+        yearEndDate: true,
+        status: true,
+      },
+    });
+    if (!conflicting) return;
+
+    const label = conflicting.name?.trim()
+      ? conflicting.name.trim()
+      : `Leave policy ${conflicting.calendarYear}`;
+    const period = formatLeaveYearConfigurationPeriod(
+      conflicting.yearStartDate,
+      conflicting.yearEndDate,
+    );
+    throw new LeaveConflictError(
+      `A leave balance configuration already exists for an overlapping effective period (${label}, ${period}, ${conflicting.status.toLowerCase()}). Adjust the effective dates or edit the existing policy.`,
+    );
+  }
+
+  private leaveYearConfigurationUniqueViolationMessage(error: unknown): string {
+    const fields = this.uniqueConstraintFields(error);
+    const hasConfigAllocationPair =
+      (fields.includes('leave_type_id') || fields.includes('leaveTypeId')) &&
+      (fields.includes('leave_year_configuration_id') || fields.includes('leaveYearConfigurationId'));
+    if (hasConfigAllocationPair) {
+      return 'Each leave type can only be allocated once within the same leave balance policy.';
+    }
+    return 'This leave balance configuration conflicts with an existing policy.';
+  }
+
+  private uniqueConstraintFields(error: unknown): readonly string[] {
+    if (typeof error !== 'object' || error === null) return [];
+    const meta = (error as { meta?: { target?: unknown } }).meta;
+    const target = meta?.target;
+    if (!Array.isArray(target)) return [];
+    return target.filter((value): value is string => typeof value === 'string');
   }
 
   private isUniqueViolation(error: unknown): boolean {
