@@ -42,7 +42,7 @@ export function EmployeesPage() {
     canEdit,
     canDelete: canDeleteEmployeesPerm,
   } = useEmployeePagePermissions();
-  const canDeleteLoginAccounts = hasAny('users.deactivate', 'memberships.manage');
+  const canDeleteLoginAccounts = hasAny('users.delete', 'users.deactivate', 'memberships.manage');
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_EMPLOYEE_PAGE_SIZE);

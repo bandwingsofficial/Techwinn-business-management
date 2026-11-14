@@ -61,7 +61,7 @@ export class MemberAccountService {
 
   /** Same permissions as the member provisioning endpoint. */
   assertCanCreateAccounts(actor: OrgAccessActor): Promise<void> {
-    return this.permissions.requirePermissions(actor, ['users.create', 'memberships.manage']);
+    return this.permissions.requirePermissions(actor, ['users.create']);
   }
 
   /**
@@ -69,7 +69,7 @@ export class MemberAccountService {
    * permission as deactivating members plus the usual member protections.
    */
   async assertCanDeleteAccount(actor: OrgAccessActor, adminId: string): Promise<void> {
-    await this.permissions.requirePermissions(actor, ['users.deactivate', 'memberships.manage']);
+    await this.permissions.requirePermissions(actor, ['users.delete']);
     await this.repository.assertActorCanRemoveMemberAccount(
       actor.organizationId,
       actor.adminId,
@@ -111,10 +111,7 @@ export class MemberAccountService {
       return;
     }
     if (membership.status === 'ACTIVE') return;
-    const canRestore = await this.permissions.hasAnyPermission(input.actor, [
-      'users.deactivate',
-      'memberships.manage',
-    ]);
+    const canRestore = await this.permissions.hasAnyPermission(input.actor, ['users.status.update']);
     if (!canRestore) return;
     await this.repository.changeMemberStatus(
       input.actor.organizationId,

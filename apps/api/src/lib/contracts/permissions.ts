@@ -3,9 +3,13 @@
  * the database stores assignments by stable key.
  */
 export const PERMISSION_KEYS = [
-  'users.read',
+  'users.view',
   'users.create',
+  'users.status.update',
   'users.update',
+  'users.delete',
+  'users.password.reset',
+  'users.read',
   'users.deactivate',
   'users.manage_roles',
   'users.reset_password',
@@ -195,9 +199,13 @@ export type PermissionDefinition = {
 };
 
 export const USER_ADMINISTRATION_PERMISSIONS: readonly PermissionKey[] = [
-  'users.read',
+  'users.view',
   'users.create',
+  'users.status.update',
   'users.update',
+  'users.delete',
+  'users.password.reset',
+  'users.read',
   'users.deactivate',
   'users.manage_roles',
   'users.reset_password',
@@ -211,9 +219,43 @@ export const USER_ADMINISTRATION_PERMISSIONS: readonly PermissionKey[] = [
 ];
 
 export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
+  {
+    key: 'users.view',
+    module: 'Users',
+    action: 'View Page',
+    description: 'Access the Users page and member directory.',
+  },
+  {
+    key: 'users.create',
+    module: 'Users',
+    action: 'Add User',
+    description: 'Create organization member accounts.',
+  },
+  {
+    key: 'users.status.update',
+    module: 'Users',
+    action: 'Activate / Deactivate',
+    description: 'Activate or suspend organization members.',
+  },
+  {
+    key: 'users.update',
+    module: 'Users',
+    action: 'Edit User',
+    description: 'Edit member details and role assignments.',
+  },
+  {
+    key: 'users.delete',
+    module: 'Users',
+    action: 'Delete User',
+    description: 'Permanently delete eligible member accounts.',
+  },
+  {
+    key: 'users.password.reset',
+    module: 'Users',
+    action: 'Reset Password',
+    description: 'Reset sign-in passwords for organization members.',
+  },
   { key: 'users.read', module: 'Users', action: 'View', description: 'View organization members and invitations.' },
-  { key: 'users.create', module: 'Users', action: 'Invite', description: 'Invite or create organization members.' },
-  { key: 'users.update', module: 'Users', action: 'Edit', description: 'Update member profile and membership details.' },
   { key: 'users.deactivate', module: 'Users', action: 'Deactivate', description: 'Suspend or deactivate memberships.' },
   { key: 'users.manage_roles', module: 'Users', action: 'Assign roles', description: 'Assign or remove roles for members.' },
   {

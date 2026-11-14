@@ -90,6 +90,15 @@ import {
 } from '../utils/org-access-form-errors';
 import { selectGrantableRoles } from '../utils/grantable-roles';
 import { labelMembershipStatus } from '../utils/labels';
+import {
+  USERS_CREATE,
+  USERS_DELETE,
+  USERS_PASSWORD_RESET,
+  USERS_STATUS_UPDATE,
+  USERS_UPDATE,
+  USERS_VIEW,
+  hasUsersPermission,
+} from '@techwin/contracts';
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -143,16 +152,15 @@ export function UsersPage() {
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
   const { admin } = useAuthenticatedAdmin();
-  const { has, permissions } = useMyPermissions();
+  const { permissions } = useMyPermissions();
+  const granted = useMemo(() => new Set(permissions), [permissions]);
 
-  const canRead = has('users.read');
-  // Match backend `@RequirePermissions` OR semantics (any listed key).
-  const canProvision = has('users.create') || has('memberships.manage');
-  const canUpdateProfile = has('users.update');
-  const canManageRoles = has('users.manage_roles');
-  const canResetPassword = has('users.reset_password');
-  const canChangeStatus = has('users.deactivate') || has('memberships.manage');
-  const canDeleteMembers = has('users.deactivate') || has('memberships.manage');
+  const canRead = hasUsersPermission(granted, USERS_VIEW);
+  const canProvision = hasUsersPermission(granted, USERS_CREATE);
+  const canUpdateProfile = hasUsersPermission(granted, USERS_UPDATE);
+  const canResetPassword = hasUsersPermission(granted, USERS_PASSWORD_RESET);
+  const canChangeStatus = hasUsersPermission(granted, USERS_STATUS_UPDATE);
+  const canDeleteMembers = hasUsersPermission(granted, USERS_DELETE);
 
   const [items, setItems] = useState<readonly OrgMemberListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -303,7 +311,7 @@ export function UsersPage() {
           phone: payload.phone,
         }),
       );
-      if (canManageRoles) {
+      if (canUpdateProfile) {
         await run(() =>
           assignOrgMemberRoles(memberFormTarget.membershipId, { roleIds: payload.roleIds }),
         );
@@ -345,8 +353,10 @@ export function UsersPage() {
     }
   };
 
+  const isProtectedSystemMember = (member: OrgMemberListItem) => member.isOwner;
+
   const canDeleteMember = (member: OrgMemberListItem) =>
-    canDeleteMembers && member.adminId !== admin.id && !member.isOwner;
+    canDeleteMembers && member.adminId !== admin.id && !isProtectedSystemMember(member);
 
   const statusFilterActive = statusFilter !== 'ALL';
   const roleFilterActive = roleFilter !== 'ALL';
@@ -563,12 +573,13 @@ export function UsersPage() {
             >
               {items.map((member) => {
                 const isSelf = member.adminId === admin.id;
-                const canEditMember =
-                  !isSelf && (canUpdateProfile || canManageRoles || canRead);
+                const protectedMember = isProtectedSystemMember(member);
+                const canOpenMember =
+                  !isSelf && !protectedMember && (canRead || canUpdateProfile);
                 const showStatusToggle =
                   canChangeStatus &&
                   !isSelf &&
-                  !member.isOwner &&
+                  !protectedMember &&
                   (member.status === 'ACTIVE' || member.status === 'SUSPENDED');
                 return (
                   <TableRow key={member.membershipId} className="border-0">
@@ -624,7 +635,7 @@ export function UsersPage() {
                             )}
                           </TableIconButton>
                         ) : null}
-                        {canResetPassword && !isSelf ? (
+                        {canResetPassword && !isSelf && !protectedMember ? (
                           <TableIconButton
                             label={`Reset password for ${member.displayName}`}
                             tone="default"
@@ -638,10 +649,10 @@ export function UsersPage() {
                             <KeyRound className="size-4" aria-hidden="true" />
                           </TableIconButton>
                         ) : null}
-                        {canEditMember ? (
+                        {canOpenMember ? (
                           <TableIconButton
                             label={
-                              canUpdateProfile || canManageRoles
+                              canUpdateProfile
                                 ? `Edit ${member.displayName}`
                                 : `View ${member.displayName}`
                             }
@@ -649,10 +660,7 @@ export function UsersPage() {
                             className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
                             disabled={pending}
                             onClick={() =>
-                              openMemberForm(
-                                canUpdateProfile || canManageRoles ? 'edit' : 'view',
-                                member,
-                              )
+                              openMemberForm(canUpdateProfile ? 'edit' : 'view', member)
                             }
                           >
                             <SquarePen className="size-4" aria-hidden="true" />
@@ -713,11 +721,8 @@ export function UsersPage() {
         grantableRoles={grantableRoles}
         allRoles={roleOptions}
         pending={pending}
-        readOnly={
-          memberFormMode === 'view' ||
-          (memberFormMode === 'edit' && !canUpdateProfile && !canManageRoles)
-        }
-        canManageRoles={canManageRoles}
+        readOnly={memberFormMode === 'view' || (memberFormMode === 'edit' && !canUpdateProfile)}
+        canManageRoles={canUpdateProfile}
         canChangeStatus={canChangeStatus}
         apiFieldErrors={memberFormApiErrors}
         onDismissApiFieldError={(key) => clearFormFieldError(setMemberFormApiErrors, key)}

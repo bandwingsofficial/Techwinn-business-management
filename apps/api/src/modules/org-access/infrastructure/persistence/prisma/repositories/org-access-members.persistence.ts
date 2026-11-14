@@ -195,6 +195,9 @@ export class OrgAccessMembersPersistence {
     if (membership.adminId === actorAdminId) {
       throw new OrgAccessForbiddenError('You cannot change the status of your own account.');
     }
+    if (membership.admin.role === 'SUPER_ADMIN' || membership.isOwner) {
+      throw new OrgAccessForbiddenError('This account is protected and cannot be modified.');
+    }
     await assertActorCanManageMember(
       this.prisma,
       this.permissions.resolveEffectivePermissions,
@@ -301,6 +304,13 @@ export class OrgAccessMembersPersistence {
     actorAdminId: string,
   ): Promise<OrgMemberRecord> {
     const membership = await loadMembershipOrThrow(this.prisma, organizationId, membershipId);
+    await assertActorCanManageMember(
+      this.prisma,
+      this.permissions.resolveEffectivePermissions,
+      organizationId,
+      actorAdminId,
+      membership,
+    );
     if (input.displayName === undefined && input.phone === undefined) {
       throw new OrgAccessValidationError('Provide at least one field to update.');
     }
@@ -345,6 +355,9 @@ export class OrgAccessMembersPersistence {
     const membership = await loadMembershipOrThrow(this.prisma, organizationId, membershipId);
     if (membership.adminId === actorAdminId) {
       throw new OrgAccessForbiddenError('You cannot reset your own password from user management.');
+    }
+    if (membership.admin.role === 'SUPER_ADMIN' || membership.isOwner) {
+      throw new OrgAccessForbiddenError('This account is protected and cannot be modified.');
     }
 
     const targetAdmin = await this.prisma.platformAdmin.findUnique({

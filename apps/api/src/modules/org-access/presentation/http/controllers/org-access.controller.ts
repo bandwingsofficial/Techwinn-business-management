@@ -128,7 +128,7 @@ export class OrgAccessController {
   @Get('summary')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.read')
+  @RequirePermissions('users.view')
   @ApiOperation({ summary: 'User management summary counts' })
   async summary(@CrmContext() ctx: CrmRequestContext): Promise<OrgAccessSummaryResponse> {
     return this.getOrgAccessSummary.execute({ organizationId: ctx.organizationId });
@@ -194,7 +194,7 @@ export class OrgAccessController {
   @Get('members')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.read')
+  @RequirePermissions('users.view')
   @ApiOperation({ summary: 'List organization members' })
   async listMembers(
     @CrmContext() ctx: CrmRequestContext,
@@ -216,7 +216,7 @@ export class OrgAccessController {
   @Post('members')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.create', 'memberships.manage')
+  @RequirePermissions('users.create')
   @ApiOperation({ summary: 'Create a member account with credentials' })
   async provision(@CrmContext() ctx: CrmRequestContext, @Body() raw: unknown) {
     const body = parseProvisionMemberRequest(raw);
@@ -236,7 +236,7 @@ export class OrgAccessController {
   @Get('members/:id')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.read')
+  @RequirePermissions('users.view')
   async getMember(
     @CrmContext() ctx: CrmRequestContext,
     @Param('id') id: string,
@@ -294,7 +294,7 @@ export class OrgAccessController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.reset_password')
+  @RequirePermissions('users.password.reset')
   @ApiOperation({ summary: 'Reset a member sign-in password' })
   async resetPassword(
     @CrmContext() ctx: CrmRequestContext,
@@ -333,7 +333,7 @@ export class OrgAccessController {
   @Patch('members/:id/status')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.deactivate', 'memberships.manage')
+  @RequirePermissions('users.status.update')
   async changeStatus(
     @CrmContext() ctx: CrmRequestContext,
     @Param('id') id: string,
@@ -353,7 +353,7 @@ export class OrgAccessController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.deactivate', 'memberships.manage')
+  @RequirePermissions('users.delete')
   @ApiOperation({ summary: 'Permanently delete a member account' })
   async removeMember(@CrmContext() ctx: CrmRequestContext, @Param('id') id: string): Promise<void> {
     await this.deleteMember.execute({
@@ -366,7 +366,7 @@ export class OrgAccessController {
   @Patch('members/:id/roles')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-  @RequirePermissions('users.manage_roles')
+  @RequirePermissions('users.update')
   async assignRoles(
     @CrmContext() ctx: CrmRequestContext,
     @Param('id') id: string,

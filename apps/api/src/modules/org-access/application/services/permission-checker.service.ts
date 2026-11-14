@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { hasUnrestrictedOrgPermissions, type PermissionKey } from '#contracts';
+import { hasUnrestrictedOrgPermissions, hasUsersPermission, type PermissionKey } from '#contracts';
 import type { OrgAccessActor } from '../shared/org-access-actor.js';
 import { OrgAccessForbiddenError } from '../../domain/errors/org-access.errors.js';
 import {
@@ -31,7 +31,7 @@ export class PermissionCheckerService {
     const effective = await this.resolveEffectivePermissions(actor);
     if (actor.isPlatformSuperAdmin || hasUnrestrictedOrgPermissions(effective)) return true;
     const granted = new Set(effective);
-    return required.every((key) => granted.has(key));
+    return required.every((key) => granted.has(key) || hasUsersPermission(granted, key));
   }
 
   async hasAnyPermission(
@@ -42,7 +42,7 @@ export class PermissionCheckerService {
     const effective = await this.resolveEffectivePermissions(actor);
     if (actor.isPlatformSuperAdmin || hasUnrestrictedOrgPermissions(effective)) return true;
     const granted = new Set(effective);
-    return keys.some((key) => granted.has(key));
+    return keys.some((key) => granted.has(key) || hasUsersPermission(granted, key));
   }
 
   /** Grants when the actor holds any of `required`. */
@@ -54,7 +54,9 @@ export class PermissionCheckerService {
     const effective = await this.resolveEffectivePermissions(actor);
     if (actor.isPlatformSuperAdmin || hasUnrestrictedOrgPermissions(effective)) return;
     const granted = new Set(effective);
-    const allowed = required.some((key) => granted.has(key));
+    const allowed = required.some(
+      (key) => granted.has(key) || hasUsersPermission(granted, key),
+    );
     if (!allowed) {
       throw new OrgAccessForbiddenError('You do not have permission to perform this action.');
     }

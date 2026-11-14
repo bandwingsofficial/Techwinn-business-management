@@ -20,6 +20,7 @@ import {
   LEAVE_MANAGEMENT_PERMISSION_KEYS,
   LEGACY_LEAVE_MANAGEMENT_ADMIN_PERMISSION_KEYS,
 } from './leave-management-permission-keys';
+import { LEGACY_USERS_PAGE_PERMISSION_KEYS, USERS_PERMISSION_KEYS } from './users-permission-keys';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions';
 import {
@@ -347,16 +348,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'users',
             label: 'Users',
             href: '/admin/users',
-            permissionKeys: [
-              'users.read',
-              'users.create',
-              'users.update',
-              'users.deactivate',
-              'users.manage_roles',
-              'users.reset_password',
-              'memberships.invite',
-              'memberships.manage',
-            ],
+            permissionKeys: [...USERS_PERMISSION_KEYS],
           },
           {
             id: 'roles',
@@ -368,6 +360,8 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
               'roles.update',
               'roles.delete',
               'permissions.read',
+              'memberships.invite',
+              'memberships.manage',
             ],
           },
           {
@@ -422,6 +416,7 @@ const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_LEAVE_TYPES_PERMISSION_KEYS,
   ...LEGACY_LEAVE_BALANCES_POLICY_PERMISSION_KEYS,
   ...LEGACY_LEAVE_MANAGEMENT_ADMIN_PERMISSION_KEYS,
+  ...LEGACY_USERS_PAGE_PERMISSION_KEYS,
   ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);

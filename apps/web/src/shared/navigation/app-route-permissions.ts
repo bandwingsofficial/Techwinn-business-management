@@ -1,5 +1,7 @@
 import {
   canAccessLeaveManagementPage,
+  hasUsersPermission,
+  USERS_VIEW,
   canAccessTaskCalendar,
   hasUnrestrictedOrgPermissions,
   SYSTEM_ROLE_KEYS,
@@ -32,7 +34,7 @@ const ORGANIZATION_DAILY_TASK_BOARD_ROUTES: ReadonlySet<string> = new Set([
 export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionKey[]>> = {
   '/admin': [],
   '/admin/dashboard': [],
-  '/admin/users': ['users.read'],
+  '/admin/users': ['users.view'],
   '/admin/roles': ['roles.read'],
   '/admin/employees': ['employees.view'],
   '/admin/attendance': ['attendance.records.view'],
@@ -203,6 +205,9 @@ export function canAccessAppPath(
   const canonical = canonicalPermissionPath(path);
   if (canonical === '/admin/leave' || canonical === '/admin/leave-management') {
     return canAccessLeaveManagementPage(permissions);
+  }
+  if (canonical === '/admin/users') {
+    return hasUsersPermission(permissions, USERS_VIEW);
   }
 
   const projectPlanAccess = canAccessProjectTasksPlanPath(path, permissions);
