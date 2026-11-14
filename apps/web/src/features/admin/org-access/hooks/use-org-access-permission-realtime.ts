@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { isApiError } from '@/shared/api/api-error';
+import { accessTokenStore, isAuthRefreshBackoffActive } from '@/shared/api/api-client';
 import { pollMyPermissionEvents } from '../api/org-access';
 
 const WAIT_MS = 10_000;
@@ -37,6 +38,10 @@ export function useOrgAccessPermissionRealtime(handlers: {
 
     const run = async () => {
       while (!controller.signal.aborted) {
+        if (!accessTokenStore.get() && isAuthRefreshBackoffActive()) {
+          await sleep(Math.min(MAX_BACKOFF_MS, 5_000));
+          continue;
+        }
         try {
           const response = await pollMyPermissionEvents(
             cursor,

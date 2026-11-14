@@ -194,21 +194,15 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
 
         if (isApiError(failure) && failure.isTransient) {
           setSnapshot((previous) => {
-            if (previous && previous.permissions.length > 0) return previous;
-            return {
-              permissions: [],
-              roles: [],
-              sessionEmployee: null,
-              revision: '0',
-              fullAccess: false,
-            };
+            if (previous && hasUsableAccess(previous)) return previous;
+            return previous;
           });
           setFatalError(describeOrgAccessError(failure));
           return;
         }
 
         setSnapshot((previous) => {
-          if (previous && previous.permissions.length > 0) {
+          if (previous && hasUsableAccess(previous)) {
             return previous;
           }
           return {
@@ -287,7 +281,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       if (revision === lastRevisionRef.current) return;
       invalidateMyPermissionsCache();
       const generation = ++loadGenerationRef.current;
-      void runPermissionLoad({ generation, silent: true, revalidateRoute: true });
+      void runPermissionLoad({ generation, silent: true, revalidateRoute: false });
     },
   });
 

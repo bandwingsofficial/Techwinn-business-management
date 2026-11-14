@@ -126,6 +126,11 @@ export function resolveApiInternalUrl(
     );
   }
 
+  // Node fetch from the Next proxy to `localhost` can fail on Windows while `127.0.0.1` works.
+  if (nodeEnv !== 'production' && parsed.hostname === 'localhost') {
+    parsed.hostname = '127.0.0.1';
+  }
+
   // Canonical origin form — never a trailing slash.
   return parsed.origin;
 }

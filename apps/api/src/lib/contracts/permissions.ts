@@ -161,6 +161,7 @@ export const PERMISSION_KEYS = [
   'leave_balances.update',
   'leave_balances.toggle_status',
   'leave_balances.delete',
+  'employee_leave_records.view',
   'leave.config.read',
   'leave.config.manage',
   'leave.allocations.read',
@@ -858,6 +859,13 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     module: 'Leave Balances',
     action: 'Delete',
     description: 'Delete or archive an eligible leave balance policy.',
+  },
+  {
+    key: 'employee_leave_records.view',
+    module: 'Employee Leave Records',
+    action: 'View',
+    description:
+      'View employee-wise leave entitlements, consumed days and available balances.',
   },
   {
     key: 'leave.balances.read',

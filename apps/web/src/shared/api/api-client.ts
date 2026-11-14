@@ -33,6 +33,8 @@ export interface ApiRequestOptions {
   /** Echo the CSRF cookie for cookie-authenticated endpoints. */
   readonly csrf?: boolean;
   readonly signal?: AbortSignal;
+  /** Overrides {@link apiConfig.requestTimeoutMs} for this call. */
+  readonly timeoutMs?: number;
   /**
    * When true, never attempt session refresh before or after this call.
    * Required for the refresh endpoint itself to prevent recursive refresh loops.
@@ -55,6 +57,8 @@ type SessionRuntime = {
   refreshCooldownUntilMs: number;
   /** After 5xx / network refresh failures, pause new refresh attempts briefly. */
   refreshTransientCooldownUntilMs: number;
+  refreshTransientBackoffMs: number;
+  refreshConsecutiveTransientFailures: number;
   sessionEndedListeners: Set<SessionEndedListener>;
   accessDeniedListeners: Set<AccessDeniedListener>;
 };
@@ -68,10 +72,39 @@ function sessionRuntime(): SessionRuntime {
     inFlight: null,
     refreshCooldownUntilMs: 0,
     refreshTransientCooldownUntilMs: 0,
+    refreshTransientBackoffMs: 8_000,
+    refreshConsecutiveTransientFailures: 0,
     sessionEndedListeners: new Set(),
     accessDeniedListeners: new Set(),
   };
   return globalRecord[SESSION_RUNTIME_KEY];
+}
+
+const REFRESH_TRANSIENT_BACKOFF_MIN_MS = 8_000;
+const REFRESH_TRANSIENT_BACKOFF_MAX_MS = 60_000;
+
+/** True while refresh is in cooldown after rate limits or transient upstream failures. */
+export function isAuthRefreshBackoffActive(): boolean {
+  const state = sessionRuntime();
+  const now = Date.now();
+  return now < state.refreshCooldownUntilMs || now < state.refreshTransientCooldownUntilMs;
+}
+
+function scheduleRefreshTransientBackoff(): void {
+  const state = sessionRuntime();
+  state.refreshConsecutiveTransientFailures += 1;
+  state.refreshTransientBackoffMs = Math.min(
+    REFRESH_TRANSIENT_BACKOFF_MAX_MS,
+    state.refreshTransientBackoffMs * 2,
+  );
+  state.refreshTransientCooldownUntilMs = Date.now() + state.refreshTransientBackoffMs;
+}
+
+function clearRefreshTransientBackoff(): void {
+  const state = sessionRuntime();
+  state.refreshConsecutiveTransientFailures = 0;
+  state.refreshTransientBackoffMs = REFRESH_TRANSIENT_BACKOFF_MIN_MS;
+  state.refreshTransientCooldownUntilMs = 0;
 }
 
 const ACCESS_DENIED_CODES: ReadonlySet<ApiErrorCode | null> = new Set([
@@ -132,8 +165,6 @@ function rateLimitedRefreshError(retryAfterSeconds: number): ApiError {
   );
 }
 
-const REFRESH_TRANSIENT_COOLDOWN_MS = 8_000;
-
 function transientRefreshCooldownError(retryAfterSeconds: number): ApiError {
   return new ApiError(
     'http',
@@ -178,13 +209,19 @@ export function refreshAccessToken(): Promise<RefreshOutcome> {
     try {
       const outcome = await refresher();
       if (outcome === 'unauthenticated') notifySessionEnded();
+      clearRefreshTransientBackoff();
       return outcome;
     } catch (error) {
       if (isApiError(error) && error.status === 429) {
         const waitSeconds = Math.max(1, error.retryAfterSeconds ?? 5);
         state.refreshCooldownUntilMs = Date.now() + waitSeconds * 1000;
-      } else if (isApiError(error) && error.isTransient) {
-        state.refreshTransientCooldownUntilMs = Date.now() + REFRESH_TRANSIENT_COOLDOWN_MS;
+      } else if (
+        isApiError(error) &&
+        (error.isTransient || error.status === 502 || error.status === 503)
+      ) {
+        scheduleRefreshTransientBackoff();
+      } else if (error instanceof ApiError && (error.kind === 'network' || error.kind === 'timeout')) {
+        scheduleRefreshTransientBackoff();
       }
       throw error;
     }
@@ -204,7 +241,8 @@ async function send(path: string, options: ApiRequestOptions): Promise<Response>
     if (csrfToken) headers.set(apiConfig.csrfHeader, csrfToken);
   }
 
-  const timeout = AbortSignal.timeout(apiConfig.requestTimeoutMs);
+  const timeoutMs = options.timeoutMs ?? apiConfig.requestTimeoutMs;
+  const timeout = AbortSignal.timeout(timeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   try {
     return await fetch(`${apiConfig.baseUrl}${path}`, {
@@ -238,6 +276,12 @@ function canAttemptRefresh(options: ApiRequestOptions): boolean {
 
 async function ensureAccessToken(options: ApiRequestOptions): Promise<void> {
   if (!canAttemptRefresh(options) || accessTokenStore.get()) return;
+  if (isAuthRefreshBackoffActive()) {
+    const state = sessionRuntime();
+    const waitUntil = Math.max(state.refreshCooldownUntilMs, state.refreshTransientCooldownUntilMs);
+    const retryAfterSeconds = Math.max(1, Math.ceil((waitUntil - Date.now()) / 1000));
+    throw transientRefreshCooldownError(retryAfterSeconds);
+  }
   const outcome = await refreshAccessToken();
   if (outcome === 'unauthenticated') {
     throw new ApiError('http', 'Your session has ended.', 401, API_ERROR_CODES.SESSION_EXPIRED);
@@ -250,7 +294,7 @@ async function retryAfterRefresh<T>(
   firstError: ApiError,
   afterOk: (response: Response) => Promise<T>,
 ): Promise<T> {
-  if (isRefreshPath(path)) {
+  if (isRefreshPath(path) || firstError.isTransient) {
     throw firstError;
   }
 

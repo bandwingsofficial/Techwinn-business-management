@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-export function EmployeeLeaveRecordsNoConfigurationEmptyState() {
+export function EmployeeLeaveRecordsNoConfigurationEmptyState({
+  leaveBalancesHref,
+}: {
+  readonly leaveBalancesHref?: string | null;
+}) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       <p className="text-foreground text-base font-semibold">No active leave balance configuration</p>
@@ -9,9 +13,11 @@ export function EmployeeLeaveRecordsNoConfigurationEmptyState() {
         Employee leave records are generated automatically when you create an active Leave Balance
         configuration. Create or activate a configuration to view entitlements here.
       </p>
-      <Button asChild variant="outline" className="mt-1 h-9">
-        <Link href="/admin/leave-balances">Go to Leave Balances</Link>
-      </Button>
+      {leaveBalancesHref ? (
+        <Button asChild variant="outline" className="mt-1 h-9">
+          <Link href={leaveBalancesHref}>Go to Leave Balances</Link>
+        </Button>
+      ) : null}
     </div>
   );
 }

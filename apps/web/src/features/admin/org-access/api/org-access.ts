@@ -5,6 +5,7 @@ import type {
   ResetMemberPasswordRequest,
 } from '@techwin/validation';
 import { apiRequest } from '@/shared/api/api-client';
+import { apiConfig } from '@/shared/api/api-config';
 import { buildQueryString } from '@/features/admin/crm/utils/query-string';
 import type {
   AssignMemberRolesRequest,
@@ -63,7 +64,11 @@ export function pollMyPermissionEvents(
       after: after ?? undefined,
       waitMs: after === null ? 0 : waitMs,
     })}`,
-    { auth: true, signal },
+    {
+      auth: true,
+      signal,
+      timeoutMs: apiConfig.permissionEventsTimeoutMs,
+    },
   );
 }
 

@@ -12,6 +12,7 @@ import type {
   LeaveYearConfigurationItem,
 } from '#contracts';
 import {
+  EMPLOYEE_LEAVE_RECORDS_VIEW,
   LEAVE_BALANCES_CREATE,
   LEAVE_BALANCES_DELETE,
   LEAVE_BALANCES_TOGGLE_STATUS,
@@ -55,7 +56,7 @@ export class ListLeaveYearConfigurationsHandler {
   ) {}
 
   async execute(actor: OrgAccessActor): Promise<readonly LeaveYearConfigurationItem[]> {
-    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_VIEW]);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_VIEW, EMPLOYEE_LEAVE_RECORDS_VIEW]);
     return this.repository.listYearConfigurations(actor.organizationId);
   }
 }
@@ -308,7 +309,7 @@ export class ListEmployeeLeaveRecordsHandler {
     leaveYearConfigurationId: string,
     query: EmployeeLeaveRecordsListQuery,
   ): Promise<EmployeeLeaveRecordsResponse> {
-    await this.authz.requireAnyPermission(actor, ['leave.balances.read', LEAVE_BALANCES_VIEW]);
+    await this.authz.requireAnyPermission(actor, [EMPLOYEE_LEAVE_RECORDS_VIEW]);
     return this.repository.listEmployeeLeaveRecords(
       actor.organizationId,
       leaveYearConfigurationId,

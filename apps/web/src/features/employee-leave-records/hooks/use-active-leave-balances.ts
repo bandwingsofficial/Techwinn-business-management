@@ -28,7 +28,7 @@ export function useActiveLeaveBalances() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void refetch(controller.signal);
+    void refetch(controller.signal, true);
     const unsubscribe = subscribeLeaveDataChanged(() => {
       void refetch(undefined, true);
     });

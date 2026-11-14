@@ -40,7 +40,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/calendar': ['organisation_calendar.view'],
   '/admin/leave-types': ['leave_types.view'],
   '/admin/leave-balances': ['leave_balances.view'],
-  '/admin/employee-leave-records': ['leave.balances.read', 'leave_balances.view'],
+  '/admin/employee-leave-records': ['employee_leave_records.view'],
   '/admin/leave': ['leave.requests.read_all'],
   '/admin/pipeline': ['crm.pipeline.view'],
   '/admin/leads': ['crm.leads.view'],

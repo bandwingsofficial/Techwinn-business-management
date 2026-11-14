@@ -23,7 +23,9 @@ import { TablePagination } from '@/features/admin/components/table-pagination';
 import { CrmErrorAlert } from '@/features/admin/crm/components/crm-feedback';
 import { CrmToolbarHeader } from '@/features/admin/crm/components/crm-toolbar-header';
 import { CRM_PIPELINE_SEARCH_INPUT_CLASS } from '@/features/admin/crm/constants';
+import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
+import { LEAVE_BALANCES_VIEW } from '@techwin/contracts';
 import { EmployeeAvatar } from '@/features/employees/components/employee-avatar';
 import { cn } from '@/shared/lib/utils';
 import { EmployeeLeaveTypeCell } from '../components/employee-leave-type-cell';
@@ -43,8 +45,12 @@ const SEARCH_DEBOUNCE_MS = 350;
 export function EmployeeLeaveRecordsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const access = useAdminAccess();
   const { dashboardBreadcrumb, toPortalPath } = usePortalNavigation();
   const recordsBasePath = toPortalPath('/admin/employee-leave-records');
+  const leaveBalancesHref = access.has(LEAVE_BALANCES_VIEW)
+    ? toPortalPath('/admin/leave-balances')
+    : null;
 
   const configurationIdParam = searchParams.get('configurationId') ?? '';
   const searchParam = searchParams.get('search') ?? '';
@@ -217,7 +223,7 @@ export function EmployeeLeaveRecordsPage() {
           <div aria-hidden className="table-header-edge" />
 
           {showNoConfig ? (
-            <EmployeeLeaveRecordsNoConfigurationEmptyState />
+            <EmployeeLeaveRecordsNoConfigurationEmptyState leaveBalancesHref={leaveBalancesHref} />
           ) : (
               <DataTable
                 frame="flush"
@@ -384,15 +390,15 @@ export function EmployeeLeaveRecordsPage() {
               </DataTable>
           )}
 
-          {!showNoConfig && configurations.length === 0 ? null : (
+          {leaveBalancesHref && (!showNoConfig && configurations.length === 0 ? null : (
             <p className="text-muted-foreground px-4 py-3 text-xs sm:px-5">
               Manage entitlements in{' '}
-              <Link href="/admin/leave-balances" className="text-primary font-medium hover:underline">
+              <Link href={leaveBalancesHref} className="text-primary font-medium hover:underline">
                 Leave Balances
               </Link>
               .
             </p>
-          )}
+          ))}
         </div>
       </section>
     </div>

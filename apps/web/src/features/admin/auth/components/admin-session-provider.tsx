@@ -98,8 +98,10 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (controller.signal.aborted || isAbortError(error)) return;
         if (isApiError(error) && error.isTransient) {
-          if (hadBootstrap && accessTokenStore.get()) return;
-          setState({ status: 'error', error });
+          setState((current) => {
+            if (current.status === 'authenticated') return current;
+            return { status: 'error', error };
+          });
           return;
         }
         if (hadBootstrap && !isDefinitiveSessionEnd(error) && accessTokenStore.get()) {

@@ -15,6 +15,7 @@ import {
   LEAVE_BALANCES_VIEW,
   LEGACY_LEAVE_BALANCES_POLICY_PERMISSION_KEYS,
 } from './leave-balances-permission-keys';
+import { EMPLOYEE_LEAVE_RECORDS_PERMISSION_KEYS } from './employee-leave-records-permission-keys';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions';
 import {
@@ -303,11 +304,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'employee-leave-records',
             label: 'Employee Leave Records',
             href: '/admin/employee-leave-records',
-            permissionKeys: [
-              'leave.balances.read',
-              'leave.balances.adjust',
-              LEAVE_BALANCES_VIEW,
-            ],
+            permissionKeys: [...EMPLOYEE_LEAVE_RECORDS_PERMISSION_KEYS],
           },
           {
             id: 'leave-requests',
@@ -321,6 +318,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
               'leave.requests.reject',
               'leave.requests.cancel',
               'leave.balances.read',
+              'leave.balances.adjust',
               'leave.balances.read_own',
             ],
           },

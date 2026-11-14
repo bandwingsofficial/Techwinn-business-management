@@ -19,7 +19,20 @@ export function useLeaveBalances() {
       setItems(rows);
       setError(null);
     } catch (failure) {
-      if (isAbortError(failure)) return;
+      if (isAbortError(failure)) {
+        if (signal?.aborted) {
+          try {
+            const rows = await listLeaveYearConfigurations(undefined, { force: true });
+            setItems(rows);
+            setError(null);
+          } catch (retryFailure) {
+            if (!isAbortError(retryFailure)) {
+              setError(describeCrmError(retryFailure));
+            }
+          }
+        }
+        return;
+      }
       setError(describeCrmError(failure));
     } finally {
       setLoading(false);
@@ -30,7 +43,7 @@ export function useLeaveBalances() {
     const controller = new AbortController();
     void refetch(controller.signal, true);
     const unsubscribe = subscribeLeaveDataChanged(() => {
-      void refetch();
+      void refetch(undefined, true);
     });
     return () => {
       controller.abort();

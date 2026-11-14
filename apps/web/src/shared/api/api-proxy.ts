@@ -74,14 +74,23 @@ export async function proxyApiRequest(
 
   let upstream: Response;
   try {
-    upstream = await fetchImpl(target, init);
-  } catch {
+    const proxyTimeoutMs = 120_000;
+    upstream = await fetchImpl(target, {
+      ...init,
+      signal: AbortSignal.timeout(proxyTimeoutMs),
+    });
+  } catch (error) {
+    const isTimeout =
+      error instanceof Error &&
+      (error.name === 'TimeoutError' || error.name === 'AbortError');
     return Response.json(
       {
         statusCode: 502,
         error: {
           code: 'BAD_GATEWAY',
-          message: 'Unable to reach the API service.',
+          message: isTimeout
+            ? 'The API service did not respond in time.'
+            : 'Unable to reach the API service.',
         },
       },
       { status: 502 },

@@ -21,6 +21,8 @@ export const apiConfig = {
     return resolveClientApiBaseUrl();
   },
   requestTimeoutMs: 15_000,
+  /** Long-poll permission events (`waitMs` up to 10s) need headroom beyond the server hold. */
+  permissionEventsTimeoutMs: 35_000,
   csrfCookie: PLATFORM_CSRF_COOKIE,
   csrfHeader: PLATFORM_CSRF_HEADER,
   /** Web Locks name that serializes refresh-token rotation across browser tabs. */

@@ -19,7 +19,9 @@ export function createCoalescedRequest<T>(
     if (!force && cache && Date.now() - cache.at < ttlMs) {
       return cache.value;
     }
-    if (inflight) {
+    // A forced load must not join a stale in-flight fetch (e.g. React Strict Mode
+    // abort on the first mount would cancel the shared promise for the second).
+    if (!force && inflight) {
       return inflight;
     }
     inflight = fetcher(signal)
