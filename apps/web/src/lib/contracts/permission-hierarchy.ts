@@ -10,6 +10,11 @@ import {
 import { PM_TASK_CALENDAR_PERMISSION_KEYS } from './pm-task-calendar-permissions';
 import { LEGACY_ORG_CALENDAR_PERMISSION_KEYS } from './org-calendar-permission-keys';
 import { LEAVE_TYPES_PERMISSION_KEYS, LEGACY_LEAVE_TYPES_PERMISSION_KEYS } from './leave-types-permission-keys';
+import {
+  LEAVE_BALANCES_PERMISSION_KEYS,
+  LEAVE_BALANCES_VIEW,
+  LEGACY_LEAVE_BALANCES_POLICY_PERMISSION_KEYS,
+} from './leave-balances-permission-keys';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions';
 import {
@@ -292,14 +297,7 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'leave-balances',
             label: 'Leave Balances',
             href: '/admin/leave-balances',
-            permissionKeys: [
-              'leave.config.read',
-              'leave.config.manage',
-              'leave.allocations.read',
-              'leave.allocations.manage',
-              'leave.balances.read',
-              'leave.balances.adjust',
-            ],
+            permissionKeys: [...LEAVE_BALANCES_PERMISSION_KEYS],
           },
           {
             id: 'employee-leave-records',
@@ -307,8 +305,8 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             href: '/admin/employee-leave-records',
             permissionKeys: [
               'leave.balances.read',
-              'leave.config.read',
-              'leave.config.manage',
+              'leave.balances.adjust',
+              LEAVE_BALANCES_VIEW,
             ],
           },
           {
@@ -415,6 +413,7 @@ const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_CLIENTS_PERMISSION_KEYS,
   ...LEGACY_ORG_CALENDAR_PERMISSION_KEYS,
   ...LEGACY_LEAVE_TYPES_PERMISSION_KEYS,
+  ...LEGACY_LEAVE_BALANCES_POLICY_PERMISSION_KEYS,
   ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);

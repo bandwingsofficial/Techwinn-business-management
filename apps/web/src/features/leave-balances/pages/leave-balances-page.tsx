@@ -29,7 +29,14 @@ import { CrmErrorAlert } from '@/features/admin/crm/components/crm-feedback';
 import { CrmToolbarHeader } from '@/features/admin/crm/components/crm-toolbar-header';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
 import { describeCrmError } from '@/features/admin/crm/utils/errors';
+import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
+import {
+  LEAVE_BALANCES_CREATE,
+  LEAVE_BALANCES_DELETE,
+  LEAVE_BALANCES_TOGGLE_STATUS,
+  LEAVE_BALANCES_UPDATE,
+} from '@techwin/contracts';
 import {
   deleteLeaveYearConfiguration,
   updateLeaveYearConfigurationStatus,
@@ -92,8 +99,14 @@ function normalizeLeaveBalanceConfig(
 
 export function LeaveBalancesPage() {
   const toast = useAdminToast();
+  const access = useAdminAccess();
   const { pending, run } = useAsyncAction();
   const { dashboardBreadcrumb } = usePortalNavigation();
+  const canCreate = access.has(LEAVE_BALANCES_CREATE);
+  const canUpdate = access.has(LEAVE_BALANCES_UPDATE);
+  const canToggle = access.has(LEAVE_BALANCES_TOGGLE_STATUS);
+  const canDelete = access.has(LEAVE_BALANCES_DELETE);
+  const showRowActions = canUpdate || canToggle || canDelete;
   const { leaveBalances, loading, error, refetch } = useLeaveBalances();
 
   const items = useMemo(
@@ -193,15 +206,17 @@ export function LeaveBalancesPage() {
             className="rounded-none border-0 bg-card shadow-none"
             titleSectionClassName="xl:max-w-none xl:min-w-0 xl:flex-[1_1_auto]"
             toolbar={
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-                onClick={openCreate}
-              >
-                <Plus aria-hidden="true" />
-                Create Leave Balance
-              </Button>
+              canCreate ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 shrink-0 border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+                  onClick={openCreate}
+                >
+                  <Plus aria-hidden="true" />
+                  Create Leave Balance
+                </Button>
+              ) : null
             }
           />
 
@@ -221,7 +236,7 @@ export function LeaveBalancesPage() {
             tableClassName="table-fixed [&_[data-slot=table-head]]:h-auto [&_[data-slot=table-head]]:py-3 [&_[data-slot=table-cell]]:py-3"
             tableBodyClassName="[&_[data-slot=table-row]]:border-0 [&_[data-slot=table-row]:hover]:bg-[#f5f5f5]"
             phase={tablePhase}
-            colSpan={7}
+            colSpan={showRowActions ? 7 : 6}
             skeletonColumns={TABLE_SKELETON}
             header={
               <TableRow className="hover:bg-transparent">
@@ -231,7 +246,7 @@ export function LeaveBalancesPage() {
                 <TableHead className="min-w-[11rem] w-[24%]">Leave Types</TableHead>
                 <TableHead className="text-right whitespace-nowrap">Total Days</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {showRowActions ? <TableHead className="text-right">Actions</TableHead> : null}
               </TableRow>
             }
             empty={{
@@ -273,51 +288,59 @@ export function LeaveBalancesPage() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{row.totalAllocatedDays}</TableCell>
                   <TableCell>{statusBadge(row.status)}</TableCell>
-                  <TableCell className="min-w-0 pl-4">
-                    <div className="flex w-full shrink-0 items-center justify-end gap-1">
-                      <TableIconButton
-                        label={isActive ? `Deactivate ${row.name}` : `Activate ${row.name}`}
-                        tone="default"
-                        className={
-                          isActive
-                            ? 'text-red-800 hover:bg-red-800/10 hover:text-red-900'
-                            : 'text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900'
-                        }
-                        disabled={pending}
-                        onClick={() => {
-                          if (isActive) setDeactivateTarget(row);
-                          else void setPolicyStatus(row, 'ACTIVE');
-                        }}
-                      >
-                        {isActive ? (
-                          <ToggleRight className="size-4 stroke-[2]" aria-hidden="true" />
-                        ) : (
-                          <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
-                        )}
-                      </TableIconButton>
-                      <TableIconButton
-                        label={`Edit ${row.name}`}
-                        tone="default"
-                        className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
-                        disabled={pending}
-                        onClick={() => {
-                          setEditing(row);
-                          setFormOpen(true);
-                        }}
-                      >
-                        <SquarePen className="size-4" aria-hidden="true" />
-                      </TableIconButton>
-                      <TableIconButton
-                        label={`Delete ${row.name}`}
-                        tone="default"
-                        className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black disabled:opacity-100 disabled:hover:bg-transparent"
-                        disabled={pending}
-                        onClick={() => setDeleteTarget(row)}
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                      </TableIconButton>
-                    </div>
-                  </TableCell>
+                  {showRowActions ? (
+                    <TableCell className="min-w-0 pl-4">
+                      <div className="flex w-full shrink-0 items-center justify-end gap-1">
+                        {canToggle ? (
+                          <TableIconButton
+                            label={isActive ? `Deactivate ${row.name}` : `Activate ${row.name}`}
+                            tone="default"
+                            className={
+                              isActive
+                                ? 'text-red-800 hover:bg-red-800/10 hover:text-red-900'
+                                : 'text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900'
+                            }
+                            disabled={pending}
+                            onClick={() => {
+                              if (isActive) setDeactivateTarget(row);
+                              else void setPolicyStatus(row, 'ACTIVE');
+                            }}
+                          >
+                            {isActive ? (
+                              <ToggleRight className="size-4 stroke-[2]" aria-hidden="true" />
+                            ) : (
+                              <ToggleLeft className="size-4 stroke-[2]" aria-hidden="true" />
+                            )}
+                          </TableIconButton>
+                        ) : null}
+                        {canUpdate ? (
+                          <TableIconButton
+                            label={`Edit ${row.name}`}
+                            tone="default"
+                            className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+                            disabled={pending}
+                            onClick={() => {
+                              setEditing(row);
+                              setFormOpen(true);
+                            }}
+                          >
+                            <SquarePen className="size-4" aria-hidden="true" />
+                          </TableIconButton>
+                        ) : null}
+                        {canDelete ? (
+                          <TableIconButton
+                            label={`Delete ${row.name}`}
+                            tone="default"
+                            className="text-neutral-900 hover:bg-neutral-900/10 hover:text-black disabled:opacity-100 disabled:hover:bg-transparent"
+                            disabled={pending}
+                            onClick={() => setDeleteTarget(row)}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </TableIconButton>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
             })}

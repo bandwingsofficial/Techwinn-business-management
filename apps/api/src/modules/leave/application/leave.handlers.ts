@@ -11,6 +11,13 @@ import type {
   LeaveYearAllocationListResponse,
   LeaveYearConfigurationItem,
 } from '#contracts';
+import {
+  LEAVE_BALANCES_CREATE,
+  LEAVE_BALANCES_DELETE,
+  LEAVE_BALANCES_TOGGLE_STATUS,
+  LEAVE_BALANCES_UPDATE,
+  LEAVE_BALANCES_VIEW,
+} from '#contracts';
 import type {
   AdjustEmployeeLeaveBalanceRequest,
   ApplyLeaveRequest,
@@ -48,7 +55,7 @@ export class ListLeaveYearConfigurationsHandler {
   ) {}
 
   async execute(actor: OrgAccessActor): Promise<readonly LeaveYearConfigurationItem[]> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.read', 'leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_VIEW]);
     return this.repository.listYearConfigurations(actor.organizationId);
   }
 }
@@ -61,7 +68,7 @@ export class GetLeaveYearConfigurationHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, id: string): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.read', 'leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_VIEW]);
     return this.repository.getYearConfiguration(actor.organizationId, id);
   }
 
@@ -69,7 +76,7 @@ export class GetLeaveYearConfigurationHandler {
     actor: OrgAccessActor,
     calendarYear: number,
   ): Promise<LeaveYearConfigurationItem | null> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.read', 'leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_VIEW]);
     return this.repository.getYearConfigurationByYear(actor.organizationId, calendarYear);
   }
 }
@@ -85,7 +92,7 @@ export class CreateLeaveBalanceConfigurationHandler {
     actor: OrgAccessActor,
     input: CreateLeaveBalanceConfigurationRequest,
   ): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage', 'leave.allocations.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_CREATE]);
     return this.repository.createLeaveBalanceConfiguration(actor.organizationId, actor.adminId, input);
   }
 }
@@ -102,7 +109,7 @@ export class UpdateLeaveBalanceConfigurationHandler {
     id: string,
     input: UpdateLeaveBalanceConfigurationRequest,
   ): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage', 'leave.allocations.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_UPDATE]);
     return this.repository.updateLeaveBalanceConfiguration(
       actor.organizationId,
       id,
@@ -120,7 +127,7 @@ export class DeleteLeaveYearConfigurationHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, id: string): Promise<void> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_DELETE]);
     await this.repository.deleteYearConfiguration(actor.organizationId, id);
   }
 }
@@ -136,7 +143,7 @@ export class CreateLeaveYearConfigurationHandler {
     actor: OrgAccessActor,
     input: CreateLeaveYearConfigurationRequest,
   ): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_CREATE]);
     return this.repository.createYearConfiguration(actor.organizationId, actor.adminId, input);
   }
 }
@@ -153,7 +160,7 @@ export class UpdateLeaveYearConfigurationHandler {
     id: string,
     input: UpdateLeaveYearConfigurationRequest,
   ): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_UPDATE]);
     return this.repository.updateYearConfiguration(actor.organizationId, id, actor.adminId, input);
   }
 }
@@ -166,7 +173,7 @@ export class ActivateLeaveYearConfigurationHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, id: string): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_TOGGLE_STATUS]);
     return this.repository.activateYearConfiguration(actor.organizationId, id, actor.adminId);
   }
 }
@@ -179,7 +186,7 @@ export class CloseLeaveYearConfigurationHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, id: string): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_TOGGLE_STATUS]);
     return this.repository.closeYearConfiguration(actor.organizationId, id, actor.adminId);
   }
 }
@@ -196,7 +203,7 @@ export class SetLeaveYearConfigurationStatusHandler {
     id: string,
     input: UpdateLeaveYearConfigurationStatusRequest,
   ): Promise<LeaveYearConfigurationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_TOGGLE_STATUS]);
     return this.repository.setYearConfigurationStatus(
       actor.organizationId,
       id,
@@ -214,7 +221,7 @@ export class GenerateEmployeeLeaveBalancesHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, id: string): Promise<GenerateEmployeeBalancesResponse> {
-    await this.authz.requireAnyPermission(actor, ['leave.config.manage', 'leave.allocations.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_UPDATE]);
     return this.repository.generateEmployeeBalances(actor.organizationId, id, actor.adminId);
   }
 }
@@ -230,7 +237,7 @@ export class ListLeaveAllocationsHandler {
     actor: OrgAccessActor,
     query: LeaveAllocationListQuery,
   ): Promise<LeaveYearAllocationListResponse> {
-    await this.authz.requireAnyPermission(actor, ['leave.allocations.read', 'leave.allocations.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_VIEW]);
     return this.repository.listAllocations(actor.organizationId, query);
   }
 }
@@ -246,7 +253,7 @@ export class CreateLeaveAllocationHandler {
     actor: OrgAccessActor,
     input: CreateLeaveYearAllocationRequest,
   ): Promise<LeaveYearAllocationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.allocations.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_UPDATE]);
     return this.repository.createAllocation(actor.organizationId, actor.adminId, input);
   }
 }
@@ -263,7 +270,7 @@ export class UpdateLeaveAllocationHandler {
     allocationId: string,
     input: UpdateLeaveYearAllocationRequest,
   ): Promise<LeaveYearAllocationItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.allocations.manage']);
+    await this.authz.requireAnyPermission(actor, [LEAVE_BALANCES_UPDATE]);
     return this.repository.updateAllocation(
       actor.organizationId,
       allocationId,
@@ -301,11 +308,7 @@ export class ListEmployeeLeaveRecordsHandler {
     leaveYearConfigurationId: string,
     query: EmployeeLeaveRecordsListQuery,
   ): Promise<EmployeeLeaveRecordsResponse> {
-    await this.authz.requireAnyPermission(actor, [
-      'leave.balances.read',
-      'leave.config.read',
-      'leave.config.manage',
-    ]);
+    await this.authz.requireAnyPermission(actor, ['leave.balances.read', LEAVE_BALANCES_VIEW]);
     return this.repository.listEmployeeLeaveRecords(
       actor.organizationId,
       leaveYearConfigurationId,

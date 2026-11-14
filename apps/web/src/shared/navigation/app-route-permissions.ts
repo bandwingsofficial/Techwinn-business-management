@@ -39,19 +39,8 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   /** Organisation Calendar admin page — read-only access uses `organisation_calendar.view`. */
   '/admin/calendar': ['organisation_calendar.view'],
   '/admin/leave-types': ['leave_types.view'],
-  '/admin/leave-balances': [
-    'leave.config.read',
-    'leave.config.manage',
-    'leave.allocations.read',
-    'leave.allocations.manage',
-    'leave.balances.read',
-    'leave.balances.adjust',
-  ],
-  '/admin/employee-leave-records': [
-    'leave.balances.read',
-    'leave.config.read',
-    'leave.config.manage',
-  ],
+  '/admin/leave-balances': ['leave_balances.view'],
+  '/admin/employee-leave-records': ['leave.balances.read', 'leave_balances.view'],
   '/admin/leave': ['leave.requests.read_all'],
   '/admin/pipeline': ['crm.pipeline.view'],
   '/admin/leads': ['crm.leads.view'],

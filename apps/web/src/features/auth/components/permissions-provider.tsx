@@ -8,6 +8,7 @@ import {
   expandLegacyEmployeePermissions,
   expandLegacyOrgCalendarPermissions,
   expandLegacyLeaveTypesPermissions,
+  expandLegacyLeaveBalancesPolicyPermissions,
   stripOrphanedLegacyCrmPermissionKeys,
   hasUnrestrictedOrgPermissions,
   type MyOrganizationRole,
@@ -301,6 +302,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     expandLegacyPmTaskCalendarPermissions(permissionSet);
     expandLegacyOrgCalendarPermissions(permissionSet);
     expandLegacyLeaveTypesPermissions(permissionSet);
+    expandLegacyLeaveBalancesPolicyPermissions(permissionSet);
     const fullAccess =
       snapshot.fullAccess || hasUnrestrictedOrgPermissions(permissions);
     const has = (key: PermissionKey) => fullAccess || permissionSet.has(key);
