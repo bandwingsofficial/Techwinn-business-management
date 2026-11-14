@@ -119,7 +119,7 @@ export class EmployeesController {
   }
 
   @Get()
-  @RequirePermissions('employees.read')
+  @RequirePermissions('employees.view', 'employees.read')
   @ApiOperation({ summary: 'List employees' })
   @ApiOkResponse({ schema: toOpenApiSchema(employeeListResponseSchema) })
   async list(
@@ -141,6 +141,7 @@ export class EmployeesController {
 
   @Get('assignable')
   @RequirePermissions(
+    'employees.view',
     'employees.read',
     'tasks.read',
     'tasks.assign',
@@ -190,7 +191,7 @@ export class EmployeesController {
   }
 
   @Get('profile-stored-objects/:storedObjectId/content')
-  @RequirePermissions('employees.read')
+  @RequirePermissions('employees.view', 'employees.view_details', 'employees.read')
   @ApiOperation({ summary: 'Stream employee profile image (stored object)' })
   async streamStoredProfileImage(
     @CrmContext() ctx: CrmRequestContext,
@@ -207,7 +208,7 @@ export class EmployeesController {
   }
 
   @Get('profile-images/:organizationId/:fileName')
-  @RequirePermissions('employees.read')
+  @RequirePermissions('employees.view', 'employees.view_details', 'employees.read')
   @ApiOperation({ summary: 'Stream employee profile image' })
   streamProfileImage(
     @CrmContext() ctx: CrmRequestContext,
@@ -229,7 +230,7 @@ export class EmployeesController {
   }
 
   @Get(':id/deletion-impact')
-  @RequirePermissions('employees.update')
+  @RequirePermissions('employees.delete', 'employees.update')
   @ApiOperation({ summary: 'Daily task assignments that affect employee deletion' })
   async deletionImpact(
     @CrmContext() ctx: CrmRequestContext,
@@ -242,7 +243,7 @@ export class EmployeesController {
   }
 
   @Get(':id')
-  @RequirePermissions('employees.read')
+  @RequirePermissions('employees.view_details', 'employees.edit')
   @ApiOperation({ summary: 'Get employee' })
   @ApiOkResponse({ schema: toOpenApiSchema(employeeDetailResponseSchema) })
   async get(
@@ -285,7 +286,7 @@ export class EmployeesController {
   }
 
   @Patch(':id')
-  @RequirePermissions('employees.update')
+  @RequirePermissions('employees.edit', 'employees.update')
   @ApiOperation({ summary: 'Update employee' })
   @ApiOkResponse({ schema: toOpenApiSchema(employeeDetailResponseSchema) })
   async update(
@@ -310,7 +311,7 @@ export class EmployeesController {
   }
 
   @Patch(':id/status')
-  @RequirePermissions('employees.update')
+  @RequirePermissions('employees.status', 'employees.update')
   @ApiOperation({ summary: 'Change employee employment status' })
   @ApiOkResponse({ schema: toOpenApiSchema(employeeDetailResponseSchema) })
   async changeStatus(
@@ -330,7 +331,7 @@ export class EmployeesController {
   }
 
   @Delete(':id')
-  @RequirePermissions('employees.update')
+  @RequirePermissions('employees.delete', 'employees.update')
   @ApiOperation({
     summary: 'Permanently delete employee and the sign-in account created with it',
   })

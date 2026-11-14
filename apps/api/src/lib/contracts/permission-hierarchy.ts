@@ -9,6 +9,7 @@ import {
 } from './pm-daily-tasks-permissions.js';
 import { PM_TASK_CALENDAR_PERMISSION_KEYS } from './pm-task-calendar-permissions.js';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions.js';
+import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions.js';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -227,11 +228,12 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             label: 'Employees',
             href: '/admin/employees',
             permissionKeys: [
-              'employees.read',
+              'employees.view',
               'employees.create',
-              'employees.update',
-              'employees.compensation.read',
-              'employees.compensation.manage',
+              'employees.view_details',
+              'employees.status',
+              'employees.edit',
+              'employees.delete',
             ],
           },
           {
@@ -401,6 +403,7 @@ export function uniqueHierarchyPermissionKeys(
 const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_LEADS_PERMISSION_KEYS,
   ...LEGACY_CLIENTS_PERMISSION_KEYS,
+  ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);
 

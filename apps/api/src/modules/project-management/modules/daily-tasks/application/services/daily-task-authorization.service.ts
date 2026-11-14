@@ -40,7 +40,7 @@ const ORGANIZATION_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
  * project-task visibility, which must stay self-scoped.
  */
 const ORGANIZATION_TASK_COLLABORATOR_KEYS: readonly PermissionKey[] = [
-  'employees.read',
+  'employees.view',
   'leads.read',
   'clients.read',
 ];

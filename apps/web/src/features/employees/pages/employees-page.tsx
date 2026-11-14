@@ -7,6 +7,7 @@ import { useAdminToast } from '@/features/admin/components/toast';
 import { CrmErrorAlert } from '@/features/admin/crm/components/crm-feedback';
 import { useAuthenticatedAdmin } from '@/features/admin/auth/hooks/use-admin-session';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { useEmployeePagePermissions } from '../hooks/use-employee-page-permissions';
 import { getEmployeeDeletionImpact } from '../api/employee.api';
 import { EmployeeDeleteDialog } from '../components/employee-delete-dialog';
 import { EmployeeDependencyDialog } from '../components/employee-dependency-dialog';
@@ -27,16 +28,20 @@ import type {
 import { describeEmployeeError } from '../utils/errors';
 import { pendingTasksFromDeleteError } from '../utils/employee-deletion';
 import { describeEmployeeDeletion } from '../utils/employee-formatters';
-import { canCreateEmployees, canUpdateEmployees } from '../utils/employee-permissions';
 
 const SEARCH_DEBOUNCE_MS = 400;
 
 export function EmployeesPage() {
   const toast = useAdminToast();
-  const { has, hasAny } = usePermissions();
+  const { hasAny } = usePermissions();
   const { admin } = useAuthenticatedAdmin();
-  const canCreate = canCreateEmployees(has);
-  const canUpdate = canUpdateEmployees(has);
+  const {
+    canCreate,
+    canViewDetails,
+    canChangeStatus,
+    canEdit,
+    canDelete: canDeleteEmployeesPerm,
+  } = useEmployeePagePermissions();
   const canDeleteLoginAccounts = hasAny('users.deactivate', 'memberships.manage');
 
   const [page, setPage] = useState(1);
@@ -110,6 +115,7 @@ export function EmployeesPage() {
   );
 
   const openDelete = async (employee: EmployeeListItem) => {
+    if (!canDeleteEmployeesPerm) return;
     setDeleteTarget(employee);
     setDeleteImpact(null);
     setDependencyOpen(false);
@@ -207,7 +213,10 @@ export function EmployeesPage() {
               page={safePage}
               pageSize={pageSize}
               filtersActive={filtersActive}
-              canUpdate={canUpdate}
+              canViewDetails={canViewDetails}
+              canChangeStatus={canChangeStatus}
+              canEdit={canEdit}
+              canDelete={canDeleteEmployeesPerm}
               pending={pending}
               canDeleteEmployee={canDeleteEmployee}
               onRetry={() => void refetch()}
@@ -218,21 +227,28 @@ export function EmployeesPage() {
                 setPage(1);
               }}
               onView={(employee) => {
+                if (!canViewDetails) return;
                 setDetailId(employee.id);
                 setDetailOpen(true);
               }}
               onEdit={(employee) => {
+                if (!canEdit) return;
                 setEditingId(employee.id);
                 setFormOpen(true);
               }}
-              onStatus={setStatusTarget}
+              onStatus={(employee) => {
+                if (!canChangeStatus) return;
+                setStatusTarget(employee);
+              }}
               onDelete={(employee) => void openDelete(employee)}
             />
           </div>
         </div>
       </section>
 
-      <EmployeeDetailDialog employeeId={detailId} open={detailOpen} onOpenChange={setDetailOpen} />
+      {canViewDetails ? (
+        <EmployeeDetailDialog employeeId={detailId} open={detailOpen} onOpenChange={setDetailOpen} />
+      ) : null}
       <EmployeeFormDialog
         open={formOpen}
         editingId={editingId}

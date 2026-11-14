@@ -235,7 +235,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         label: 'Employees',
         icon: Users,
       },
-      { kind: 'soon', label: 'Departments', icon: Building2, requiredPermissions: ['employees.read'] },
+      { kind: 'soon', label: 'Departments', icon: Building2, requiredPermissions: ['employees.view'] },
       {
         kind: 'link',
         href: '/admin/attendance',
@@ -272,8 +272,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         label: 'Leave Management',
         icon: CalendarDays,
       },
-      { kind: 'soon', label: 'Payroll', icon: Wallet, requiredPermissions: ['employees.read'] },
-      { kind: 'soon', label: 'Performance', icon: BarChart3, requiredPermissions: ['employees.read'] },
+      { kind: 'soon', label: 'Payroll', icon: Wallet, requiredPermissions: ['employees.view'] },
+      { kind: 'soon', label: 'Performance', icon: BarChart3, requiredPermissions: ['employees.view'] },
     ],
   },
   {
@@ -298,6 +298,28 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     ],
   },
 ] as const;
+
+/** Canonical `/admin/...` href → owning sidebar group (detects duplicate registrations). */
+export const ADMIN_NAV_HREF_OWNERS: ReadonlyMap<string, string> = buildAdminNavHrefOwners(
+  ADMIN_NAV_GROUPS,
+);
+
+function buildAdminNavHrefOwners(groups: readonly AdminNavGroup[]): ReadonlyMap<string, string> {
+  const map = new Map<string, string>();
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (item.kind !== 'link') continue;
+      const existing = map.get(item.href);
+      if (existing && existing !== group.id) {
+        throw new Error(
+          `Sidebar nav href "${item.href}" is registered under both "${existing}" and "${group.id}".`,
+        );
+      }
+      map.set(item.href, group.id);
+    }
+  }
+  return map;
+}
 
 export const ADMIN_DASHBOARD_HREF = '/admin/dashboard';
 

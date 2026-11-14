@@ -1,30 +1,45 @@
-export const EMPLOYEE_PERMISSIONS = {
-  read: 'employees.read',
-  create: 'employees.create',
-  update: 'employees.update',
-  compensationRead: 'employees.compensation.read',
-  compensationManage: 'employees.compensation.manage',
-} as const;
+import {
+  hasEmployeesCreatePermission,
+  hasEmployeesDeletePermission,
+  hasEmployeesEditPermission,
+  hasEmployeesStatusPermission,
+  hasEmployeesViewDetailsPermission,
+  hasEmployeesViewPermission,
+  type PermissionKey,
+} from '@techwin/contracts';
 
-type EmployeePermission = (typeof EMPLOYEE_PERMISSIONS)[keyof typeof EMPLOYEE_PERMISSIONS];
-type PermissionCheck = (permission: EmployeePermission) => boolean;
-
-export function canReadEmployees(has: PermissionCheck): boolean {
-  return has(EMPLOYEE_PERMISSIONS.read);
+export function canViewEmployeesPage(permissions: ReadonlySet<PermissionKey>): boolean {
+  return hasEmployeesViewPermission(permissions);
 }
 
-export function canCreateEmployees(has: PermissionCheck): boolean {
-  return has(EMPLOYEE_PERMISSIONS.create);
+export function canCreateEmployees(permissions: ReadonlySet<PermissionKey>): boolean {
+  return hasEmployeesCreatePermission(permissions);
 }
 
-export function canUpdateEmployees(has: PermissionCheck): boolean {
-  return has(EMPLOYEE_PERMISSIONS.update);
+export function canViewEmployeeDetails(permissions: ReadonlySet<PermissionKey>): boolean {
+  return hasEmployeesViewDetailsPermission(permissions);
 }
 
-export function canReadEmployeeCompensation(has: PermissionCheck): boolean {
-  return has(EMPLOYEE_PERMISSIONS.compensationRead);
+export function canChangeEmployeeStatus(permissions: ReadonlySet<PermissionKey>): boolean {
+  return hasEmployeesStatusPermission(permissions);
 }
 
-export function canManageEmployeeCompensation(has: PermissionCheck): boolean {
-  return has(EMPLOYEE_PERMISSIONS.compensationManage);
+export function canEditEmployees(permissions: ReadonlySet<PermissionKey>): boolean {
+  return hasEmployeesEditPermission(permissions);
+}
+
+export function canDeleteEmployees(permissions: ReadonlySet<PermissionKey>): boolean {
+  return hasEmployeesDeletePermission(permissions);
+}
+
+export function canReadEmployeeCompensation(
+  has: (key: PermissionKey) => boolean,
+): boolean {
+  return has('employees.compensation.read');
+}
+
+export function canManageEmployeeCompensation(
+  has: (key: PermissionKey) => boolean,
+): boolean {
+  return has('employees.compensation.manage');
 }

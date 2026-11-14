@@ -38,7 +38,7 @@ const ORG_DAILY_TASKS_READ_COLLABORATOR_KEYS = [
   'tasks.update',
   'tasks.delete',
   'projects.read',
-  'employees.read',
+  'employees.view',
   'leads.read',
   'clients.read',
   'daily_tasks.manage_workflow',

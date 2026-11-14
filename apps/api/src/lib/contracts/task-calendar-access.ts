@@ -6,7 +6,7 @@ import { PM_TASK_CALENDAR_VIEW_KEY } from './pm-task-calendar-permissions.js';
 export const PROJECT_MANAGEMENT_VIEW_KEY = 'projects.read' as const satisfies PermissionKey;
 
 const ORGANIZATION_TASK_COLLABORATOR_KEYS = [
-  'employees.read',
+  'employees.view',
   'leads.read',
   'clients.read',
 ] as const satisfies readonly PermissionKey[];

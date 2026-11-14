@@ -5,6 +5,7 @@ import {
   expandLegacyPmDailyTasksPermissions,
   expandLegacyPmTaskCalendarPermissions,
   expandLegacyProjectsPermissions,
+  expandLegacyEmployeePermissions,
   hasUnrestrictedOrgPermissions,
   type MyOrganizationRole,
   type MySessionEmployeeSummary,
@@ -261,6 +262,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     const permissionSet = new Set(permissions);
     expandLegacyPmDailyTasksPermissions(permissionSet);
     expandLegacyProjectsPermissions(permissionSet);
+    expandLegacyEmployeePermissions(permissionSet);
     expandLegacyPmTaskCalendarPermissions(permissionSet);
     const fullAccess =
       snapshot.fullAccess || hasUnrestrictedOrgPermissions(permissions);

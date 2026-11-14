@@ -29,7 +29,7 @@ import { useProjectManagerAccess } from './project-manager-access-provider';
 
 const NAV_ICON_CLASS = 'size-[18px] shrink-0 stroke-[1.75]';
 
-const COLLAPSIBLE_GROUP_IDS = new Set(['crm', 'communications']);
+const COLLAPSIBLE_GROUP_IDS = new Set(['crm', 'communications', 'hr']);
 
 function navLinksInGroup(group: ProjectManagerNavGroup): ProjectManagerNavLink[] {
   return group.items.filter((item): item is ProjectManagerNavLink => item.kind === 'link');

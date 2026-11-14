@@ -8,6 +8,7 @@ import { portalDashboardPath } from '@/features/auth/portal/portal-segment';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
 import {
   ADMIN_NAV_GROUPS,
+  ADMIN_NAV_HREF_OWNERS,
   type AdminNavGroup,
   type AdminNavLink,
   type AdminNavItem,
@@ -27,6 +28,7 @@ export function filterAdminNav(
 
   const groups: AdminNavGroupWithAccess[] = [];
   let dashboardAdded = false;
+  const renderedConfigHrefs = new Set<string>();
 
   for (const group of ADMIN_NAV_GROUPS) {
     if (group.id === 'my-workspace' && (!access || !canUseEmployeeSelfService(access))) {
@@ -59,11 +61,16 @@ export function filterAdminNav(
       if (!shouldShowNavHref(item.href, granted, access)) continue;
       if (!canAccessNavItem(item.href, granted, access)) continue;
 
+      const ownerGroup = ADMIN_NAV_HREF_OWNERS.get(item.href);
+      if (ownerGroup && ownerGroup !== group.id) continue;
+      if (renderedConfigHrefs.has(item.href)) continue;
+
       const href = adminFeaturePathToPortal(item.href, portalSegment);
       const seen = items.some((entry) => entry.kind === 'link' && entry.href === href);
       if (seen) continue;
 
       items.push({ ...item, href });
+      renderedConfigHrefs.add(item.href);
     }
 
     if (items.length > 0) {

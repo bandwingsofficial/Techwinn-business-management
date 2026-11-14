@@ -30,8 +30,8 @@ import { useAuthenticatedAdmin } from '../hooks/use-admin-session';
 
 const NAV_ICON_CLASS = 'size-[18px] shrink-0 stroke-[1.75]';
 
-/** CRM and Project Management always use a text heading + submenu, even with one link. */
-const COLLAPSIBLE_GROUP_IDS = new Set(['crm', 'projects']);
+/** Module groups always use a section heading + submenu, even with one visible link. */
+const COLLAPSIBLE_GROUP_IDS = new Set(['crm', 'projects', 'hr']);
 
 function navLinksInGroup(group: AdminNavGroup): AdminNavLink[] {
   return group.items.filter((item): item is AdminNavLink => item.kind === 'link');

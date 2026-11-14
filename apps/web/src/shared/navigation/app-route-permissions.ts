@@ -28,7 +28,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/dashboard': [],
   '/admin/users': ['users.read'],
   '/admin/roles': ['roles.read'],
-  '/admin/employees': ['employees.read'],
+  '/admin/employees': ['employees.view'],
   '/admin/attendance': ['attendance.view_all', 'attendance.manage_settings'],
   /** Org calendar admin — not the employee self-service `/employee/calendar` (`calendar.view`). */
   '/admin/calendar': ['calendar.view_all', 'calendar.manage_holidays'],
@@ -102,7 +102,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/project-manager/quotations': ['crm.quotations.view'],
   '/project-manager/proposals': ['crm.quotations.view'],
   '/project-manager/clients': ['crm.clients.view'],
-  '/project-manager/employees': ['employees.read'],
+  '/project-manager/employees': ['employees.view'],
   '/project-manager/whatsapp/inbox': ['whatsapp.read'],
   '/project-manager/whatsapp/channels': ['whatsapp.channels.manage'],
   '/project-manager/whatsapp/templates': ['whatsapp.templates.manage', 'whatsapp.broadcasts.manage'],

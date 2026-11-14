@@ -25,6 +25,8 @@ export * from './permission-crm-quotations-prerequisites.js';
 export * from './permission-crm-quotations-tooltips.js';
 export * from './crm-clients-permissions.js';
 export * from './permission-crm-clients-prerequisites.js';
+export * from './employees-permissions.js';
+export * from './permission-employees-prerequisites.js';
 export * from './permission-crm-clients-tooltips.js';
 export * from './pm-daily-tasks-permissions.js';
 export * from './permission-pm-daily-tasks-prerequisites.js';

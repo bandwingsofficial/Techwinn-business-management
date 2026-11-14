@@ -26,7 +26,7 @@ export function canViewOrganizationDailyTasks(
   if (has(PM_DAILY_TASKS_VIEW_KEY)) return true;
   if (hasAny(...ORGANIZATION_DAILY_TASK_MANAGE_KEYS)) return true;
   if (!has('tasks.read')) return false;
-  if (hasAny('employees.read', 'leads.read', 'clients.read')) return true;
+  if (hasAny('employees.view', 'leads.read', 'clients.read')) return true;
   // Project collaborators need both project and task view for organization task boards.
   if (has('projects.read') && has('tasks.read')) return true;
   if (hasAny('attendance.view_own', 'leave.requests.read_own', 'leave.balances.read_own')) {

@@ -29,7 +29,10 @@ type Props = {
   page: number;
   pageSize: number;
   filtersActive: boolean;
-  canUpdate: boolean;
+  canViewDetails: boolean;
+  canChangeStatus: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   pending: boolean;
   canDeleteEmployee: (employee: EmployeeListItem) => boolean;
   onRetry: () => void;
@@ -50,7 +53,10 @@ export function EmployeeTable({
   page,
   pageSize,
   filtersActive,
-  canUpdate,
+  canViewDetails,
+  canChangeStatus,
+  canEdit,
+  canDelete,
   pending,
   canDeleteEmployee,
   onRetry,
@@ -108,13 +114,19 @@ export function EmployeeTable({
               <EmployeeAvatar displayName={employee.displayName} profileImageUrl={employee.profileImageUrl} />
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="text-foreground block max-w-full truncate text-left text-[13px] font-semibold hover:underline"
-                    onClick={() => onView(employee)}
-                  >
-                    {employee.displayName}
-                  </button>
+                  {canViewDetails ? (
+                    <button
+                      type="button"
+                      className="text-foreground block max-w-full truncate text-left text-[13px] font-semibold hover:underline"
+                      onClick={() => onView(employee)}
+                    >
+                      {employee.displayName}
+                    </button>
+                  ) : (
+                    <span className="text-foreground block max-w-full truncate text-left text-[13px] font-semibold">
+                      {employee.displayName}
+                    </span>
+                  )}
                 </TooltipTrigger>
                 <TooltipContent side="top">{employee.displayName}</TooltipContent>
               </Tooltip>
@@ -137,16 +149,18 @@ export function EmployeeTable({
           </TableCell>
           <TableCell className={cn(CRM_EMPLOYEES_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
             <div className="flex w-full shrink-0 items-center justify-end gap-1">
-              <TableIconButton
-                label={`View ${employee.displayName}`}
-                tone="default"
-                className="text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900"
-                disabled={pending}
-                onClick={() => onView(employee)}
-              >
-                <Eye className="size-4 stroke-[2]" aria-hidden="true" />
-              </TableIconButton>
-              {canUpdate ? (
+              {canViewDetails ? (
+                <TableIconButton
+                  label={`View ${employee.displayName}`}
+                  tone="default"
+                  className="text-emerald-800 hover:bg-emerald-800/10 hover:text-emerald-900"
+                  disabled={pending}
+                  onClick={() => onView(employee)}
+                >
+                  <Eye className="size-4 stroke-[2]" aria-hidden="true" />
+                </TableIconButton>
+              ) : null}
+              {canChangeStatus ? (
                 <TableIconButton
                   label={
                     employee.employmentStatus === 'ACTIVE'
@@ -169,7 +183,7 @@ export function EmployeeTable({
                   )}
                 </TableIconButton>
               ) : null}
-              {canUpdate ? (
+              {canEdit ? (
                 <TableIconButton
                   label={`Edit ${employee.displayName}`}
                   tone="default"
@@ -180,7 +194,7 @@ export function EmployeeTable({
                   <SquarePen className="size-4 stroke-[2]" aria-hidden="true" />
                 </TableIconButton>
               ) : null}
-              {canUpdate ? (
+              {canDelete ? (
                 <TableIconButton
                   label={`Delete ${employee.displayName}`}
                   tone="default"

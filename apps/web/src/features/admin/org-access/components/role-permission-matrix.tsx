@@ -8,6 +8,7 @@ import {
   crmServicePackagesPermissionBlockedReason,
   crmQuotationsPermissionBlockedReason,
   crmClientsPermissionBlockedReason,
+  employeesPermissionBlockedReason,
   pmDailyTasksPermissionBlockedReason,
   projectsPermissionBlockedReason,
   projectTasksPermissionBlockedReason,
@@ -420,6 +421,7 @@ export function RolePermissionMatrix({
                                     crmServicePackagesPermissionBlockedReason(key, selected) ??
                                     crmQuotationsPermissionBlockedReason(key, selected) ??
                                     crmClientsPermissionBlockedReason(key, selected) ??
+                                    employeesPermissionBlockedReason(key, selected) ??
                                     pmDailyTasksPermissionBlockedReason(key, selected) ??
                                     projectsPermissionBlockedReason(key, selected) ??
                                     projectTasksPermissionBlockedReason(key, selected);
