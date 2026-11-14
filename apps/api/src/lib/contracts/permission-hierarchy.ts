@@ -8,6 +8,7 @@ import {
   PM_DAILY_TASKS_PERMISSION_KEYS,
 } from './pm-daily-tasks-permissions.js';
 import { PM_TASK_CALENDAR_PERMISSION_KEYS } from './pm-task-calendar-permissions.js';
+import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions.js';
 import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
@@ -170,20 +171,16 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             permissionKeys: PM_TASK_CALENDAR_PERMISSION_KEYS,
           },
           {
-            id: 'project-tasks',
-            label: 'Projects & Tasks',
+            id: 'projects',
+            label: 'Projects',
             href: '/admin/project-tasks',
-            permissionKeys: [
-              'projects.read',
-              'projects.create',
-              'projects.update',
-              'projects.delete',
-              'tasks.read',
-              'tasks.create',
-              'tasks.update',
-              'tasks.delete',
-              'tasks.assign',
-            ],
+            permissionKeys: PROJECT_PERMISSION_KEYS,
+          },
+          {
+            id: 'project-tasks',
+            label: 'Project Tasks',
+            href: '/admin/project-tasks',
+            permissionKeys: TASK_PERMISSION_KEYS,
           },
         ],
       },

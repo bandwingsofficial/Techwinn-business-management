@@ -41,6 +41,7 @@ export function ProjectListView({
   onDelete,
   onClearFilters,
   onRetry,
+  workspaceHref,
 }: {
   items: readonly ProjectTaskSummaryItem[];
   loading: boolean;
@@ -57,6 +58,7 @@ export function ProjectListView({
   onDelete?: (project: ProjectActionTarget) => void;
   onClearFilters: () => void;
   onRetry: () => void;
+  workspaceHref?: (project: ProjectTaskSummaryItem) => string | null;
 }) {
   const tablePhase = deriveDataTablePhase({
     loading,
@@ -129,10 +131,7 @@ export function ProjectListView({
     >
       {items.map((project) => {
         const target = toActionTarget(project);
-        const boardHref =
-          project.executionLifecycle === 'NOT_PLANNED' || project.executionLifecycle === 'PLANNED'
-            ? `/admin/project-tasks/${project.id}/plan`
-            : `/admin/project-tasks/${project.id}`;
+        const openHref = workspaceHref?.(project) ?? null;
         const editLocked = isProjectPlanLocked(project.executionLifecycle);
         return (
           <TableRow key={project.id} className="border-0">
@@ -183,11 +182,13 @@ export function ProjectListView({
             </TableCell>
             <TableCell className={cn(CRM_PROJECTS_TABLE_COLUMN_CLASS.actions, 'min-w-0 pl-4')}>
               <div className="flex w-full shrink-0 items-center justify-end gap-1">
-                <TableIconButton label={`Open ${project.name}`} asChild>
-                  <Link href={boardHref}>
-                    <FolderKanban className="size-4 stroke-[2]" aria-hidden="true" />
-                  </Link>
-                </TableIconButton>
+                {openHref ? (
+                  <TableIconButton label={`Open ${project.name}`} asChild>
+                    <Link href={openHref}>
+                      <FolderKanban className="size-4 stroke-[2]" aria-hidden="true" />
+                    </Link>
+                  </TableIconButton>
+                ) : null}
                 {onToggleActive ? (
                   <TableIconButton
                     label={

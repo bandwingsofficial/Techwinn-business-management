@@ -10,6 +10,10 @@ import { applyCrmQuotationsCrossPagePrerequisites } from './permission-crm-quota
 import { applyCrmClientsCrossPagePrerequisites } from './permission-crm-clients-prerequisites';
 import { applyPmDailyTasksCrossPagePrerequisites } from './permission-pm-daily-tasks-prerequisites';
 import {
+  applyProjectTasksCrossPagePrerequisites,
+  applyProjectsCrossPagePrerequisites,
+} from './permission-projects-prerequisites';
+import {
   PERMISSION_HIERARCHY,
   permissionDefinitionForKey,
   type PermissionHierarchyPage,
@@ -103,6 +107,8 @@ export function ensureViewPermissionPrerequisites(
   applyCrmQuotationsCrossPagePrerequisites(next);
   applyCrmClientsCrossPagePrerequisites(next);
   applyPmDailyTasksCrossPagePrerequisites(next);
+  applyProjectsCrossPagePrerequisites(next);
+  applyProjectTasksCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -196,6 +202,8 @@ export function applyPermissionKeyChange(
   applyCrmQuotationsCrossPagePrerequisites(next);
   applyCrmClientsCrossPagePrerequisites(next);
   applyPmDailyTasksCrossPagePrerequisites(next);
+  applyProjectsCrossPagePrerequisites(next);
+  applyProjectTasksCrossPagePrerequisites(next);
   return [...next];
 }
 
@@ -217,6 +225,8 @@ export function applyPermissionKeysChecked(
   applyCrmQuotationsCrossPagePrerequisites(next);
   applyCrmClientsCrossPagePrerequisites(next);
   applyPmDailyTasksCrossPagePrerequisites(next);
+  applyProjectsCrossPagePrerequisites(next);
+  applyProjectTasksCrossPagePrerequisites(next);
   return [...next];
 }
 

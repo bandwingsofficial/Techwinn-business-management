@@ -18,8 +18,12 @@ import { useAdminToast } from '@/features/admin/components/toast';
 import { CrmErrorAlert, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
 import { describeCrmError } from '@/features/admin/crm/utils/errors';
-import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { PROJECT_TASK_ACTION_PERMISSIONS } from '@techwin/contracts';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { useProjectPagePermissions } from '@/features/admin/projects/hooks/use-project-page-permissions';
+import { canAccessProjectPlanWorkspace, canMutateProjectPlanWorkspace } from '@techwin/contracts';
+import { AccessDenied } from '@/shared/components/access-denied';
+import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
 import {
   changeProjectStatus,
   deleteProject as deleteProjectApi,
@@ -55,13 +59,17 @@ import { ProjectWorkspaceShell } from './project-workspace-shell';
 
 export function ProjectPlanningPage({ projectId }: { projectId: string }) {
   const router = useRouter();
-  const { has } = usePermissions();
+  const { toPortalPath } = usePortalNavigation();
+  const { permissionSet, has } = usePermissions();
   const canCreateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.create);
   const canUpdateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.update);
   const canAssignTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.assign);
   const canDeleteTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.delete);
-  const canUpdateProject = has('projects.update');
-  const canDeleteProject = has('projects.delete');
+  const {
+    canChangeStatus: canChangeProjectStatus,
+    canEdit: canEditProject,
+    canDelete: canDeleteProject,
+  } = useProjectPagePermissions();
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
 
@@ -106,8 +114,8 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (!project || !readOnly) return;
-    router.replace(`/admin/project-tasks/${projectId}?viewPlan=1`);
-  }, [project, projectId, readOnly, router]);
+    router.replace(toPortalPath(`/admin/project-tasks/${projectId}?viewPlan=1`));
+  }, [project, projectId, readOnly, router, toPortalPath]);
 
   const tasks = useMemo(() => board?.phases.flatMap((phase) => phase.tasks) ?? [], [board]);
   const phases = useMemo(() => board?.phases ?? [], [board]);
@@ -184,7 +192,7 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
       const payload = buildSavePlanPayload(project, board.phases);
       await run(() => saveProjectPlan(projectId, payload));
       toast.success('Plan saved. Project is now Planned.');
-      router.push('/admin/project-tasks');
+      router.push(toPortalPath('/admin/project-tasks'));
     } catch (failure) {
       toast.error(describeCrmError(failure));
     }
@@ -270,7 +278,7 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
       await run(() => deleteProjectApi(target.id));
       toast.success(`Project "${target.projectNumber}" deleted.`);
       setDeleteProjectTarget(null);
-      router.push('/admin/project-tasks');
+      router.push(toPortalPath('/admin/project-tasks'));
     } catch (failure) {
       toast.error(describeCrmError(failure));
     }
@@ -293,6 +301,18 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
     );
   }
 
+  const lifecycle = project.executionLifecycle;
+  if (
+    !readOnly &&
+    !canAccessProjectPlanWorkspace(lifecycle, permissionSet)
+  ) {
+    return (
+      <AccessDenied description="You do not have permission to open this project plan workspace." />
+    );
+  }
+
+  const canMutatePlan = canMutateProjectPlanWorkspace(lifecycle, permissionSet);
+
   return (
     <>
       <ProjectWorkspaceShell
@@ -300,9 +320,9 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
         breadcrumbTail="Plan"
         actionsDisabled={actionsBusy || readOnly}
         onToggleActive={
-          canUpdateProject ? (target) => setStatusToggleTarget(target) : undefined
+          canChangeProjectStatus ? (target) => setStatusToggleTarget(target) : undefined
         }
-        onEditProject={canUpdateProject ? () => setProjectFormOpen(true) : undefined}
+        onEditProject={canEditProject ? () => setProjectFormOpen(true) : undefined}
         onDeleteProject={
           canDeleteProject ? (target) => setDeleteProjectTarget(target) : undefined
         }
@@ -325,7 +345,7 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
                 Manage project phases and tasks. Drag and drop tasks to update status.
               </p>
             </div>
-            {!readOnly && canUpdateProject ? (
+            {!readOnly && canMutatePlan ? (
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button
                   type="button"
@@ -374,18 +394,16 @@ export function ProjectPlanningPage({ projectId }: { projectId: string }) {
             readOnly || !canCreateTasks ? () => {} : (phaseId) => openCreate(phaseId)
           }
           onManagePhases={
-            readOnly || !canUpdateProject ? undefined : () => setManagePhasesOpen(true)
+            readOnly || !canMutatePlan ? undefined : () => setManagePhasesOpen(true)
           }
           onDeletePhase={
-            readOnly || !canUpdateProject ? undefined : (phaseId) => setDeletePhaseId(phaseId)
+            readOnly || !canMutatePlan ? undefined : (phaseId) => setDeletePhaseId(phaseId)
           }
-          onRenamePhase={readOnly || !canUpdateProject ? undefined : renamePhase}
+          onRenamePhase={readOnly || !canMutatePlan ? undefined : renamePhase}
           renameDisabled={actionsBusy}
-          onAddPhase={
-            readOnly || !canUpdateProject ? undefined : () => setAddPhaseOpen(true)
-          }
+          onAddPhase={readOnly || !canMutatePlan ? undefined : () => setAddPhaseOpen(true)}
           onPersistPhaseReorder={
-            readOnly || !canUpdateProject ? undefined : reorderPhasesOnBoard
+            readOnly || !canMutatePlan ? undefined : reorderPhasesOnBoard
           }
         />
       </ProjectWorkspaceShell>

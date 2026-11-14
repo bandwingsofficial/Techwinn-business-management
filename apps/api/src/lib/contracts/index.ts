@@ -6,6 +6,8 @@ export * from './platform-auth.js';
 export * from './projects.js';
 export * from './project-tasks.js';
 export * from './project-task-action-permissions.js';
+export * from './projects-permissions.js';
+export * from './permission-projects-prerequisites.js';
 export * from './employees.js';
 export * from './media.js';
 export * from './permissions.js';

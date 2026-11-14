@@ -155,7 +155,7 @@ export class ProjectsController {
     return { managers: result.managers.map(toProjectManagerOption) };
   }
 
-  @RequirePermissions('projects.create', 'projects.update')
+  @RequirePermissions('projects.create', 'projects.update', 'projects.read')
   @Get('client-options')
   @ApiOperation({ summary: 'List clients selectable on a project' })
   @ApiOkResponse({ schema: toOpenApiSchema(projectClientOptionsResponseSchema) })
@@ -227,7 +227,11 @@ export class ProjectsController {
     return toProjectDetail(project);
   }
 
-  @RequirePermissions('projects.update')
+  @RequirePermissions(
+    'projects.plan.create',
+    'projects.plan.edit',
+    'projects.update',
+  )
   @Post(':id/plan')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Save project execution plan' })
@@ -246,7 +250,7 @@ export class ProjectsController {
     return toProjectDetail(project);
   }
 
-  @RequirePermissions('projects.update')
+  @RequirePermissions('projects.production.start', 'projects.update')
   @Post(':id/start-production')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Start project production' })
@@ -262,7 +266,7 @@ export class ProjectsController {
     return toProjectDetail(project);
   }
 
-  @RequirePermissions('projects.update')
+  @RequirePermissions('projects.complete', 'projects.update')
   @Post(':id/complete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete project' })
@@ -278,7 +282,7 @@ export class ProjectsController {
     return toProjectDetail(project);
   }
 
-  @RequirePermissions('projects.update')
+  @RequirePermissions('projects.status', 'projects.update')
   @Post(':id/status')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change project status' })

@@ -15,10 +15,12 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type {
-  ProjectTask,
-  ProjectTaskBoardResponse,
-  ProjectTaskSummaryListResponse,
+import {
+  canAccessProjectTaskBoardApi,
+  type ProjectTask,
+  type ProjectTaskBoardResponse,
+  type ProjectTaskSummaryListResponse,
+  type ProjectWorkspaceLifecycle,
 } from '#contracts';
 import {
   createProjectTaskRequestSchema,
@@ -38,6 +40,8 @@ import {
   type CrmRequestContext,
 } from '../../../../../../../platform/tenant-context/index.js';
 import {
+  OrgAccessForbiddenError,
+  PermissionCheckerService,
   RequirePermissions,
   RequirePermissionsGuard,
   toOrgAccessActor,
@@ -69,6 +73,7 @@ import {
 @Controller('project-tasks')
 export class ProjectTasksController {
   constructor(
+    @Inject(PermissionCheckerService) private readonly permissionChecker: PermissionCheckerService,
     @Inject(ListProjectTaskSummariesHandler)
     private readonly listSummaries: ListProjectTaskSummariesHandler,
     @Inject(GetProjectTaskBoardHandler) private readonly getBoard: GetProjectTaskBoardHandler,
@@ -96,14 +101,14 @@ export class ProjectTasksController {
     return toProjectTaskSummaryListResponse(result);
   }
 
-  @RequirePermissions('tasks.read', 'projects.read')
+  @RequirePermissions('projects.read')
   @Get('projects/:projectId/board')
   @ApiOperation({ summary: 'Get project task board' })
   @ApiOkResponse({ schema: toOpenApiSchema(projectTaskBoardResponseSchema) })
   async getProjectBoard(
     @CrmContext() ctx: CrmRequestContext,
     @Param('projectId') projectId: string,
-    @Req() request: Request,
+    @Req() request: PlatformAuthenticatedRequest,
   ): Promise<ProjectTaskBoardResponse> {
     const planBaselineOnly =
       request.query.planBaseline === '1' || request.query.planBaseline === 'true';
@@ -112,10 +117,19 @@ export class ProjectTasksController {
       projectId,
       planBaselineOnly,
     });
+    const accessActor = toOrgAccessActor(
+      ctx,
+      request.platformAuth?.admin.role === 'SUPER_ADMIN',
+    );
+    const effective = await this.permissionChecker.resolveEffectivePermissions(accessActor);
+    const lifecycle = board.project.executionLifecycle as ProjectWorkspaceLifecycle;
+    if (!canAccessProjectTaskBoardApi(lifecycle, new Set(effective))) {
+      throw new OrgAccessForbiddenError('You do not have permission to access this project board.');
+    }
     return toProjectTaskBoardResponse(board);
   }
 
-  @RequirePermissions('tasks.update', 'projects.update')
+  @RequirePermissions('tasks.update', 'projects.plan.edit', 'projects.update')
   @Post('projects/:projectId/phases/reorder')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reorder project plan phases' })

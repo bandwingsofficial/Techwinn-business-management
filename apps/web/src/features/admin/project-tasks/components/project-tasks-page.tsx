@@ -34,7 +34,10 @@ import { CRM_PIPELINE_SEARCH_INPUT_CLASS } from '@/features/admin/crm/constants'
 import { CrmErrorAlert, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { CrmToolbarHeader } from '@/features/admin/crm/components/crm-toolbar-header';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
-import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
+import { useProjectPagePermissions } from '@/features/admin/projects/hooks/use-project-page-permissions';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
+import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
+import { resolveProjectWorkspaceHref } from '../utils/project-workspace-access';
 import { ProjectDeleteDialog } from '@/features/admin/projects/components/project-delete-dialog';
 import { ProjectFormDialog } from '@/features/admin/projects/components/project-form-dialog';
 import { useProjectListActions } from '@/features/admin/projects/hooks/use-project-list-actions';
@@ -72,10 +75,22 @@ const CONTROL_H = 'h-9';
 export function ProjectTasksPage() {
   const searchParams = useSearchParams();
   const { pending } = useAsyncAction();
-  const { has } = useAdminAccess();
-  const canCreateProject = has('projects.create');
-  const canUpdateProject = has('projects.update');
-  const canDeleteProject = has('projects.delete');
+  const { permissionSet } = usePermissions();
+  const { toPortalPath } = usePortalNavigation();
+  const {
+    canCreate: canCreateProject,
+    canEdit: canEditProject,
+    canDelete: canDeleteProject,
+    canChangeStatus: canChangeProjectStatus,
+  } = useProjectPagePermissions();
+
+  const workspaceHref = useCallback(
+    (project: ProjectTaskSummaryItem) => {
+      const href = resolveProjectWorkspaceHref(project, permissionSet);
+      return href ? toPortalPath(href) : null;
+    },
+    [permissionSet, toPortalPath],
+  );
   const [viewMode, setViewMode] = useState<ProjectManagementViewMode>(DEFAULT_PROJECT_MANAGEMENT_VIEW);
   const [items, setItems] = useState<readonly ProjectTaskSummaryItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -403,8 +418,8 @@ export function ProjectTasksPage() {
             <ProjectGridView
               items={items}
               actionsDisabled={actionsBusy}
-              onToggleActive={canUpdateProject ? requestToggleActive : undefined}
-              onEdit={canUpdateProject ? openEdit : undefined}
+              onToggleActive={canChangeProjectStatus ? requestToggleActive : undefined}
+              onEdit={canEditProject ? openEdit : undefined}
               onDelete={canDeleteProject ? setDeleteTarget : undefined}
               onLifecycleChange={() => void load()}
               className={actionsBusy ? 'opacity-80' : undefined}
@@ -426,11 +441,12 @@ export function ProjectTasksPage() {
             setPageSize(size);
             setPage(1);
           }}
-          onToggleActive={canUpdateProject ? requestToggleActive : undefined}
-          onEdit={canUpdateProject ? openEdit : undefined}
+          onToggleActive={canChangeProjectStatus ? requestToggleActive : undefined}
+          onEdit={canEditProject ? openEdit : undefined}
           onDelete={canDeleteProject ? setDeleteTarget : undefined}
           onClearFilters={clearFilters}
           onRetry={() => void load()}
+          workspaceHref={workspaceHref}
         />
       ) : (
         <div className="min-w-0 px-4 pb-4 sm:px-5">

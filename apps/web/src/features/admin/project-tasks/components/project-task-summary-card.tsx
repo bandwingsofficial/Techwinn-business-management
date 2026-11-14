@@ -33,6 +33,8 @@ import {
 import { ProjectNotPlannedSummaryCardBody } from './project-not-planned-summary-card-body';
 import { isProjectPlanLocked } from '@/features/admin/projects/constants/plan-lock';
 import { ProjectCardActionsMenu } from '@/features/admin/projects/components/project-card-actions-menu';
+import { useProjectPagePermissions } from '@/features/admin/projects/hooks/use-project-page-permissions';
+import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
 import type { ProjectActionTarget } from '@/features/admin/projects/hooks/use-project-list-actions';
 import { initialsOf } from '@/shared/lib/format';
 import { cn } from '@/shared/lib/utils';
@@ -65,11 +67,22 @@ export function ProjectTaskSummaryCard({
 }) {
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
+  const { toPortalPath } = usePortalNavigation();
+  const {
+    canChangeStatus,
+    canEdit,
+    canDelete,
+    canCreatePlan,
+    canEditPlan,
+    canStartProduction,
+    canOpenProductionBoard,
+    canComplete,
+  } = useProjectPagePermissions();
   const [startOpen, setStartOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
 
-  const planHref = `/admin/project-tasks/${project.id}/plan`;
-  const boardHref = `/admin/project-tasks/${project.id}`;
+  const planHref = toPortalPath(`/admin/project-tasks/${project.id}/plan`);
+  const boardHref = toPortalPath(`/admin/project-tasks/${project.id}`);
   const viewPlanHref = `${boardHref}?viewPlan=1`;
   const actionTarget: ProjectActionTarget = {
     id: project.id,
@@ -137,10 +150,10 @@ export function ProjectTaskSummaryCard({
               <ProjectCardActionsMenu
                 project={actionTarget}
                 disabled={actionsDisabled || lifecycle === 'COMPLETED'}
-                editDisabled={isProjectPlanLocked(lifecycle)}
-                onToggleActive={onToggleActive}
-                onEdit={onEdit}
-                onDelete={onDelete}
+                editDisabled={isProjectPlanLocked(lifecycle) || !canEdit}
+                onToggleActive={canChangeStatus ? onToggleActive : undefined}
+                onEdit={canEdit ? onEdit : undefined}
+                onDelete={canDelete ? onDelete : undefined}
                 variant="kanban"
               />
             </div>
@@ -172,6 +185,7 @@ export function ProjectTaskSummaryCard({
             clientAvatarStyle={clientAvatarStyle}
             timelineIndicator={timelineIndicator}
             planHref={planHref}
+            showCreatePlan={canCreatePlan}
           />
         ) : lifecycle === 'PLANNED' ? (
           <ProjectPlannedSummaryCardBody
@@ -182,6 +196,8 @@ export function ProjectTaskSummaryCard({
             planHref={planHref}
             actionsDisabled={actionsDisabled}
             pending={pending}
+            showEditPlan={canEditPlan}
+            showStartProduction={canStartProduction}
             onStartProduction={() => setStartOpen(true)}
           />
         ) : lifecycle === 'IN_PRODUCTION' ? (
@@ -192,6 +208,8 @@ export function ProjectTaskSummaryCard({
             boardHref={boardHref}
             actionsDisabled={actionsDisabled}
             pending={pending}
+            showOpenBoard={canOpenProductionBoard}
+            showComplete={canComplete}
             onComplete={() => setCompleteOpen(true)}
           />
         ) : (
@@ -265,6 +283,7 @@ export function ProjectTaskSummaryCard({
         </div>
       </div>
 
+      {canStartProduction ? (
       <AlertDialog open={startOpen} onOpenChange={setStartOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -283,7 +302,9 @@ export function ProjectTaskSummaryCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      ) : null}
 
+      {canComplete ? (
       <AlertDialog open={completeOpen} onOpenChange={setCompleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -298,6 +319,7 @@ export function ProjectTaskSummaryCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      ) : null}
     </article>
   );
 }

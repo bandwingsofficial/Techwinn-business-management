@@ -26,6 +26,8 @@ export function ProjectPlannedSummaryCardBody({
   actionsDisabled,
   pending,
   onStartProduction,
+  showEditPlan = false,
+  showStartProduction = false,
 }: {
   project: ProjectTaskSummaryItem;
   clientName: string;
@@ -35,6 +37,8 @@ export function ProjectPlannedSummaryCardBody({
   actionsDisabled?: boolean;
   pending?: boolean;
   onStartProduction: () => void;
+  showEditPlan?: boolean;
+  showStartProduction?: boolean;
 }) {
   const ownerInitials = initialsOf(clientName === '—' ? project.name : clientName);
   const bannerLabel = timelineIndicator?.label ?? 'Plan ready';
@@ -128,28 +132,32 @@ export function ProjectPlannedSummaryCardBody({
       </div>
 
       <div className="mt-auto flex flex-col gap-2 pt-1">
-        <Button
-          asChild
-          className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 px-4 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-        >
-          <Link href={planHref} className="flex w-full items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-2">
-              <Pencil className="size-4" aria-hidden="true" />
-              Edit Plan
-            </span>
-            <ArrowRight className="size-4 opacity-90" aria-hidden="true" />
-          </Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 w-full rounded-xl bg-white"
-          disabled={actionsDisabled || pending}
-          onClick={onStartProduction}
-        >
-          <Play className="size-3.5" aria-hidden="true" />
-          Start Production
-        </Button>
+        {showEditPlan ? (
+          <Button
+            asChild
+            className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 px-4 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+          >
+            <Link href={planHref} className="flex w-full items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2">
+                <Pencil className="size-4" aria-hidden="true" />
+                Edit Plan
+              </span>
+              <ArrowRight className="size-4 opacity-90" aria-hidden="true" />
+            </Link>
+          </Button>
+        ) : null}
+        {showStartProduction ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 w-full rounded-xl bg-white"
+            disabled={actionsDisabled || pending}
+            onClick={onStartProduction}
+          >
+            <Play className="size-3.5" aria-hidden="true" />
+            Start Production
+          </Button>
+        ) : null}
       </div>
     </div>
   );

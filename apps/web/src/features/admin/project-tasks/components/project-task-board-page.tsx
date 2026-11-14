@@ -18,8 +18,14 @@ import { useAdminToast } from '@/features/admin/components/toast';
 import { CrmErrorAlert, CrmLoadingRows } from '@/features/admin/crm/components/crm-feedback';
 import { useAsyncAction } from '@/features/admin/crm/hooks/use-async-action';
 import { describeCrmError } from '@/features/admin/crm/utils/errors';
+import {
+  PROJECT_TASK_ACTION_PERMISSIONS,
+  canAccessProjectProductionBoard,
+} from '@techwin/contracts';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
-import { PROJECT_TASK_ACTION_PERMISSIONS } from '@techwin/contracts';
+import { useProjectPagePermissions } from '@/features/admin/projects/hooks/use-project-page-permissions';
+import { AccessDenied } from '@/shared/components/access-denied';
+import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
 import {
   changeProjectStatus,
   completeProject,
@@ -53,13 +59,18 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const toast = useAdminToast();
-  const { has } = usePermissions();
+  const { toPortalPath } = usePortalNavigation();
+  const { has, permissionSet } = usePermissions();
   const canCreateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.create);
   const canUpdateTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.update);
   const canAssignTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.assign);
   const canDeleteTasks = has(PROJECT_TASK_ACTION_PERMISSIONS.delete);
-  const canUpdateProject = has('projects.update');
-  const canDeleteProject = has('projects.delete');
+  const {
+    canChangeStatus: canChangeProjectStatus,
+    canEdit: canEditProject,
+    canDelete: canDeleteProject,
+    canComplete: canCompleteProject,
+  } = useProjectPagePermissions();
   const { pending, run } = useAsyncAction();
   const [completeOpen, setCompleteOpen] = useState(false);
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -105,16 +116,16 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
 
   const clearViewPlanQuery = useCallback(() => {
     if (searchParams.get('viewPlan') !== '1') return;
-    router.replace(`/admin/project-tasks/${projectId}`, { scroll: false });
-  }, [projectId, router, searchParams]);
+    router.replace(toPortalPath(`/admin/project-tasks/${projectId}`), { scroll: false });
+  }, [projectId, router, searchParams, toPortalPath]);
 
   useEffect(() => {
     if (!board) return;
     const lifecycle = board.project.executionLifecycle;
     if (lifecycle === 'NOT_PLANNED' || lifecycle === 'PLANNED') {
-      router.replace(`/admin/project-tasks/${projectId}/plan`);
+      router.replace(toPortalPath(`/admin/project-tasks/${projectId}/plan`));
     }
-  }, [board, projectId, router]);
+  }, [board, projectId, router, toPortalPath]);
 
   const lifecycle = board?.project.executionLifecycle;
   const planLocked = lifecycle ? isProjectPlanLocked(lifecycle) : false;
@@ -145,7 +156,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
       if (missingProjectTaskToast.current === tid) return;
       missingProjectTaskToast.current = tid;
       toast.error('That task is not on this project board.');
-      router.replace(`/admin/project-tasks/${projectId}`, { scroll: false });
+      router.replace(toPortalPath(`/admin/project-tasks/${projectId}`), { scroll: false });
       return;
     }
     const task = tasks.find((t) => t.id === tid);
@@ -221,7 +232,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   };
 
   const confirmCompleteProject = async () => {
-    if (!canUpdateProject) return;
+    if (!canCompleteProject) return;
     try {
       await run(() => completeProject(projectId));
       toast.success('Project marked completed.');
@@ -259,7 +270,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
   };
 
   const toggleActive = async (target: ProjectActionTarget) => {
-    if (!canUpdateProject) return;
+    if (!canChangeProjectStatus) return;
     const nextStatus = target.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
       await run(() => changeProjectStatus(target.id, { status: nextStatus }));
@@ -284,7 +295,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
       await run(() => deleteProjectApi(target.id));
       toast.success(`Project "${target.projectNumber}" deleted.`);
       setDeleteProjectTarget(null);
-      router.push('/admin/project-tasks');
+      router.push(toPortalPath('/admin/project-tasks'));
     } catch (failure) {
       toast.error(describeCrmError(failure));
     }
@@ -309,6 +320,24 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
 
   const boardProject = board.project;
 
+  if (
+    boardProject.executionLifecycle === 'IN_PRODUCTION' &&
+    !canAccessProjectProductionBoard('IN_PRODUCTION', permissionSet)
+  ) {
+    return (
+      <AccessDenied description="You do not have permission to open the production board." />
+    );
+  }
+
+  if (
+    boardProject.executionLifecycle === 'COMPLETED' &&
+    !canAccessProjectProductionBoard('COMPLETED', permissionSet)
+  ) {
+    return (
+      <AccessDenied description="You do not have permission to view this project." />
+    );
+  }
+
   return (
     <>
       <ProjectWorkspaceShell
@@ -316,9 +345,9 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
         breadcrumbTail="Production"
         actionsDisabled={actionsBusy || readOnly}
         onToggleActive={
-          canUpdateProject ? (target) => setStatusToggleTarget(target) : undefined
+          canChangeProjectStatus ? (target) => setStatusToggleTarget(target) : undefined
         }
-        onEditProject={canUpdateProject ? () => setProjectFormOpen(true) : undefined}
+        onEditProject={canEditProject ? () => setProjectFormOpen(true) : undefined}
         onDeleteProject={
           canDeleteProject ? (target) => setDeleteProjectTarget(target) : undefined
         }
@@ -342,7 +371,7 @@ export function ProjectTaskBoardPage({ projectId }: { projectId: string }) {
                 <FileText className="size-4" aria-hidden="true" />
                 View Plan
               </Button>
-              {boardProject.executionLifecycle === 'IN_PRODUCTION' && canUpdateProject ? (
+              {boardProject.executionLifecycle === 'IN_PRODUCTION' && canCompleteProject ? (
                 <Button
                   type="button"
                   size="sm"

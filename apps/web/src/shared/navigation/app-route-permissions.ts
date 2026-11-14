@@ -59,7 +59,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/proposals': ['crm.quotations.view'],
   '/admin/clients': ['crm.clients.view'],
   '/admin/projects': ['projects.read'],
-  '/admin/project-tasks': ['tasks.read', 'projects.read'],
+  '/admin/project-tasks': ['projects.read'],
   '/admin/daily-tasks': ['project_management.daily_tasks.view'],
   '/admin/my-tasks': ['project_management.daily_tasks.view'],
   '/admin/task-calendar': [
@@ -130,6 +130,17 @@ function normalizePath(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 }
 
+const PROJECT_TASKS_PLAN_PATH = /^\/admin\/project-tasks\/[^/]+\/plan$/;
+
+function canAccessProjectTasksPlanPath(
+  path: string,
+  permissions: ReadonlySet<PermissionKey>,
+): boolean | null {
+  if (!PROJECT_TASKS_PLAN_PATH.test(path)) return null;
+  if (!permissions.has('projects.read')) return false;
+  return permissions.has('projects.plan.create') || permissions.has('projects.plan.edit');
+}
+
 export function permissionsForAppPath(pathname: string): readonly PermissionKey[] | null {
   const path = normalizePath(pathname);
   const exact = APP_ROUTE_PERMISSIONS[path];
@@ -189,6 +200,11 @@ export function canAccessAppPath(
   }
 
   const canonical = canonicalPermissionPath(path);
+  const projectPlanAccess = canAccessProjectTasksPlanPath(path, permissions);
+  if (projectPlanAccess !== null) return projectPlanAccess;
+  const projectPlanAccessCanonical = canAccessProjectTasksPlanPath(canonical, permissions);
+  if (projectPlanAccessCanonical !== null) return projectPlanAccessCanonical;
+
   const matchedDailyBoardRoute = [...ORGANIZATION_DAILY_TASK_BOARD_ROUTES].find(
     (route) =>
       path === route ||

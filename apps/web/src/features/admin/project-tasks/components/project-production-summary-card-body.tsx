@@ -21,6 +21,8 @@ export function ProjectProductionSummaryCardBody({
   actionsDisabled,
   pending,
   onComplete,
+  showOpenBoard = false,
+  showComplete = false,
 }: {
   project: ProjectTaskSummaryItem;
   clientName: string;
@@ -29,6 +31,8 @@ export function ProjectProductionSummaryCardBody({
   actionsDisabled?: boolean;
   pending?: boolean;
   onComplete: () => void;
+  showOpenBoard?: boolean;
+  showComplete?: boolean;
 }) {
   const ownerInitials = initialsOf(clientName === '—' ? project.name : clientName);
   const productionStartedAt = project.actualProductionStartedAt;
@@ -119,25 +123,29 @@ export function ProjectProductionSummaryCardBody({
       </div>
 
       <div className="mt-auto flex flex-col gap-2 pt-1">
-        <Button
-          asChild
-          className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 px-4 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
-        >
-          <Link href={boardHref} className="flex w-full items-center justify-between gap-2">
-            <span>Open Production Board</span>
-            <ArrowRight className="size-4 opacity-90" aria-hidden="true" />
-          </Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 w-full rounded-xl bg-white"
-          disabled={actionsDisabled || pending}
-          onClick={onComplete}
-        >
-          <CheckCircle2 className="size-3.5" aria-hidden="true" />
-          Complete
-        </Button>
+        {showOpenBoard ? (
+          <Button
+            asChild
+            className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-neutral-950 via-neutral-800 to-neutral-950 px-4 text-white shadow-xs hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-900"
+          >
+            <Link href={boardHref} className="flex w-full items-center justify-between gap-2">
+              <span>Open Production Board</span>
+              <ArrowRight className="size-4 opacity-90" aria-hidden="true" />
+            </Link>
+          </Button>
+        ) : null}
+        {showComplete ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 w-full rounded-xl bg-white"
+            disabled={actionsDisabled || pending}
+            onClick={onComplete}
+          >
+            <CheckCircle2 className="size-3.5" aria-hidden="true" />
+            Complete
+          </Button>
+        ) : null}
       </div>
     </div>
   );
