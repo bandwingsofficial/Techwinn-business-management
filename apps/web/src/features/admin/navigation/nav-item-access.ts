@@ -41,13 +41,13 @@ export function canAccessNavItem(
       return access ? canUseEmployeeSelfService(access) : false;
     }
     if (configHref === '/admin/dashboard') {
-      return access ? canAccessWorkspaceDashboard(access) : true;
+      return access ? canAccessWorkspaceDashboard(access, permissions) : true;
     }
     return true;
   }
 
   if (configHref === '/admin/dashboard') {
-    return access ? canAccessWorkspaceDashboard(access) : false;
+    return access ? canAccessWorkspaceDashboard(access, permissions) : false;
   }
   if (configHref === '/employee/dashboard') {
     return access ? canUseEmployeeSelfService(access) : false;

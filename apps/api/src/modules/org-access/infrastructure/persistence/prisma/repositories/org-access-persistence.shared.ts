@@ -1,13 +1,13 @@
 import {
   expandLegacyCrmLeadsPermissions,
   expandLegacyServicePackagePermissions,
-  expandLegacyCrmQuotationsPermissions,
-  expandLegacyCrmClientsPermissions,
   expandLegacyPmDailyTasksPermissions,
+  stripOrphanedLegacyCrmPermissionKeys,
   expandLegacyPmTaskCalendarPermissions,
   expandLegacyProjectsPermissions,
   expandLegacyEmployeePermissions,
   ensurePermissionPrerequisites,
+  permissionKeysFromRoleStorage,
   IMMUTABLE_ORG_ROLE_KEYS,
   isPermissionKey,
   isSuperAdminPortalSlug,
@@ -83,10 +83,9 @@ export function uniquePermissionKeys(keys: readonly string[]): PermissionKey[] {
   for (const key of keys) {
     if (isPermissionKey(key)) seen.add(key);
   }
+  stripOrphanedLegacyCrmPermissionKeys(seen);
   expandLegacyCrmLeadsPermissions(seen);
   expandLegacyServicePackagePermissions(seen);
-  expandLegacyCrmQuotationsPermissions(seen);
-  expandLegacyCrmClientsPermissions(seen);
   expandLegacyPmDailyTasksPermissions(seen);
   expandLegacyPmTaskCalendarPermissions(seen);
   expandLegacyProjectsPermissions(seen);
@@ -163,7 +162,9 @@ export function toRoleRecord(
     status: row.status,
     memberCount: row._count.memberships,
     pendingInvitationCount,
-    permissionKeys: uniquePermissionKeys(row.permissions.map((p) => p.permissionKey)),
+    permissionKeys: permissionKeysFromRoleStorage(
+      row.permissions.map((permission) => permission.permissionKey),
+    ),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -226,9 +227,8 @@ async function upsertSystemRoleTemplate(
     },
   });
 
-  // Owner/Admin are immutable in Role Management; keep them aligned with the catalog.
-  // All other system roles are editable — only merge missing defaults elsewhere.
-  if (IMMUTABLE_ORG_ROLE_KEYS.has(template.portalSlug)) {
+  // Super Admin always receives the full permission catalog (including newly registered keys).
+  if (IMMUTABLE_ORG_ROLE_KEYS.has(template.portalSlug) || isSuperAdminPortalSlug(template.portalSlug)) {
     await syncSystemRolePermissions(tx, roleId, template.permissions);
   }
 }
@@ -330,33 +330,21 @@ export async function ensureSystemRoleByPortalSlug(
 /** @deprecated Use {@link ensureSystemRoleByPortalSlug}. */
 export const ensureSystemRoleByKey = ensureSystemRoleByPortalSlug;
 
-/** First org access creates all defaults; later requests only restore protected Owner/Admin roles. */
+/** Ensures the protected Super Admin role exists; does not recreate legacy system roles. */
 export async function ensureOrganizationRoleBootstrap(
   tx: Pick<PrismaService, 'organizationRole' | 'organizationRolePermission'>,
   organizationId: string,
 ): Promise<Map<string, string>> {
   const roleCount = await tx.organizationRole.count({ where: { organizationId } });
   if (roleCount === 0) {
-    const map = await ensureSystemRoles(tx, organizationId);
-    return map;
+    return ensureSystemRoles(tx, organizationId);
   }
   const map = await ensureProtectedSystemRoles(tx, organizationId);
-  // Ensure the Employee role row exists without resetting its permissions.
-  await ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
-  // Only immutable roles receive catalog merges on every request. Editable system
-  // roles (Employee, Member, …) keep administrator-saved permission sets intact.
-  await mergeSystemRoleDefaultPermissions(tx, organizationId, [
-    SYSTEM_ROLE_KEYS.superAdmin,
-    SYSTEM_ROLE_KEYS.admin,
-  ]);
+  await mergeSystemRoleDefaultPermissions(tx, organizationId, [SYSTEM_ROLE_KEYS.superAdmin]);
   return map;
 }
 
-/**
- * Employee portal accounts must hold the Employee system role. Restores the link when the role
- * was removed or the system role was recreated after deletion.
- */
-/** Restores Owner system role on memberships flagged as organization owner. */
+/** Restores Super Admin role on memberships flagged as organization owner. */
 export async function ensureOwnerMembershipRole(
   tx: Pick<
     PrismaService,
@@ -385,57 +373,7 @@ export async function ensureOwnerMembershipRole(
   return true;
 }
 
-export async function ensureLinkedEmployeeMembershipRole(
-  tx: Pick<
-    PrismaService,
-    | 'employee'
-    | 'platformAdmin'
-    | 'organizationMembership'
-    | 'organizationMembershipRole'
-    | 'organizationRole'
-    | 'organizationRolePermission'
-  >,
-  organizationId: string,
-  adminId: string,
-): Promise<boolean> {
-  const admin = await tx.platformAdmin.findUnique({
-    where: { id: adminId },
-    select: { email: true },
-  });
-  const adminEmail = admin?.email.trim() ?? '';
-  const employee = await tx.employee.findFirst({
-    where: {
-      organizationId,
-      employmentStatus: 'ACTIVE',
-      deactivatedAt: null,
-      OR: [
-        { platformAdminId: adminId },
-        ...(adminEmail.length > 0
-          ? [{ workEmail: { equals: adminEmail, mode: 'insensitive' as const } }]
-          : []),
-      ],
-    },
-    select: { id: true },
-  });
-  if (!employee) return false;
-
-  const employeeRoleId = await ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.employee);
-  const membership = await tx.organizationMembership.findUnique({
-    where: { organizationId_adminId: { organizationId, adminId } },
-    select: { id: true, roleLinks: { select: { roleId: true } } },
-  });
-  if (!membership) return false;
-
-  const hasEmployeeRole = membership.roleLinks.some((link) => link.roleId === employeeRoleId);
-  if (hasEmployeeRole) return false;
-
-  await tx.organizationMembershipRole.create({
-    data: { membershipId: membership.id, roleId: employeeRoleId },
-  });
-  return true;
-}
-
-/** Adds missing template permissions to system roles without removing administrator changes. */
+/** Adds missing template permissions to Super Admin without removing administrator changes elsewhere. */
 export async function mergeSystemRoleDefaultPermissions(
   tx: Pick<PrismaService, 'organizationRole' | 'organizationRolePermission'>,
   organizationId: string,
@@ -579,13 +517,6 @@ export function assertOrgRoleMutable(
 ): void {
   if (!IMMUTABLE_ORG_ROLE_KEYS.has(role.portalSlug) && !isSuperAdminPortalSlug(role.portalSlug)) {
     return;
-  }
-  if (role.portalSlug === SYSTEM_ROLE_KEYS.admin) {
-    throw new OrgAccessForbiddenError(
-      action === 'delete'
-        ? 'The Admin role is protected and cannot be deleted.'
-        : 'The Admin role is protected and cannot be modified or deactivated.',
-    );
   }
   throw new OrgAccessForbiddenError(
     action === 'delete'

@@ -4,7 +4,7 @@ import type { EmployeeEmploymentStatus, EmployeeEmploymentType } from '../types'
 export const describeEmployeeDeletion = (outcome: EmployeeDeletionLoginOutcome): string => {
   switch (outcome) {
     case 'ACCOUNT_DELETED':
-      return 'Employee and their login account were permanently deleted.';
+      return 'Employee removed from active listings. Login access was revoked and historical records were kept.';
     case 'MEMBERSHIP_REMOVED':
       return 'Employee permanently deleted. Their login account was removed from this organization but is still used by another organization.';
     case 'ACCOUNT_PRESERVED':

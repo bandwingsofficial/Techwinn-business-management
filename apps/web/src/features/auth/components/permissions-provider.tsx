@@ -6,6 +6,7 @@ import {
   expandLegacyPmTaskCalendarPermissions,
   expandLegacyProjectsPermissions,
   expandLegacyEmployeePermissions,
+  stripOrphanedLegacyCrmPermissionKeys,
   hasUnrestrictedOrgPermissions,
   type MyOrganizationRole,
   type MySessionEmployeeSummary,
@@ -34,9 +35,10 @@ import {
 import { useAuthenticatedAdmin } from '@/features/admin/auth/hooks/use-admin-session';
 import { readPostAuthBootstrap } from '@/features/admin/auth/utils/post-auth-bootstrap';
 import { loginPath } from '@/features/admin/auth/utils/auth-errors';
+import { isAuthPublicPath, redirectToLogin } from '@/features/admin/auth/utils/auth-navigation';
 import { onAccessDenied } from '@/shared/api/api-client';
 import { isApiError } from '@/shared/api/api-error';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { isAbortError } from '@/shared/lib/abort-error';
 import {
   formatMembershipRoleLabel,
@@ -109,6 +111,9 @@ export function usePermissions(): PermissionsContextValue {
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const { admin } = useAuthenticatedAdmin();
   const initialSnapshot = useMemo(() => readBootstrapSnapshot(), []);
   const [snapshot, setSnapshot] = useState<AccessSnapshot | null>(initialSnapshot);
@@ -173,7 +178,27 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
             failure.code === API_ERROR_CODES.ACCESS_TOKEN_INVALID ||
             failure.code === API_ERROR_CODES.SESSION_EXPIRED)
         ) {
-          router.replace(loginPath('session_expired'));
+          if (!isAuthPublicPath(pathnameRef.current)) {
+            redirectToLogin(router, {
+              currentPathname: pathnameRef.current,
+              reason: 'session_expired',
+            });
+          }
+          return;
+        }
+
+        if (isApiError(failure) && failure.isTransient) {
+          setSnapshot((previous) => {
+            if (previous && previous.permissions.length > 0) return previous;
+            return {
+              permissions: [],
+              roles: [],
+              sessionEmployee: null,
+              revision: '0',
+              fullAccess: false,
+            };
+          });
+          setFatalError(describeOrgAccessError(failure));
           return;
         }
 
@@ -260,6 +285,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     if (!snapshot) return null;
     const { permissions, roles, sessionEmployee } = snapshot;
     const permissionSet = new Set(permissions);
+    stripOrphanedLegacyCrmPermissionKeys(permissionSet);
     expandLegacyPmDailyTasksPermissions(permissionSet);
     expandLegacyProjectsPermissions(permissionSet);
     expandLegacyEmployeePermissions(permissionSet);

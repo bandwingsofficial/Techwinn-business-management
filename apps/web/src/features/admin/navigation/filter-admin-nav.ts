@@ -24,6 +24,7 @@ export function filterAdminNav(
   portalSegment = 'admin',
 ): readonly AdminNavGroupWithAccess[] {
   const granted = new Set(permissions);
+  // Workspace dashboard is membership-gated; other nav items require explicit view/read keys.
   if (granted.size === 0) return [];
 
   const groups: AdminNavGroupWithAccess[] = [];

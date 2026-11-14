@@ -1,4 +1,4 @@
-import { PLATFORM_AUTH_ROUTES } from '@techwin/contracts';
+import { API_ERROR_CODES, PLATFORM_AUTH_ROUTES } from '@techwin/contracts';
 import {
   accessTokenStore,
   apiRequest,
@@ -30,6 +30,14 @@ export async function refreshSession(): Promise<RefreshOutcome> {
     return 'refreshed';
   } catch (error) {
     if (isApiError(error) && error.kind === 'http' && error.status === 401) {
+      accessTokenStore.clear();
+      return 'unauthenticated';
+    }
+    if (
+      isApiError(error) &&
+      (error.code === API_ERROR_CODES.SESSION_EXPIRED ||
+        error.code === API_ERROR_CODES.CSRF_REJECTED)
+    ) {
       accessTokenStore.clear();
       return 'unauthenticated';
     }

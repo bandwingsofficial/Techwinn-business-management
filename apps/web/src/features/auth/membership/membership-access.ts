@@ -4,9 +4,11 @@ import {
   SYSTEM_ROLE_KEYS,
   type MyOrganizationRole,
   type MySessionEmployeeSummary,
+  type PermissionKey,
   type PlatformAdminProfile,
   type PlatformAdminRole,
 } from '@techwin/contracts';
+import { hasOrganizationWorkspacePermissionSignals } from '@/features/admin/navigation/navigation-route-policy';
 import {
   formatOrganizationRoleLabel,
   formatPrimaryOrganizationRoleLabel,
@@ -22,15 +24,26 @@ export type MembershipAccessContext = {
 const WORKSPACE_OVERVIEW_ROLE_KEYS: ReadonlySet<string> = new Set([
   SYSTEM_ROLE_KEYS.superAdmin,
   LEGACY_SUPER_ADMIN_PORTAL_SLUG,
-  SYSTEM_ROLE_KEYS.admin,
 ]);
 
-export function canAccessWorkspaceDashboard(context: MembershipAccessContext): boolean {
+/** Super Admin platform role or organization Super Admin portal membership. */
+export function hasWorkspaceDashboardMembershipAccess(context: MembershipAccessContext): boolean {
   if (context.platformRole === 'SUPER_ADMIN') return true;
   return context.membershipRoles.some(
     (role) =>
       WORKSPACE_OVERVIEW_ROLE_KEYS.has(role.portalSlug) || isSuperAdminPortalSlug(role.portalSlug),
   );
+}
+
+export function canAccessWorkspaceDashboard(
+  context: MembershipAccessContext,
+  permissions?: ReadonlySet<PermissionKey>,
+): boolean {
+  if (hasWorkspaceDashboardMembershipAccess(context)) return true;
+  if (permissions && permissions.size > 0) {
+    return hasOrganizationWorkspacePermissionSignals(permissions, context);
+  }
+  return false;
 }
 
 /**

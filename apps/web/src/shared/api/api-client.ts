@@ -132,7 +132,7 @@ function rateLimitedRefreshError(retryAfterSeconds: number): ApiError {
   );
 }
 
-const REFRESH_TRANSIENT_COOLDOWN_MS = 3_000;
+const REFRESH_TRANSIENT_COOLDOWN_MS = 8_000;
 
 function transientRefreshCooldownError(retryAfterSeconds: number): ApiError {
   return new ApiError(

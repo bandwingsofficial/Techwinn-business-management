@@ -20,25 +20,25 @@ export function useCanonicalWorkspaceRedirect(): boolean {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { permissionSet, navAccess } = usePermissions();
+  const { permissionSet, navAccess, portalSegment } = usePermissions();
 
   const redirectTo = useMemo(() => {
     if (!prefersOrganizationWorkspace(permissionSet, navAccess)) return null;
 
     let target: string | null = null;
     if (pathname === '/employee/daily-tasks' || pathname.startsWith('/employee/daily-tasks/')) {
-      target = canonicalDailyTasksPath(permissionSet, navAccess);
+      target = canonicalDailyTasksPath(permissionSet, navAccess, portalSegment);
     } else if (
       pathname === '/employee/task-calendar' ||
       pathname.startsWith('/employee/task-calendar/')
     ) {
-      target = canonicalTaskCalendarPath(permissionSet, navAccess);
+      target = canonicalTaskCalendarPath(permissionSet, navAccess, portalSegment);
     }
 
     if (!target || target === pathname) return null;
     const qs = searchParams.toString();
     return qs ? `${target}?${qs}` : target;
-  }, [navAccess, pathname, permissionSet, searchParams]);
+  }, [navAccess, pathname, permissionSet, portalSegment, searchParams]);
 
   useEffect(() => {
     if (!redirectTo) return;

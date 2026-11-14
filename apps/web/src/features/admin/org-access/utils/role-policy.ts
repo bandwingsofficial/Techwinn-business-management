@@ -1,7 +1,6 @@
 import {
   IMMUTABLE_ORG_ROLE_KEYS,
   isSuperAdminPortalSlug,
-  SYSTEM_ROLE_KEYS,
   type PermissionKey,
 } from '@techwin/contracts';
 import type { OrgRoleListItem } from '../types';
@@ -22,9 +21,6 @@ export function isEditableOrgRole(role: OrgRoleListItem): boolean {
 }
 
 export function immutableRoleReason(role: { readonly portalSlug: string }): string {
-  if (role.portalSlug === SYSTEM_ROLE_KEYS.admin) {
-    return 'The Admin role is protected and cannot be changed, deactivated, or deleted.';
-  }
   if (isSuperAdminPortalSlug(role.portalSlug)) {
     return 'The Super Admin role is protected and cannot be changed, deactivated, or deleted.';
   }

@@ -6,11 +6,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { filterAdminNav, type AdminNavGroupWithAccess } from '@/features/admin/navigation/filter-admin-nav';
 import { canAccessAppPath } from '@/shared/navigation/app-route-permissions';
-import {
-  pathBelongsToPortalSegment,
-  rewriteLegacyPortalPrefix,
-  rewriteMismatchedPortalPrefix,
-} from '@/features/auth/portal/portal-segment';
+import { rewritePathToTrustedPortal } from '@/features/auth/portal/portal-routing';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 
 export type AdminAccessContextValue = {
@@ -66,19 +62,21 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
   }, [access]);
 
   const redirectTarget = useMemo(() => {
-    const legacyRewrite = rewriteLegacyPortalPrefix(pathname, access.portalSegment);
-    if (legacyRewrite) return legacyRewrite;
-    const portalRewrite = rewriteMismatchedPortalPrefix(pathname, access.portalSegment);
+    if (value.permissionSet.size === 0) return null;
+
+    const portalRewrite = rewritePathToTrustedPortal(pathname, access.portalSegment);
     if (portalRewrite) return portalRewrite;
-    if (!pathBelongsToPortalSegment(pathname, access.portalSegment)) {
-      return access.defaultDashboard;
-    }
+
     if (canAccessAppPath(pathname, value.permissionSet, access.navAccess, access.portalSegment)) {
       return null;
     }
-    const fallback =
-      value.navGroups.flatMap((group) => group.items).find((item) => item.kind === 'link')?.href ??
-      access.defaultDashboard;
+
+    const navLinks = value.navGroups.flatMap((group) => group.items).filter((item) => item.kind === 'link');
+    const authorizedNavDestination = navLinks.find((item) =>
+      canAccessAppPath(item.href, value.permissionSet, access.navAccess, access.portalSegment),
+    )?.href;
+
+    const fallback = authorizedNavDestination ?? access.defaultDashboard;
     return pathname !== fallback ? fallback : null;
   }, [access.defaultDashboard, access.navAccess, access.portalSegment, pathname, value]);
 

@@ -7,7 +7,6 @@ import {
   EmployeeHasPendingTasksError,
   EmployeeNotFoundError,
 } from '../../domain/errors/employee.errors.js';
-import { EmployeeDeletionPolicy } from '../../domain/policies/employee-deletion.policy.js';
 import {
   EMPLOYEE_REPOSITORY,
   type EmployeeDeletionResult,
@@ -33,12 +32,6 @@ export class DeleteEmployeeHandler {
     if (target.platformAdminId && target.ownsLoginAccount) {
       await this.memberAccounts.assertCanDeleteAccount(command.accessActor, target.platformAdminId);
     }
-
-    const impact = await this.repository.getDailyTaskDeletionImpact(
-      organizationId,
-      command.employeeId,
-    );
-    EmployeeDeletionPolicy.assertNoPendingDailyTasks(impact);
 
     let result: EmployeeDeletionResult;
     try {

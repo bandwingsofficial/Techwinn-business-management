@@ -8,7 +8,6 @@ import {
   EmployeeNotFoundError,
   EmployeeValidationError,
 } from '../../../../domain/errors/employee.errors.js';
-import { EmployeeDeletionPolicy } from '../../../../domain/policies/employee-deletion.policy.js';
 import { EmployeeStatusPolicy } from '../../../../domain/policies/employee-status.policy.js';
 import { EmployeeNumberService } from '../../../../domain/services/employee-number.service.js';
 import { EmployeeName } from '../../../../domain/value-objects/employee-name.vo.js';
@@ -253,6 +252,7 @@ export class EmployeePrismaStore {
   ): Promise<PaginatedEmployees> {
     const where: Prisma.EmployeeWhereInput = {
       organizationId,
+      deletedAt: null,
       ...(filters.accountLinkable
         ? {
             platformAdminId: null,
@@ -304,7 +304,7 @@ export class EmployeePrismaStore {
 
   async getEmployee(organizationId: string, employeeId: string): Promise<EmployeeRecord | null> {
     const row = await this.prisma.employee.findFirst({
-      where: { id: employeeId, organizationId },
+      where: { id: employeeId, organizationId, deletedAt: null },
       include: detailInclude(organizationId),
     });
     return row ? this.toRecord(row) : null;
@@ -318,6 +318,7 @@ export class EmployeePrismaStore {
     const rows = await this.prisma.employee.findMany({
       where: {
         organizationId,
+        deletedAt: null,
         employmentStatus: EmployeeStatusPolicy.assignableStatus(),
         ...(term
           ? {
@@ -687,7 +688,6 @@ export class EmployeePrismaStore {
       if (!existing) throw new EmployeeNotFoundError();
 
       const impact = await readDailyTaskDeletionImpact(tx, organizationId, employeeId);
-      EmployeeDeletionPolicy.assertNoPendingDailyTasks(impact);
 
       await tx.dailyTaskAssignee.updateMany({
         where: { organizationId, employeeId },
@@ -701,6 +701,10 @@ export class EmployeePrismaStore {
         data: { historicalDisplayName: existing.displayName },
       });
 
+      await tx.dailyTaskAssignee.deleteMany({
+        where: pendingDailyTaskWhere(organizationId, employeeId),
+      });
+
       const loginAccount: EmployeeLoginDeletionOutcome = existing.platformAdminId
         ? await this.memberAccounts.removeEmployeeLoginInTransaction(tx, organizationId, {
             adminId: existing.platformAdminId,
@@ -708,7 +712,20 @@ export class EmployeePrismaStore {
           })
         : 'NONE';
 
-      await tx.employee.delete({ where: { id: employeeId } });
+      const deletedAt = new Date();
+      const tombstoneSuffix = employeeId.replace(/-/g, '').slice(0, 12);
+      await tx.employee.update({
+        where: { id: employeeId },
+        data: {
+          deletedAt,
+          deactivatedAt: deletedAt,
+          employmentStatus: 'TERMINATED',
+          platformAdminId: null,
+          ownsLoginAccount: false,
+          workEmail: `deleted-${tombstoneSuffix}@archived.invalid`,
+          phone: `+deleted-${tombstoneSuffix}`.slice(0, 32),
+        },
+      });
       await tx.crmAuditEvent.create({
         data: {
           organizationId,
@@ -722,6 +739,7 @@ export class EmployeePrismaStore {
             workEmail: existing.workEmail,
             loginAccount,
             preservedCompletedTaskAssignments: impact.completedTaskCount,
+            unassignedPendingTasks: impact.pendingTaskCount,
             unassignedConversations: existing._count.whatsappConversations,
           },
         },

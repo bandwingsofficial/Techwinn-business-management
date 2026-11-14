@@ -107,6 +107,7 @@ export function ensureViewPermissionPrerequisites(
   applyCrmServicePackagesCrossPagePrerequisites(next);
   applyCrmQuotationsCrossPagePrerequisites(next);
   applyCrmClientsCrossPagePrerequisites(next);
+  applyEmployeesCrossPagePrerequisites(next);
   applyPmDailyTasksCrossPagePrerequisites(next);
   applyProjectsCrossPagePrerequisites(next);
   applyProjectTasksCrossPagePrerequisites(next);

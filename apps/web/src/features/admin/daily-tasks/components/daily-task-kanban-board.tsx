@@ -464,7 +464,9 @@ export function DailyTaskKanbanBoard({
                           : 'border-black/15 bg-card/50',
                       )}
                     >
-                      No tasks for this date — drop here
+                      {employeeMode
+                        ? 'No tasks assigned to you for this date'
+                        : 'No tasks for this date — drop here'}
                     </div>
                   ) : (
                     stageTaskIds.map((taskId) => {

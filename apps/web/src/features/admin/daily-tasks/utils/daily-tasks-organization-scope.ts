@@ -49,12 +49,25 @@ export function resolveDailyTasksDataScope(input: {
   readonly workspaceParam: string | null;
   readonly explicitScope?: DailyTasksDataScope;
   readonly canViewOrganizationTasks: boolean;
+  /** Personal `/daily-tasks/my` requires `tasks.read` (see API guard). */
+  readonly hasTasksRead?: boolean;
 }): DailyTasksDataScope {
-  if (input.portal === 'employee') return 'own';
-  if (input.workspaceParam === 'my') return 'own';
   if (input.explicitScope) return input.explicitScope;
-  if (input.workspaceParam === 'team') {
-    return input.canViewOrganizationTasks ? 'team' : 'own';
+
+  const personalWorkspaceRequested = input.workspaceParam === 'my';
+  const canUsePersonalApi = Boolean(input.hasTasksRead);
+
+  if (personalWorkspaceRequested && canUsePersonalApi) {
+    return 'own';
   }
-  return input.canViewOrganizationTasks ? 'team' : 'own';
+
+  if (input.canViewOrganizationTasks) {
+    return 'team';
+  }
+
+  if (input.portal === 'employee' || canUsePersonalApi) {
+    return 'own';
+  }
+
+  return 'own';
 }

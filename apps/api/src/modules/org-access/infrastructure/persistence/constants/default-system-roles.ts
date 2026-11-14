@@ -1,10 +1,4 @@
-import {
-  EMPLOYEE_PORTAL_PERMISSIONS,
-  PERMISSION_KEYS,
-  SYSTEM_ROLE_KEYS,
-  USER_ADMINISTRATION_PERMISSIONS,
-  type PermissionKey,
-} from '#contracts';
+import { PERMISSION_KEYS, SYSTEM_ROLE_KEYS, type PermissionKey } from '#contracts';
 
 export { SYSTEM_ROLE_KEYS };
 
@@ -13,128 +7,7 @@ export const SUPER_ADMIN_PERMISSIONS: readonly PermissionKey[] = PERMISSION_KEYS
 /** @deprecated Use {@link SUPER_ADMIN_PERMISSIONS}. */
 export const OWNER_PERMISSIONS = SUPER_ADMIN_PERMISSIONS;
 
-const USER_ADMIN_SET = new Set<string>(USER_ADMINISTRATION_PERMISSIONS);
-
-export const ORG_ADMIN_PERMISSIONS: readonly PermissionKey[] = PERMISSION_KEYS.filter(
-  (key) => !USER_ADMIN_SET.has(key),
-);
-
-export const PROJECT_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
-  'crm.pipeline.view',
-  'crm.leads.view',
-  'crm.leads.create',
-  'crm.leads.edit',
-  'crm.leads.move',
-  'crm.leads.delete',
-  'crm.leads.import',
-  'leads.read',
-  'leads.create',
-  'leads.update',
-  'leads.delete',
-  'crm.quotations.view',
-  'crm.quotations.create',
-  'crm.quotations.send',
-  'crm.quotations.edit',
-  'crm.quotations.delete',
-  'clients.read',
-  'clients.create',
-  'clients.update',
-  'crm.clients.view',
-  'crm.clients.view_details',
-  'crm.clients.create',
-  'crm.clients.status',
-  'crm.clients.edit',
-  'crm.clients.delete',
-  'employees.read',
-  'employees.create',
-  'employees.update',
-  'employees.compensation.read',
-  'employees.compensation.manage',
-  'media.read',
-  'media.upload',
-  'settings.read',
-  'crm.service_packages.view',
-  'crm.service_packages.view_details',
-  'whatsapp.read',
-  'whatsapp.view_all',
-  'whatsapp.reply',
-  'whatsapp.assign',
-];
-
-export const PROJECT_MANAGEMENT_PERMISSIONS: readonly PermissionKey[] = [
-  'projects.read',
-  'projects.create',
-  'projects.update',
-  'tasks.read',
-  'tasks.create',
-  'tasks.update',
-  'tasks.delete',
-  'tasks.assign',
-  'project_management.daily_tasks.view',
-  'project_management.daily_tasks.assign',
-  'project_management.daily_tasks.view_details',
-  'project_management.daily_tasks.edit',
-  'project_management.daily_tasks.delete',
-  'project_management.daily_tasks.move',
-  'project_management.task_calendar.view',
-];
-
-export const SALES_PERMISSIONS: readonly PermissionKey[] = [
-  'crm.pipeline.view',
-  'crm.leads.view',
-  'crm.leads.create',
-  'crm.leads.edit',
-  'crm.leads.move',
-  'crm.leads.delete',
-  'crm.leads.import',
-  'leads.read',
-  'leads.create',
-  'leads.update',
-  'leads.delete',
-  'crm.quotations.view',
-  'crm.quotations.create',
-  'crm.quotations.send',
-  'crm.quotations.edit',
-  'crm.quotations.delete',
-  'clients.read',
-  'crm.clients.view',
-  'crm.clients.view_details',
-  'settings.read',
-  'crm.service_packages.view',
-  'crm.service_packages.view_details',
-  'whatsapp.read',
-  'whatsapp.reply',
-];
-
-export const FINANCIAL_PERMISSIONS: readonly PermissionKey[] = [
-  'employees.compensation.read',
-  'employees.compensation.manage',
-  'finance.read',
-  'finance.manage',
-  'expenses.read',
-  'expenses.create',
-  'expenses.update',
-  'expenses.approve',
-  'expenses.delete',
-];
-
-export const MEMBER_PERMISSIONS: readonly PermissionKey[] = [
-  'employees.read',
-  'media.read',
-  'leads.read',
-  'crm.quotations.view',
-  'clients.read',
-  'crm.clients.view',
-  'crm.clients.view_details',
-  'projects.read',
-  'tasks.read',
-  'settings.read',
-  'crm.service_packages.view',
-  'crm.service_packages.view_details',
-];
-
-export const EMPLOYEE_PERMISSIONS: readonly PermissionKey[] = EMPLOYEE_PORTAL_PERMISSIONS;
-
+/** Only Super Admin is bootstrapped as a protected system role. */
 export const DEFAULT_SYSTEM_ROLES: readonly {
   portalSlug: string;
   name: string;
@@ -146,47 +19,5 @@ export const DEFAULT_SYSTEM_ROLES: readonly {
     name: 'Super Admin',
     description: 'Full organization administration including users and roles.',
     permissions: SUPER_ADMIN_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.admin,
-    name: 'Admin',
-    description: 'Full business module access without user or role administration.',
-    permissions: ORG_ADMIN_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.projectManager,
-    name: 'Project Manager',
-    description: 'Leads and human resources operations.',
-    permissions: PROJECT_MANAGER_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.projectManagement,
-    name: 'Project Management',
-    description: 'Project management module only: projects, project tasks and daily tasks.',
-    permissions: PROJECT_MANAGEMENT_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.sales,
-    name: 'Sales',
-    description: 'Leads and client-facing sales operations.',
-    permissions: SALES_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.financial,
-    name: 'Financial',
-    description: 'Finance and expense operations.',
-    permissions: FINANCIAL_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.member,
-    name: 'Member',
-    description: 'Read-only access to common modules.',
-    permissions: MEMBER_PERMISSIONS,
-  },
-  {
-    portalSlug: SYSTEM_ROLE_KEYS.employee,
-    name: 'Employee',
-    description: 'Assigned automatically to employees given sign-in from Employee Management.',
-    permissions: EMPLOYEE_PERMISSIONS,
   },
 ];

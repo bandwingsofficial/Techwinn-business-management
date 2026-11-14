@@ -893,6 +893,5 @@ export const PROTECTED_SYSTEM_ROLE_KEYS: ReadonlySet<string> = new Set([
 
 /** Organization roles that cannot be edited, deactivated, or deleted (stable portal slugs, not display names). */
 export const IMMUTABLE_ORG_ROLE_KEYS: ReadonlySet<string> = new Set([
-  SYSTEM_ROLE_KEYS.admin,
   SYSTEM_ROLE_KEYS.superAdmin,
 ]);

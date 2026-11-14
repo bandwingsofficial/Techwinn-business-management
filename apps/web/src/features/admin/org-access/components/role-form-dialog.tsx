@@ -4,6 +4,8 @@ import {
   applyPermissionKeyChange,
   describeMissingViewPrerequisites,
   findMissingViewPrerequisites,
+  isSuperAdminPortalSlug,
+  rolePermissionSetsMatch,
   type PermissionKey,
 } from '@techwin/contracts';
 import {
@@ -194,6 +196,32 @@ export function RoleFormDialog({
       try {
         const created = await run(() => createOrgRole(parsed.data));
         if (!created) return;
+
+        if (
+          !rolePermissionSetsMatch(parsed.data.permissionKeys, created.permissionKeys)
+        ) {
+          const expected = new Set(parsed.data.permissionKeys);
+          const actual = new Set(created.permissionKeys);
+          const missing = [...expected].filter((key) => !actual.has(key));
+          const extra = [...actual].filter((key) => !expected.has(key));
+          const detail = [
+            missing.length > 0 ? `missing: ${missing.slice(0, 5).join(', ')}` : null,
+            extra.length > 0 ? `unexpected: ${extra.slice(0, 5).join(', ')}` : null,
+          ]
+            .filter(Boolean)
+            .join('; ');
+          toast.error(
+            detail
+              ? `Role save did not persist the selected permissions (${detail}). Refresh and try again.`
+              : 'Role save did not persist the selected permissions. Refresh and try again.',
+          );
+          setForm((current) => ({
+            ...current,
+            permissionKeys: new Set(created.permissionKeys),
+          }));
+          return;
+        }
+
         setForm((current) => ({
           ...current,
           permissionKeys: new Set(created.permissionKeys),
@@ -213,7 +241,9 @@ export function RoleFormDialog({
 
     const metadataParsed = updateRoleRequestSchema.safeParse({
       name: form.name.trim(),
-      ...(!form.isSystem ? { portalSlug: form.portalSlug.trim() } : {}),
+      ...(!isSuperAdminPortalSlug(form.portalSlug)
+        ? { portalSlug: form.portalSlug.trim() }
+        : {}),
       description: form.description.trim(),
       status: form.status,
     });
@@ -239,13 +269,23 @@ export function RoleFormDialog({
       });
       if (!saved) return;
 
-      const expected = new Set(permissionsParsed.data.permissionKeys);
-      const actual = new Set(saved.permissionKeys);
-      const missing = [...expected].filter((key) => !actual.has(key));
-      const extra = [...actual].filter((key) => !expected.has(key));
-      if (missing.length > 0 || extra.length > 0) {
+      if (
+        !rolePermissionSetsMatch(permissionsParsed.data.permissionKeys, saved.permissionKeys)
+      ) {
+        const expected = new Set(permissionsParsed.data.permissionKeys);
+        const actual = new Set(saved.permissionKeys);
+        const missing = [...expected].filter((key) => !actual.has(key));
+        const extra = [...actual].filter((key) => !expected.has(key));
+        const detail = [
+          missing.length > 0 ? `missing: ${missing.slice(0, 5).join(', ')}` : null,
+          extra.length > 0 ? `unexpected: ${extra.slice(0, 5).join(', ')}` : null,
+        ]
+          .filter(Boolean)
+          .join('; ');
         toast.error(
-          'Role save did not persist the selected permissions. Refresh and try again.',
+          detail
+            ? `Role save did not persist the selected permissions (${detail}). Refresh and try again.`
+            : 'Role save did not persist the selected permissions. Refresh and try again.',
         );
         setForm((current) => ({
           ...current,
@@ -335,9 +375,11 @@ export function RoleFormDialog({
                         id="role-portal-slug"
                         value={form.portalSlug}
                         disabled={
-                          pending || effectiveReadOnly || (form.isSystem && !isCreate)
+                          pending ||
+                          effectiveReadOnly ||
+                          (isSuperAdminPortalSlug(form.portalSlug) && !isCreate)
                         }
-                        readOnly={form.isSystem && !isCreate}
+                        readOnly={isSuperAdminPortalSlug(form.portalSlug) && !isCreate}
                         aria-invalid={Boolean(fieldErrors.portalSlug)}
                         className={cn(
                           CRM_PIPELINE_FORM_FIELD_CLASS,

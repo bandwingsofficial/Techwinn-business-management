@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SYSTEM_ROLE_KEYS } from '#contracts';
 import { randomUUID } from 'node:crypto';
 import {
   PASSWORD_HASHER,
@@ -58,23 +57,6 @@ export class MemberAccountService {
       roleIds: [...new Set(input.roleIds)],
       isOwner,
     };
-  }
-
-  /**
-   * Accounts created from Employee Management always get the system Employee role; the
-   * usual grant checks still apply, so the creator must hold every permission it carries.
-   */
-  async prepareEmployeeAccount(input: {
-    readonly organizationId: string;
-    readonly actorAdminId: string;
-    readonly email: string;
-    readonly password: string;
-  }): Promise<PreparedMemberAccount> {
-    const roleId = await this.repository.resolveSystemRoleId(
-      input.organizationId,
-      SYSTEM_ROLE_KEYS.employee,
-    );
-    return this.prepareNewAccount({ ...input, roleIds: [roleId] });
   }
 
   /** Same permissions as the member provisioning endpoint. */

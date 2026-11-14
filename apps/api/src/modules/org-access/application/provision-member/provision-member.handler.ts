@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SYSTEM_ROLE_KEYS } from '#contracts';
 import { OrgAccessValidationError } from '../../domain/errors/org-access.errors.js';
 import {
   ORG_ACCESS_REPOSITORY,
@@ -16,22 +15,10 @@ export class ProvisionMemberHandler {
   ) {}
 
   async execute(command: ProvisionMemberCommand) {
-    const employeeRoleId = await this.repository.resolveSystemRoleId(
-      command.organizationId,
-      SYSTEM_ROLE_KEYS.employee,
-    );
-    const includesEmployeeRole = command.roleIds.includes(employeeRoleId);
-
-    if (includesEmployeeRole && !command.employeeId) {
-      throw new OrgAccessValidationError('Select an employee to link with this account.', [
-        { path: 'employeeId', message: 'Select an employee.' },
+    if (command.employeeId && command.roleIds.length === 0) {
+      throw new OrgAccessValidationError('Assign at least one role when linking an employee record.', [
+        { path: 'roleIds', message: 'Select at least one role.' },
       ]);
-    }
-    if (command.employeeId && !includesEmployeeRole) {
-      throw new OrgAccessValidationError(
-        'Employee linking is only allowed when the Employee role is assigned.',
-        [{ path: 'employeeId', message: 'Remove the employee selection or assign the Employee role.' }],
-      );
     }
 
     let email = command.email;

@@ -3,6 +3,7 @@ import type { Prisma } from '../../../../../../generated/prisma/client.js';
 import { OrgAccessConflictError } from '../../../../domain/errors/org-access.errors.js';
 import type { PreparedMemberAccount } from '../../../../domain/repositories/org-access.repository.js';
 import type { EmployeeLoginRemoval } from '../../../../domain/ports/member-account-transaction.port.js';
+import { archivePlatformAdminInTransaction } from './platform-admin-archive.js';
 
 type MemberAccountWrite = {
   readonly account: PreparedMemberAccount;
@@ -10,7 +11,7 @@ type MemberAccountWrite = {
   readonly phone: string | null;
   /** A deactivated membership also disables sign-in for the new account. */
   readonly membershipStatus: 'ACTIVE' | 'DEACTIVATED';
-  readonly auditMetadata?: Prisma.InputJsonObject;
+  readonly auditMetadata?: Prisma.InputJsonValue;
 };
 
 /**
@@ -66,8 +67,8 @@ export async function createMemberAccountInTransaction(
         provisioned: true,
         email: account.email,
         roleIds: [...account.roleIds],
-        ...input.auditMetadata,
-      },
+        ...(input.auditMetadata as Record<string, unknown> | undefined),
+      } satisfies Prisma.InputJsonObject,
     },
   });
 
@@ -75,64 +76,9 @@ export async function createMemberAccountInTransaction(
 }
 
 /**
- * Records authored by an account whose foreign keys are RESTRICT: they are business
- * history, so an account that still authors any of them cannot be deleted.
- */
-async function countRetainedHistory(
-  tx: Prisma.TransactionClient,
-  adminId: string,
-): Promise<Record<string, number>> {
-  const [
-    leads,
-    leadActivities,
-    clients,
-    proposals,
-    servicePackages,
-    projects,
-    dailyTasks,
-    dailyTaskActivities,
-    dailyTaskReschedules,
-    employees,
-    invitations,
-    files,
-  ] = await Promise.all([
-    tx.lead.count({ where: { createdByAdminId: adminId } }),
-    tx.leadActivity.count({ where: { createdByAdminId: adminId } }),
-    tx.client.count({ where: { createdByAdminId: adminId } }),
-    tx.quotationDocument.count({ where: { createdByAdminId: adminId } }),
-    tx.servicePackage.count({ where: { createdByAdminId: adminId } }),
-    tx.project.count({ where: { createdByAdminId: adminId } }),
-    tx.dailyTask.count({ where: { createdByAdminId: adminId } }),
-    tx.dailyTaskActivity.count({ where: { actorAdminId: adminId } }),
-    tx.dailyTaskReschedule.count({ where: { rescheduledByAdminId: adminId } }),
-    tx.employee.count({ where: { createdByAdminId: adminId } }),
-    tx.organizationInvitation.count({ where: { invitedByAdminId: adminId } }),
-    tx.storedObject.count({ where: { createdByAdminId: adminId } }),
-  ]);
-  const counts: Record<string, number> = {
-    leads,
-    'lead activities': leadActivities,
-    clients,
-    proposals,
-    'service packages': servicePackages,
-    projects,
-    'daily tasks': dailyTasks,
-    'daily task activities': dailyTaskActivities,
-    'daily task reschedules': dailyTaskReschedules,
-    employees,
-    invitations,
-    files,
-  };
-  return Object.fromEntries(Object.entries(counts).filter(([, count]) => count > 0));
-}
-
-/**
  * Removes the sign-in access that belongs to a deleted employee, inside the caller's
- * transaction. Only accounts created together with the employee are touched: they are
- * deleted outright (sessions, refresh tokens and challenges cascade), or, when another
- * organization still uses them, lose only this organization's membership. Assignments
- * held by the account (lead owner, project manager, task assignee) are cleared by their
- * SET NULL foreign keys while the records themselves are kept.
+ * transaction. Historical business records keep their author foreign keys; the account is
+ * tombstoned instead of physically deleted.
  */
 export async function removeEmployeeLoginInTransaction(
   tx: Prisma.TransactionClient,
@@ -142,9 +88,9 @@ export async function removeEmployeeLoginInTransaction(
   if (!input.ownedByEmployee) return 'ACCOUNT_PRESERVED';
   const account = await tx.platformAdmin.findUnique({
     where: { id: input.adminId },
-    select: { role: true, memberships: { select: { id: true, organizationId: true } } },
+    select: { role: true, deletedAt: true, memberships: { select: { id: true, organizationId: true } } },
   });
-  if (!account || account.role === 'SUPER_ADMIN') return 'ACCOUNT_PRESERVED';
+  if (!account || account.role === 'SUPER_ADMIN' || account.deletedAt) return 'ACCOUNT_PRESERVED';
 
   const otherOrganizations = account.memberships.filter(
     (membership) => membership.organizationId !== organizationId,
@@ -154,27 +100,16 @@ export async function removeEmployeeLoginInTransaction(
     return 'MEMBERSHIP_REMOVED';
   }
 
-  const history = await countRetainedHistory(tx, input.adminId);
-  const entries = Object.entries(history);
-  if (entries.length > 0) {
-    const summary = entries.map(([label, count]) => `${count} ${label}`).join(', ');
-    throw new OrgAccessConflictError(
-      `This employee's sign-in account authored records that must be kept (${summary}), so it cannot be deleted. Deactivate the employee instead.`,
-    );
-  }
-
   await tx.organizationMembership.deleteMany({ where: { adminId: input.adminId } });
-  await tx.platformAdmin.delete({ where: { id: input.adminId } });
+  await archivePlatformAdminInTransaction(tx, input.adminId);
   return 'ACCOUNT_DELETED';
 }
 
 export type MemberAccountDeletion = 'ACCOUNT_DELETED' | 'MEMBERSHIP_REMOVED';
 
 /**
- * Permanently removes one organization's membership. The sign-in account is deleted
- * only when it belongs solely to this organization and has no RESTRICT business history.
- * Employee HR records are unlinked and kept. Sessions and challenges for a deleted
- * account cascade. Owner and Super Admin must be rejected by the caller before this.
+ * Permanently removes one organization's membership. The sign-in account is tombstoned when it
+ * is not shared across organizations. Employee HR records are unlinked and kept.
  */
 export async function deleteOrganizationMemberInTransaction(
   tx: Prisma.TransactionClient,
@@ -183,27 +118,20 @@ export async function deleteOrganizationMemberInTransaction(
 ): Promise<MemberAccountDeletion> {
   const account = await tx.platformAdmin.findUnique({
     where: { id: input.adminId },
-    select: { role: true, memberships: { select: { id: true, organizationId: true } } },
+    select: { role: true, deletedAt: true, memberships: { select: { id: true, organizationId: true } } },
   });
   if (!account) throw new OrgAccessConflictError('This sign-in account was not found.');
   if (account.role === 'SUPER_ADMIN') {
     throw new OrgAccessConflictError('The Owner account cannot be deleted.');
+  }
+  if (account.deletedAt) {
+    throw new OrgAccessConflictError('This sign-in account has already been removed.');
   }
 
   const otherOrganizations = account.memberships.filter(
     (membership) => membership.organizationId !== organizationId,
   );
   const exclusive = otherOrganizations.length === 0;
-  if (exclusive) {
-    const history = await countRetainedHistory(tx, input.adminId);
-    const entries = Object.entries(history);
-    if (entries.length > 0) {
-      const summary = entries.map(([label, count]) => `${count} ${label}`).join(', ');
-      throw new OrgAccessConflictError(
-        `This account authored records that must be kept (${summary}), so it cannot be deleted. Deactivate the member instead.`,
-      );
-    }
-  }
 
   await tx.employee.updateMany({
     where: { platformAdminId: input.adminId },
@@ -223,8 +151,6 @@ export async function deleteOrganizationMemberInTransaction(
 
   if (!exclusive) return 'MEMBERSHIP_REMOVED';
 
-  await tx.organizationMembership.deleteMany({ where: { adminId: input.adminId } });
-  await tx.platformAuthChallenge.deleteMany({ where: { adminId: input.adminId } });
-  await tx.platformAdmin.delete({ where: { id: input.adminId } });
+  await archivePlatformAdminInTransaction(tx, input.adminId);
   return 'ACCOUNT_DELETED';
 }

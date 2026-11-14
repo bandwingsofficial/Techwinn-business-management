@@ -31,6 +31,20 @@ import {
   sameTaskIdOrder,
 } from '../helpers/daily-task-kanban-order.js';
 import { dateOnlyFromDb, toDailyTaskListItem } from '../mappers/daily-task-list-item.mapper.js';
+
+async function dailyTaskActivityActorSnapshot(
+  db: PrismaService | Prisma.TransactionClient,
+  adminId: string,
+): Promise<{ actorDisplayNameSnapshot: string; actorEmailSnapshot: string }> {
+  const admin = await db.platformAdmin.findUnique({
+    where: { id: adminId },
+    select: { displayName: true, email: true, archivedEmail: true },
+  });
+  return {
+    actorDisplayNameSnapshot: admin?.displayName?.trim() ?? '',
+    actorEmailSnapshot: (admin?.archivedEmail ?? admin?.email ?? '').trim(),
+  };
+}
 import type {
   CreateDailyTaskInput,
   CreateDailyTaskNoteInput,
@@ -536,6 +550,7 @@ export class DailyTaskPrismaStore {
           organizationId,
           dailyTaskId: taskId,
           actorAdminId: adminId,
+          ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
           eventType: 'CREATED',
           metadata: {
             assignDate: input.assignDate,
@@ -670,6 +685,7 @@ export class DailyTaskPrismaStore {
             organizationId,
             dailyTaskId: taskId,
             actorAdminId: adminId,
+            ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
             eventType: 'ASSIGNEES_CHANGED',
             metadata: {
               fromEmployeeIds: previousAssignees.map((row) => row.employeeId),
@@ -699,6 +715,7 @@ export class DailyTaskPrismaStore {
           organizationId,
           dailyTaskId: taskId,
           actorAdminId: adminId,
+          ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
           eventType: 'UPDATED',
           // Json? column: no change bag → SQL NULL (DbNull), not JS null / JsonNull.
           metadata:
@@ -838,6 +855,7 @@ export class DailyTaskPrismaStore {
           organizationId,
           dailyTaskId: taskId,
           actorAdminId: adminId,
+          ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
           eventType,
           metadata: {
             workflowStageId: stage.id,
@@ -903,6 +921,7 @@ export class DailyTaskPrismaStore {
           organizationId,
           dailyTaskId: taskId,
           actorAdminId: adminId,
+          ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
           eventType: 'RESCHEDULED',
           metadata: {
             fromAssignDate: dateOnlyFromDb(fromAssignDate),
@@ -1035,7 +1054,8 @@ export class DailyTaskPrismaStore {
       eventType: row.eventType,
       occurredAt: row.occurredAt.toISOString(),
       actorAdminId: row.actorAdminId,
-      actorDisplayName: row.actor.displayName,
+      actorDisplayName:
+        row.actorDisplayNameSnapshot.trim() || row.actor.displayName,
       actorEmployeeId: employeeByAdmin.get(row.actorAdminId) ?? null,
       metadata: row.metadata as Record<string, unknown> | null,
     }));
@@ -1063,6 +1083,7 @@ export class DailyTaskPrismaStore {
         organizationId,
         dailyTaskId: taskId,
         actorAdminId: adminId,
+        ...(await dailyTaskActivityActorSnapshot(this.prisma, adminId)),
         eventType: 'COMMENT_ADDED',
         metadata: {
           text: trimmed,

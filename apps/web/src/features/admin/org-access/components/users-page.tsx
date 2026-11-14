@@ -804,8 +804,9 @@ export function UsersPage() {
               Delete {deleteTarget?.displayName ?? 'this member'} permanently?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the sign-in account, membership, role assignments, and
-              sessions. Employee records and other organization data are kept. This cannot be undone.
+              Sign-in access and active membership are removed. Sessions are revoked. Historical
+              records (tasks, attendance, audit entries, and similar) are kept and still show this
+              member&apos;s name. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

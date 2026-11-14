@@ -21,7 +21,9 @@ export function isCrmQuotationsPermissionKey(
   return CRM_QUOTATIONS_KEY_SET.has(key);
 }
 
-/** Maps legacy `leads.*` quotation page keys at runtime (does not affect Leads CRM keys). */
+/**
+ * @deprecated Effective access no longer expands `leads.*` into quotations — use stored `crm.quotations.*`.
+ */
 export function expandLegacyCrmQuotationsPermissions(keys: Set<PermissionKey>): void {
   if (keys.has('leads.read')) {
     if (!keys.has('crm.quotations.view')) keys.add('crm.quotations.view');

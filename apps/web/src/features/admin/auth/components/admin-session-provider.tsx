@@ -25,6 +25,7 @@ import { logout, logoutAllDevices } from '../api/logout';
 import { refreshSession } from '../api/refresh-session';
 import type { AdminSessionState } from '../types/auth.types';
 import { describeAuthError, loginPath } from '../utils/auth-errors';
+import { redirectToLogin } from '../utils/auth-navigation';
 import { AdminSessionContext, type AdminSessionContextValue } from '../hooks/use-admin-session';
 import {
   clearPostAuthBootstrap,
@@ -66,7 +67,10 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       onSessionEnded(() => {
         if (leaveIntentionally.current || shouldSuppressSessionEnded()) return;
         setState({ status: 'unauthenticated' });
-        router.replace(loginPath('session_expired'));
+        redirectToLogin(router, {
+          currentPathname: pathnameRef.current,
+          reason: 'session_expired',
+        });
       }),
     [router],
   );
@@ -80,7 +84,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       try {
         if (!hasCsrfCookie() && !accessTokenStore.get()) {
           setState({ status: 'unauthenticated' });
-          router.replace(loginPath(undefined, pathnameRef.current));
+          redirectToLogin(router, { currentPathname: pathnameRef.current });
           return;
         }
         const current = await getCurrentSession(controller.signal);
@@ -94,11 +98,11 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (controller.signal.aborted || isAbortError(error)) return;
         if (isApiError(error) && error.isTransient) {
-          if (hadBootstrap) return;
+          if (hadBootstrap && accessTokenStore.get()) return;
           setState({ status: 'error', error });
           return;
         }
-        if (hadBootstrap && !isDefinitiveSessionEnd(error)) {
+        if (hadBootstrap && !isDefinitiveSessionEnd(error) && accessTokenStore.get()) {
           return;
         }
         if (!isDefinitiveSessionEnd(error)) {
@@ -110,7 +114,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
             !hadBootstrap
           ) {
             setState({ status: 'unauthenticated' });
-            router.replace(loginPath(undefined, pathnameRef.current));
+            redirectToLogin(router, { currentPathname: pathnameRef.current });
             return;
           }
           setState({
@@ -123,7 +127,10 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         }
         clearPostAuthBootstrap();
         setState({ status: 'unauthenticated' });
-        router.replace(loginPath('session_expired'));
+        redirectToLogin(router, {
+          currentPathname: pathnameRef.current,
+          reason: 'session_expired',
+        });
       }
     })();
 

@@ -1,4 +1,9 @@
-import { hasUnrestrictedOrgPermissions, type PermissionKey } from '@techwin/contracts';
+import {
+  canAccessTaskCalendar,
+  hasUnrestrictedOrgPermissions,
+  SYSTEM_ROLE_KEYS,
+  type PermissionKey,
+} from '@techwin/contracts';
 import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import {
   canAccessWorkspaceDashboard,
@@ -62,11 +67,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/project-tasks': ['projects.read'],
   '/admin/daily-tasks': ['project_management.daily_tasks.view'],
   '/admin/my-tasks': ['project_management.daily_tasks.view'],
-  '/admin/task-calendar': [
-    'project_management.task_calendar.view',
-    'project_management.daily_tasks.view',
-    'projects.read',
-  ],
+  '/admin/task-calendar': ['project_management.task_calendar.view'],
   '/admin/whatsapp/inbox': ['whatsapp.read'],
   '/admin/whatsapp/channels': ['whatsapp.channels.manage'],
   '/admin/whatsapp/templates': ['whatsapp.templates.manage', 'whatsapp.broadcasts.manage'],
@@ -80,11 +81,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
     'leave.requests.create',
   ],
   '/employee/daily-tasks': ['tasks.read'],
-  '/employee/task-calendar': [
-    'project_management.daily_tasks.view',
-    'projects.read',
-    'project_management.task_calendar.view',
-  ],
+  '/employee/task-calendar': ['project_management.task_calendar.view'],
   '/employee/attendance': ['attendance.view_own'],
   '/employee/calendar': ['calendar.view'],
   '/employee/leave': [
@@ -128,6 +125,21 @@ const EXACT_ONLY_ROUTES: ReadonlySet<string> = new Set([
 
 function normalizePath(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+}
+
+/** Portal-agnostic workspace module segment (`daily-tasks`, `task-calendar`, …). */
+function workspaceModuleSegment(pathname: string): string | null {
+  const parts = normalizePath(pathname).split('/').filter(Boolean);
+  return parts.length >= 2 ? (parts[1] ?? null) : null;
+}
+
+function isOrganizationDailyTasksBoardPath(pathname: string): boolean {
+  const module = workspaceModuleSegment(pathname);
+  return module === 'daily-tasks' || module === 'my-tasks';
+}
+
+function isOrganizationTaskCalendarPath(pathname: string): boolean {
+  return workspaceModuleSegment(pathname) === 'task-calendar';
 }
 
 const PROJECT_TASKS_PLAN_PATH = /^\/admin\/project-tasks\/[^/]+\/plan$/;
@@ -182,17 +194,18 @@ export function canAccessAppPath(
   }
 
   if (expectedPortalSegment && path === portalDashboardPath(expectedPortalSegment)) {
-    if (expectedPortalSegment === 'admin' && access && !canAccessWorkspaceDashboard(access)) {
-      return false;
+    if (expectedPortalSegment === SYSTEM_ROLE_KEYS.employee) {
+      if (access && !canUseEmployeeSelfService(access)) return false;
+      return true;
     }
-    if (expectedPortalSegment === 'employee' && access && !canUseEmployeeSelfService(access)) {
+    if (access && !canAccessWorkspaceDashboard(access, permissions)) {
       return false;
     }
     return true;
   }
 
   if (access && (path === '/admin' || path === '/admin/dashboard')) {
-    if (!canAccessWorkspaceDashboard(access)) return false;
+    if (!canAccessWorkspaceDashboard(access, permissions)) return false;
   }
 
   if (access && (path === '/employee' || path.startsWith('/employee/'))) {
@@ -205,18 +218,24 @@ export function canAccessAppPath(
   const projectPlanAccessCanonical = canAccessProjectTasksPlanPath(canonical, permissions);
   if (projectPlanAccessCanonical !== null) return projectPlanAccessCanonical;
 
-  const matchedDailyBoardRoute = [...ORGANIZATION_DAILY_TASK_BOARD_ROUTES].find(
-    (route) =>
-      path === route ||
-      path.startsWith(`${route}/`) ||
-      canonical === route ||
-      canonical.startsWith(`${route}/`),
-  );
-  if (matchedDailyBoardRoute) {
-    return canViewOrganizationDailyTasks(
+  if (isOrganizationDailyTasksBoardPath(path)) {
+    if (path.startsWith('/employee/') && access && !canUseEmployeeSelfService(access)) {
+      return false;
+    }
+    const orgDailyTasks = canViewOrganizationDailyTasks(
       (key) => permissions.has(key),
       (...keys) => keys.some((key) => permissions.has(key)),
     );
+    if (orgDailyTasks) return true;
+    if (!path.startsWith('/employee/')) return false;
+  }
+
+  if (isOrganizationTaskCalendarPath(path)) {
+    if (path.startsWith('/employee/') && access && !canUseEmployeeSelfService(access)) {
+      return false;
+    }
+    if (canAccessTaskCalendar(permissions)) return true;
+    if (!path.startsWith('/employee/')) return false;
   }
 
   const allRequired =

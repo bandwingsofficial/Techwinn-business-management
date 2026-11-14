@@ -20,6 +20,7 @@
     "test:self-service-access": "node --experimental-strip-types --test scripts/self-service-access.test.mjs",
     "test:board-fetch-stability": "node --experimental-strip-types --test scripts/board-fetch-stability.test.mjs",
     "test:workflow-stages-crud": "node --experimental-strip-types --test scripts/workflow-stages-crud.test.mjs",
+    "test:portal-prefix-routing": "node --experimental-strip-types --test scripts/portal-prefix-routing.test.mjs",
     "test:auth-lifecycle": "pnpm run test:finalize-sign-in && pnpm run test:api-client-refresh && pnpm run test:attendance-errors && pnpm run test:self-service-access && pnpm run test:board-fetch-stability && pnpm run test:workflow-stages-crud && pnpm run test:proxy"
   },
   "dependencies": {

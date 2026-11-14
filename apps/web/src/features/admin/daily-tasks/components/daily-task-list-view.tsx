@@ -98,9 +98,10 @@ export function DailyTaskListView({
       }
       empty={{
         icon: ClipboardList,
-        title: 'No tasks match your filters',
-        description:
-          'Try adjusting your search or filters, or choose another date to see tasks in this list.',
+        title: employeeMode ? 'No tasks assigned to you yet' : 'No tasks match your filters',
+        description: employeeMode
+          ? 'When tasks are assigned to you, they will appear here. Try another date if you are looking for work on a different day.'
+          : 'Try adjusting your search or filters, or choose another date to see tasks in this list.',
       }}
       refreshing={tableRefreshing}
       footer={

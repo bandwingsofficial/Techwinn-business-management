@@ -36,6 +36,8 @@ export * from './task-calendar-access.js';
 export * from './permission-hierarchy.js';
 import { assertPermissionHierarchyComplete } from './permission-hierarchy.js';
 export * from './permission-view-dependencies.js';
+export * from './permission-legacy-crm-cleanup.js';
+export * from './role-permission-storage.js';
 assertPermissionHierarchyComplete();
 export * from './org-access.js';
 export * from './daily-tasks.js';

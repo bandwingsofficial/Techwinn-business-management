@@ -17,8 +17,7 @@ export function canAccessTaskCalendar(
   isPlatformSuperAdmin = false,
 ): boolean {
   if (isPlatformSuperAdmin) return true;
-  if (effective.has(PM_TASK_CALENDAR_VIEW_KEY)) return true;
-  return effective.has(PM_DAILY_TASKS_VIEW_KEY) || effective.has(PROJECT_MANAGEMENT_VIEW_KEY);
+  return effective.has(PM_TASK_CALENDAR_VIEW_KEY);
 }
 
 export function canViewTaskCalendarDailyTasks(

@@ -11,7 +11,6 @@ import {
 import {
   PERMISSION_CACHE_TTL_SECONDS,
   ensureOrganizationRoleBootstrap,
-  ensureLinkedEmployeeMembershipRole,
   ensureOwnerMembershipRole,
   findRoleIdByKey,
   mergeSystemRoleDefaultPermissions,
@@ -125,22 +124,23 @@ export class OrgAccessPermissionsPersistence {
         }
         // Do not merge Employee/Member defaults here — that re-adds removed permissions
         // after Role Management saves. Immutable Owner/Admin stay catalog-aligned.
-        await mergeSystemRoleDefaultPermissions(tx, organizationId, [
-          SYSTEM_ROLE_KEYS.superAdmin,
-          SYSTEM_ROLE_KEYS.admin,
-        ]);
+        await mergeSystemRoleDefaultPermissions(tx, organizationId, [SYSTEM_ROLE_KEYS.superAdmin]);
         await ensureOwnerMembershipRole(tx, organizationId, adminId);
-        await ensureLinkedEmployeeMembershipRole(tx, organizationId, adminId);
         return;
       }
 
       const membershipId = randomUUID();
       const isSuperAdmin = admin.role === 'SUPER_ADMIN';
-      const ownerRoleId = roleIdsByKey.get(SYSTEM_ROLE_KEYS.superAdmin);
-      const memberRoleId = roleIdsByKey.get(SYSTEM_ROLE_KEYS.member);
-      const assignedRoleId = isSuperAdmin ? ownerRoleId : memberRoleId;
-      if (!assignedRoleId) {
-        throw new OrgAccessConflictError('Default organization roles are not configured.');
+      if (!isSuperAdmin) {
+        throw new OrgAccessConflictError(
+          'Organization membership requires an explicit role assignment. Use invitations or user provisioning.',
+        );
+      }
+      const ownerRoleId =
+        roleIdsByKey.get(SYSTEM_ROLE_KEYS.superAdmin) ??
+        (await findRoleIdByKey(tx, organizationId, SYSTEM_ROLE_KEYS.superAdmin));
+      if (!ownerRoleId) {
+        throw new OrgAccessConflictError('Super Admin role is not configured.');
       }
 
       await tx.organizationMembership.create({
@@ -149,9 +149,9 @@ export class OrgAccessPermissionsPersistence {
           organizationId,
           adminId,
           status: 'ACTIVE',
-          isOwner: isSuperAdmin,
+          isOwner: true,
           acceptedAt: now,
-          roleLinks: { create: { roleId: assignedRoleId } },
+          roleLinks: { create: { roleId: ownerRoleId } },
         },
       });
     });

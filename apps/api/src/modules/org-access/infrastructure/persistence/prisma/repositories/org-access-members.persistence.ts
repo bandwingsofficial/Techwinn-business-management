@@ -1,3 +1,4 @@
+import { isSuperAdminPortalSlug, SYSTEM_ROLE_KEYS } from '#contracts';
 import { normalizedLeadPhoneOrNull } from '#validation';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
@@ -449,23 +450,36 @@ export class OrgAccessMembersPersistence {
   }
 
   async resolveSystemRoleId(organizationId: string, portalSlug: SystemRoleKey): Promise<string> {
-    const findSystemRole = () =>
-      this.prisma.organizationRole.findFirst({
-        where: { organizationId, portalSlug, isSystem: true },
+    if (isSuperAdminPortalSlug(portalSlug)) {
+      const existing = await this.prisma.organizationRole.findFirst({
+        where: { organizationId, portalSlug: SYSTEM_ROLE_KEYS.superAdmin },
         select: { id: true },
       });
-    const existing = await findSystemRole();
-    if (existing) return existing.id;
-    await this.prisma.$transaction((tx) =>
-      ensureSystemRoleByPortalSlug(tx, organizationId, portalSlug),
-    );
-    const configured = await findSystemRole();
-    if (!configured) {
-      throw new OrgAccessConflictError(
-        `The ${portalSlug} system role cannot be configured because a custom role already uses that portal slug.`,
+      if (existing) return existing.id;
+      await this.prisma.$transaction((tx) =>
+        ensureSystemRoleByPortalSlug(tx, organizationId, SYSTEM_ROLE_KEYS.superAdmin),
+      );
+      const configured = await this.prisma.organizationRole.findFirst({
+        where: { organizationId, portalSlug: SYSTEM_ROLE_KEYS.superAdmin },
+        select: { id: true },
+      });
+      if (!configured) {
+        throw new OrgAccessConflictError('Super Admin role is not configured for this organization.');
+      }
+      return configured.id;
+    }
+
+    const role = await this.prisma.organizationRole.findFirst({
+      where: { organizationId, portalSlug, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (!role) {
+      throw new OrgAccessValidationError(
+        `No active role uses portal slug "${portalSlug}". Create a custom role in Role Management first.`,
+        [{ path: 'roleIds', message: 'Unknown or inactive role portal slug.' }],
       );
     }
-    return configured.id;
+    return role.id;
   }
 
   async findLinkableMemberAdminId(organizationId: string, email: string): Promise<string | null> {

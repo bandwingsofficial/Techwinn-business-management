@@ -43,6 +43,7 @@ import {
   type DailyTasksDataScope,
   type DailyTasksPortal,
 } from '../utils/daily-tasks-organization-scope';
+import { isApiError } from '@/shared/api/api-error';
 import { localDateInputValue } from '../utils/local-date';
 import { sameWorkflowStages } from '../utils/workflow-stages-equal';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
@@ -120,8 +121,9 @@ export function DailyTasksWorkspace({
       workspaceParam: searchParams.get('workspace'),
       explicitScope: defaultDataScope,
       canViewOrganizationTasks,
+      hasTasksRead: has('tasks.read'),
     });
-  }, [canViewOrganizationTasks, defaultDataScope, portal, searchParams]);
+  }, [canViewOrganizationTasks, defaultDataScope, has, portal, searchParams]);
   const resolvedTitle =
     title ?? (dataScope === 'own' ? 'My Daily Tasks' : 'Daily Task Management');
   const resolvedDescription =
@@ -175,6 +177,7 @@ export function DailyTasksWorkspace({
   const [board, setBoard] = useState<DailyTaskBoardResponse | null>(null);
   const [boardLoading, setBoardLoading] = useState(true);
   const [boardError, setBoardError] = useState(false);
+  const [boardForbidden, setBoardForbidden] = useState(false);
 
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useState(20);
@@ -385,6 +388,7 @@ export function DailyTasksWorkspace({
     const requestAssignDate = assignDate;
     setBoardLoading(true);
     setBoardError(false);
+    setBoardForbidden(false);
     try {
       // Org Kanban uses organization list (assignDate) + shared column mapping — never `/my`.
       // Self-service uses `/my`. Both share buildMyTaskBoard so inactive stages still appear.
@@ -445,9 +449,10 @@ export function DailyTasksWorkspace({
           tasks: tasksResult.value.items,
         }),
       );
-    } catch {
+    } catch (error) {
       if (controller.signal.aborted || boardRequestIdRef.current !== requestId) return;
       setBoardError(true);
+      setBoardForbidden(isApiError(error) && error.status === 403);
     } finally {
       if (!controller.signal.aborted && boardRequestIdRef.current === requestId) {
         setBoardLoading(false);
@@ -864,10 +869,17 @@ export function DailyTasksWorkspace({
             boardLoading && !board ? (
               <p className="text-muted-foreground py-12 text-center text-sm">Loading board…</p>
             ) : boardError ? (
-              <div className="py-12 text-center">
-                <Button type="button" variant="outline" onClick={() => void loadBoard()}>
-                  Retry
-                </Button>
+              <div className="space-y-3 py-12 text-center">
+                <p className="text-muted-foreground text-sm">
+                  {boardForbidden
+                    ? 'You do not have permission to view these tasks.'
+                    : 'Could not load the task board.'}
+                </p>
+                {!boardForbidden ? (
+                  <Button type="button" variant="outline" onClick={() => void loadBoard()}>
+                    Retry
+                  </Button>
+                ) : null}
               </div>
             ) : board ? (
               <>

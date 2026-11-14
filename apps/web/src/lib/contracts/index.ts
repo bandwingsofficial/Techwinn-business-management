@@ -38,6 +38,8 @@ export * from './task-calendar-access';
 export * from './permission-hierarchy';
 import { assertPermissionHierarchyComplete } from './permission-hierarchy';
 export * from './permission-view-dependencies';
+export * from './permission-legacy-crm-cleanup';
+export * from './role-permission-storage';
 assertPermissionHierarchyComplete();
 export * from './org-access';
 export * from './daily-tasks';
