@@ -78,7 +78,7 @@ export class DailyTaskAuthorizationService {
     // employee self-service keys (e.g. Employee role granted projects.read).
     if (effective.has('projects.read') && effective.has('tasks.read')) return true;
     if (
-      effective.has('attendance.view_own') ||
+      effective.has('attendance.punch.view') ||
       effective.has('leave.requests.read_own') ||
       effective.has('leave.balances.read_own')
     ) {

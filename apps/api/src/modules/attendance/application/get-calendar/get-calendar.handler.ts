@@ -19,7 +19,7 @@ export class GetAttendanceCalendarHandler {
     actor: OrgAccessActor,
     query: AttendanceCalendarQuery,
   ): Promise<AttendanceCalendarResponse> {
-    await this.authz.assertPermission(actor, 'attendance.view_all');
+    await this.authz.assertPermission(actor, 'attendance.records.calendar_view');
     return this.repository.getCalendarSummary(actor.organizationId, query);
   }
 }

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AttendanceRecordDetail } from '#contracts';
+import { hasAttendancePermission, type AttendanceRecordDetail } from '#contracts';
 import type { OrgAccessActor } from '../../../org-access/index.js';
 import {
   ATTENDANCE_REPOSITORY,
@@ -15,7 +15,14 @@ export class GetAttendanceRecordDetailHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, recordId: string): Promise<AttendanceRecordDetail> {
-    await this.authz.assertPermission(actor, 'attendance.view_all');
-    return this.repository.getRecordDetail(actor.organizationId, recordId);
+    const detail = await this.repository.getRecordDetail(actor.organizationId, recordId);
+    if (actor.isPlatformSuperAdmin) return detail;
+    const effective = await this.authz.resolveEffective(actor);
+    if (hasAttendancePermission(effective, 'attendance.records.view_details')) {
+      await this.authz.assertRecordsDetailAccess(actor);
+      return detail;
+    }
+    await this.authz.assertPunchDetailAccess(actor, detail.employeeId);
+    return detail;
   }
 }

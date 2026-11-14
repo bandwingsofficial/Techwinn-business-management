@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AdminAttendanceWorkspace } from '@/features/admin/attendance/components/admin-attendance-workspace';
+import { AdminAttendanceRecordsWorkspace } from '@/features/admin/attendance/components/admin-attendance-records-workspace';
 
-export default function EmployeeAttendancePage() {
+export default function EmployeeAttendanceRecordsPage() {
   return (
     <Suspense
       fallback={
@@ -12,7 +12,7 @@ export default function EmployeeAttendancePage() {
         </div>
       }
     >
-      <AdminAttendanceWorkspace scope="self" />
+      <AdminAttendanceRecordsWorkspace />
     </Suspense>
   );
 }

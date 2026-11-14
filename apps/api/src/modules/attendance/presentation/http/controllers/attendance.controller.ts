@@ -94,10 +94,11 @@ export class AttendanceController {
 
   @Get('settings')
   @RequirePermissions(
-    'attendance.manage_settings',
+    'attendance.records.manage_settings',
     'calendar.view',
     'calendar.view_all',
-    'attendance.view_own',
+    'attendance.punch.view',
+    'attendance.records.view',
   )
   @ApiOperation({ summary: 'Get attendance settings' })
   getAttendanceSettings(
@@ -108,7 +109,7 @@ export class AttendanceController {
   }
 
   @Patch('settings')
-  @RequirePermissions('attendance.manage_settings')
+  @RequirePermissions('attendance.records.manage_settings')
   @ApiOperation({ summary: 'Create or update attendance schedule' })
   patchAttendanceSettings(
     @CrmContext() ctx: CrmRequestContext,
@@ -123,7 +124,7 @@ export class AttendanceController {
 
   @Post('punch-in')
   @HttpCode(HttpStatus.OK)
-  @RequirePermissions('attendance.punch_in')
+  @RequirePermissions('attendance.punch.punch_in')
   @ApiOperation({ summary: 'Punch in' })
   postPunchIn(
     @CrmContext() ctx: CrmRequestContext,
@@ -142,7 +143,7 @@ export class AttendanceController {
 
   @Post('punch-out')
   @HttpCode(HttpStatus.OK)
-  @RequirePermissions('attendance.punch_out')
+  @RequirePermissions('attendance.punch.punch_out')
   @ApiOperation({ summary: 'Punch out' })
   postPunchOut(
     @CrmContext() ctx: CrmRequestContext,
@@ -160,7 +161,7 @@ export class AttendanceController {
   }
 
   @Get('my/today')
-  @RequirePermissions('attendance.view_own')
+  @RequirePermissions('attendance.punch.view')
   @ApiOperation({ summary: 'Today attendance for signed-in employee' })
   getToday(
     @CrmContext() ctx: CrmRequestContext,
@@ -174,7 +175,7 @@ export class AttendanceController {
   }
 
   @Get('my/history')
-  @RequirePermissions('attendance.view_own')
+  @RequirePermissions('attendance.punch.view')
   @ApiOperation({ summary: 'Attendance history for signed-in employee' })
   getHistory(
     @CrmContext() ctx: CrmRequestContext,
@@ -202,7 +203,7 @@ export class AttendanceController {
   }
 
   @Get('calendar')
-  @RequirePermissions('attendance.view_all')
+  @RequirePermissions('attendance.records.calendar_view')
   @ApiOperation({ summary: 'Monthly attendance calendar summaries' })
   getAttendanceCalendar(
     @CrmContext() ctx: CrmRequestContext,
@@ -216,7 +217,7 @@ export class AttendanceController {
   }
 
   @Post('records')
-  @RequirePermissions('attendance.correct_records')
+  @RequirePermissions('attendance.records.add', 'attendance.correct_records')
   @ApiOperation({ summary: 'Manually create an attendance record' })
   postAttendanceRecord(
     @CrmContext() ctx: CrmRequestContext,
@@ -230,7 +231,7 @@ export class AttendanceController {
   }
 
   @Get('records')
-  @RequirePermissions('attendance.view_all')
+  @RequirePermissions('attendance.records.view', 'attendance.punch.view_all')
   @ApiOperation({ summary: 'List organization attendance records' })
   listAttendanceRecords(
     @CrmContext() ctx: CrmRequestContext,
@@ -244,7 +245,7 @@ export class AttendanceController {
   }
 
   @Get('records/:id')
-  @RequirePermissions('attendance.view_all')
+  @RequirePermissions('attendance.records.view_details', 'attendance.punch.view_details')
   @ApiOperation({ summary: 'Attendance record detail' })
   getAttendanceRecord(
     @CrmContext() ctx: CrmRequestContext,
@@ -255,7 +256,7 @@ export class AttendanceController {
   }
 
   @Post('records/:id/corrections')
-  @RequirePermissions('attendance.correct_records')
+  @RequirePermissions('attendance.records.edit', 'attendance.correct_records')
   @ApiOperation({ summary: 'Apply audited attendance correction' })
   postCorrection(
     @CrmContext() ctx: CrmRequestContext,

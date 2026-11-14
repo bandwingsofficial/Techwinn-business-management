@@ -24,7 +24,7 @@ export class PunchOutHandler {
   ) {}
 
   async execute(command: PunchOutCommand): Promise<AttendanceRecordItem> {
-    await this.authz.assertPermission(command.actor, 'attendance.punch_out');
+    await this.authz.assertPermission(command.actor, 'attendance.punch.punch_out');
     const employeeId = await this.authz.requireEmployeeId(command.actor);
     return this.repository.punchOut({
       organizationId: command.actor.organizationId,

@@ -10,6 +10,7 @@ export function useMyPermissions() {
 
   return {
     permissions: access.permissions,
+    permissionSet: access.permissionSet,
     loading: false,
     error: null as string | null,
     has: access.has,

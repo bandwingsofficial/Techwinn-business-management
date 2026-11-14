@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AttendanceSettingsResponse } from '#contracts';
+import {
+  ATTENDANCE_PUNCH_PAGE_VIEW,
+  ATTENDANCE_RECORDS_MANAGE_SETTINGS,
+  ATTENDANCE_RECORDS_PAGE_VIEW,
+  hasAttendancePermission,
+  type AttendanceSettingsResponse,
+} from '#contracts';
 import type { OrgAccessActor } from '../../../org-access/index.js';
 import {
   ATTENDANCE_REPOSITORY,
@@ -19,10 +25,11 @@ export class GetAttendanceSettingsHandler {
     const effective = await this.authz.resolveEffective(actor);
     const canRead =
       actor.isPlatformSuperAdmin ||
-      effective.has('attendance.manage_settings') ||
+      hasAttendancePermission(effective, ATTENDANCE_RECORDS_MANAGE_SETTINGS) ||
       effective.has('calendar.view') ||
       effective.has('calendar.view_all') ||
-      effective.has('attendance.view_own');
+      hasAttendancePermission(effective, ATTENDANCE_PUNCH_PAGE_VIEW) ||
+      hasAttendancePermission(effective, ATTENDANCE_RECORDS_PAGE_VIEW);
     if (!canRead) {
       throw new AttendanceForbiddenError();
     }

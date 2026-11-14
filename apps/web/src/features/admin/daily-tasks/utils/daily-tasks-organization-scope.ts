@@ -29,7 +29,7 @@ export function canViewOrganizationDailyTasks(
   if (hasAny('employees.view', 'leads.read', 'clients.read')) return true;
   // Project collaborators need both project and task view for organization task boards.
   if (has('projects.read') && has('tasks.read')) return true;
-  if (hasAny('attendance.view_own', 'leave.requests.read_own', 'leave.balances.read_own')) {
+  if (hasAny('attendance.punch.view', 'leave.requests.read_own', 'leave.balances.read_own')) {
     return false;
   }
   return false;

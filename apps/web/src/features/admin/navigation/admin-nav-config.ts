@@ -91,12 +91,6 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       },
       {
         kind: 'link',
-        href: '/employee/attendance',
-        label: 'My attendance',
-        icon: CalendarDays,
-      },
-      {
-        kind: 'link',
         href: '/employee/calendar',
         label: 'My calendar',
         icon: CalendarDays,
@@ -239,7 +233,13 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       {
         kind: 'link',
         href: '/admin/attendance',
-        label: 'Attendance',
+        label: 'Attendance Records',
+        icon: CalendarDays,
+      },
+      {
+        kind: 'link',
+        href: '/admin/attendance/punch',
+        label: 'Punch In / Punch Out',
         icon: CalendarDays,
       },
       {

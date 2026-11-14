@@ -20,7 +20,7 @@ export class CorrectAttendanceRecordHandler {
     recordId: string,
     input: CorrectAttendanceRecordRequest,
   ): Promise<AttendanceRecordDetail> {
-    await this.authz.assertPermission(actor, 'attendance.correct_records');
+    await this.authz.assertCanEditRecord(actor);
     return this.repository.correctRecord(actor.organizationId, actor.adminId, recordId, input);
   }
 }

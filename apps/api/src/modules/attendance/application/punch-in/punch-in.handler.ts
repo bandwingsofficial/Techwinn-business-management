@@ -24,7 +24,7 @@ export class PunchInHandler {
   ) {}
 
   async execute(command: PunchInCommand): Promise<AttendanceRecordItem> {
-    await this.authz.assertPermission(command.actor, 'attendance.punch_in');
+    await this.authz.assertPermission(command.actor, 'attendance.punch.punch_in');
     const employeeId = await this.authz.requireEmployeeId(command.actor);
     return this.repository.punchIn({
       organizationId: command.actor.organizationId,

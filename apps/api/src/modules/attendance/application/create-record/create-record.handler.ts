@@ -19,7 +19,10 @@ export class CreateAttendanceRecordHandler {
     actor: OrgAccessActor,
     input: CreateAttendanceRecordRequest,
   ): Promise<AttendanceRecordDetail> {
-    await this.authz.assertPermission(actor, 'attendance.correct_records');
+    await this.authz.assertAnyPermission(actor, [
+      'attendance.records.add',
+      'attendance.correct_records',
+    ]);
     return this.repository.createManualRecord(actor.organizationId, actor.adminId, input);
   }
 }

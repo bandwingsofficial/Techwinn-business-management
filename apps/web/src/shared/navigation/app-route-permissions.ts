@@ -34,7 +34,8 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/users': ['users.read'],
   '/admin/roles': ['roles.read'],
   '/admin/employees': ['employees.view'],
-  '/admin/attendance': ['attendance.view_all', 'attendance.manage_settings'],
+  '/admin/attendance': ['attendance.records.view'],
+  '/admin/attendance/punch': ['attendance.punch.view'],
   /** Org calendar admin — not the employee self-service `/employee/calendar` (`calendar.view`). */
   '/admin/calendar': ['calendar.view_all', 'calendar.manage_holidays'],
   '/admin/leave-types': [
@@ -75,14 +76,15 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/whatsapp/reports': ['whatsapp.view_all', 'whatsapp.channels.manage'],
   '/employee': [],
   '/employee/dashboard': [
-    'attendance.view_own',
+    'attendance.punch.view',
     'leave.requests.read_own',
     'leave.balances.read_own',
     'leave.requests.create',
   ],
   '/employee/daily-tasks': ['tasks.read'],
   '/employee/task-calendar': ['project_management.task_calendar.view'],
-  '/employee/attendance': ['attendance.view_own'],
+  '/employee/attendance': ['attendance.records.view'],
+  '/employee/attendance/punch': ['attendance.punch.view'],
   '/employee/calendar': ['calendar.view'],
   '/employee/leave': [
     'leave.requests.create',

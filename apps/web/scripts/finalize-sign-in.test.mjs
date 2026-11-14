@@ -55,11 +55,11 @@ test('successful permissions load arms bootstrap with roles', async () => {
   const result = await finalizeSignInFlow({
     verifyOk: true,
     permissionsLoader: async () => ({
-      permissions: ['attendance.view_own'],
+      permissions: ['attendance.punch.view'],
       roles: [{ key: 'owner' }],
     }),
   });
   assert.equal(result.authSucceeded, true);
   assert.equal(result.permissionLoadFailed, false);
-  assert.equal(result.permissions[0], 'attendance.view_own');
+  assert.equal(result.permissions[0], 'attendance.punch.view');
 });

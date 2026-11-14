@@ -19,7 +19,7 @@ export class GetMyAttendanceHistoryHandler {
     actor: OrgAccessActor,
     query: AttendanceHistoryQuery,
   ): Promise<AttendanceListResponse> {
-    await this.authz.assertPermission(actor, 'attendance.view_own');
+    await this.authz.assertPermission(actor, 'attendance.punch.view');
     const employeeId = await this.authz.requireEmployeeId(actor);
     return this.repository.listMyHistory(actor.organizationId, employeeId, query);
   }

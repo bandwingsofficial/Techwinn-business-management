@@ -19,7 +19,7 @@ export class UpsertAttendanceSettingsHandler {
     actor: OrgAccessActor,
     input: UpsertAttendanceSettingsRequest,
   ): Promise<AttendanceSettingsResponse> {
-    await this.authz.assertPermission(actor, 'attendance.manage_settings');
+    await this.authz.assertPermission(actor, 'attendance.records.manage_settings');
     return this.repository.upsertSettings(actor.organizationId, actor.adminId, input);
   }
 }

@@ -30,16 +30,25 @@ export function AttendancePageToolbar({
   tab,
   onTabChange,
   layout = 'default',
+  showSettingsTab = true,
+  variant = 'records',
+  orgPunchHistory: _orgPunchHistory = false,
 }: {
   tab: AttendanceWorkspaceTab;
   onTabChange: (tab: AttendanceWorkspaceTab) => void;
   /** `header` — employee self-service: month navigation only, no Records tab row. */
   layout?: 'default' | 'header';
+  showSettingsTab?: boolean;
+  /** Punch page: no Records/Settings module tabs. */
+  variant?: 'records' | 'punch';
+  /** Org punch history (`punch.view_all`): day search only, no settings tabs. */
+  orgPunchHistory?: boolean;
 }) {
   const records = useAttendanceRecordsContext();
   const showFilters = layout === 'header' || tab === 'records';
   const statusFilterActive = records.statusFilter !== 'ALL';
   const selfScope = records.scope === 'self';
+  const punchVariant = variant === 'punch';
 
   if (selfScope && layout === 'header') {
     return (
@@ -115,12 +124,14 @@ export function AttendancePageToolbar({
         'lg:flex-nowrap lg:gap-2.5',
       )}
     >
-      <AttendanceWorkspaceTabs
-        value={tab}
-        onValueChange={onTabChange}
-        showSettings={!selfScope}
-        showRecords={!selfScope}
-      />
+      {punchVariant ? null : (
+        <AttendanceWorkspaceTabs
+          value={tab}
+          onValueChange={onTabChange}
+          showSettings={!selfScope && showSettingsTab}
+          showRecords={!selfScope}
+        />
+      )}
 
       {showFilters ? (
         <>

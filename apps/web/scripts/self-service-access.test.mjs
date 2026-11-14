@@ -53,8 +53,8 @@ const ALL_PERMS = new Set([
   'leave.requests.read_own',
   'leave.requests.create',
   'leave.requests.read_all',
-  'attendance.view_own',
-  'attendance.view_all',
+  'attendance.punch.view',
+  'attendance.records.view',
   'calendar.view',
   'tasks.read',
 ]);

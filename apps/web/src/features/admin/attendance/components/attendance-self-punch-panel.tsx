@@ -3,9 +3,16 @@
 import { useEmployeeAttendancePage } from '@/features/employee/hooks/use-employee-attendance-page';
 import { EmployeeAttendanceTodayCard } from '@/features/employee/components/employee-attendance-today-card';
 import { CrmErrorAlert } from '@/features/admin/crm/components/crm-feedback';
+import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
+import {
+  ATTENDANCE_PUNCH_IN,
+  ATTENDANCE_PUNCH_OUT,
+  hasAttendancePermission,
+} from '@techwin/contracts';
 import { useAttendanceRecordsContext } from './attendance-records-context';
 
 export function AttendanceSelfPunchPanel() {
+  const { permissionSet } = useAdminAccess();
   const page = useEmployeeAttendancePage();
   const { refreshAll } = useAttendanceRecordsContext();
 
@@ -30,6 +37,8 @@ export function AttendanceSelfPunchPanel() {
         loading={page.todayLoading}
         clockMs={page.clockMs}
         punchAction={page.punchAction}
+        allowPunchIn={hasAttendancePermission(permissionSet, ATTENDANCE_PUNCH_IN)}
+        allowPunchOut={hasAttendancePermission(permissionSet, ATTENDANCE_PUNCH_OUT)}
         onPunchIn={() => void onPunchIn()}
         onPunchOut={() => void onPunchOut()}
       />

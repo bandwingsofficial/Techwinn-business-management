@@ -37,9 +37,14 @@ import { AttendanceRecordDetailSheet } from './attendance-record-detail-sheet';
 import { AttendanceRecordsMobileList } from './attendance-records-mobile-list';
 import { useAttendanceRecordsContext } from './attendance-records-context';
 
-export function AttendanceRecordsSection() {
+export function AttendanceRecordsSection({ mode = 'records' }: { mode?: 'records' | 'punch' }) {
   const { has } = useMyPermissions();
-  const canCorrectRecords = has('attendance.correct_records');
+  const canEditRecords = has('attendance.records.edit');
+  const canViewRecordDetails =
+    mode === 'records'
+      ? has('attendance.records.view_details')
+      : has('attendance.punch.view_details');
+  const canShowEdit = mode === 'records' && canEditRecords;
 
   const {
     scope,
@@ -116,7 +121,7 @@ export function AttendanceRecordsSection() {
         <AttendanceRecordsMobileList
           items={items}
           selfScope={selfScope}
-          canCorrectRecords={canCorrectRecords && !selfScope}
+          canCorrectRecords={canShowEdit && !selfScope}
           onOpenDetail={(id) => void showDetail(id)}
           onOpenEdit={openEdit}
         />
@@ -238,7 +243,15 @@ export function AttendanceRecordsSection() {
             <TableRow
               key={row.id}
               className={cn('border-0', !selfScope && 'cursor-pointer')}
-              onClick={selfScope ? undefined : () => void showDetail(row.id)}
+              onClick={
+                selfScope
+                  ? canViewRecordDetails
+                    ? () => void showDetail(row.id)
+                    : undefined
+                  : canViewRecordDetails
+                    ? () => void showDetail(row.id)
+                    : undefined
+              }
             >
               {selfScope ? null : (
                 <TableCell className={cn(ATTENDANCE_TABLE_COLUMN_CLASS.employee, 'min-w-0 overflow-hidden')}>
@@ -325,14 +338,16 @@ export function AttendanceRecordsSection() {
                   onClick={(event) => event.stopPropagation()}
                 >
                   <div className="flex items-center justify-end gap-0.5">
-                    <TableIconButton
-                      label={`View attendance for ${row.employeeDisplayName}`}
-                      tone="primary"
-                      onClick={() => void showDetail(row.id)}
-                    >
-                      <Eye className="size-4" aria-hidden="true" />
-                    </TableIconButton>
-                    {canCorrectRecords ? (
+                    {canViewRecordDetails ? (
+                      <TableIconButton
+                        label={`View attendance for ${row.employeeDisplayName}`}
+                        tone="primary"
+                        onClick={() => void showDetail(row.id)}
+                      >
+                        <Eye className="size-4" aria-hidden="true" />
+                      </TableIconButton>
+                    ) : null}
+                    {canShowEdit ? (
                       <TableIconButton
                         label={`Edit attendance for ${row.employeeDisplayName}`}
                         tone="default"
@@ -350,7 +365,7 @@ export function AttendanceRecordsSection() {
         })}
       </DataTable>
 
-      {!selfScope ? (
+      {!selfScope && canViewRecordDetails ? (
         <AttendanceRecordDetailSheet
           open={detailOpen}
           onOpenChange={(open) => {

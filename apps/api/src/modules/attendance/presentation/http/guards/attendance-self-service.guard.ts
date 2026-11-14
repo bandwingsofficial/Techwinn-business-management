@@ -59,9 +59,10 @@ export class AttendanceSelfServiceGuard implements CanActivate {
     }
 
     const selfServiceKeys = new Set<PermissionKey>([
-      'attendance.view_own',
-      'attendance.punch_in',
-      'attendance.punch_out',
+      'attendance.punch.view',
+      'attendance.punch.view_details',
+      'attendance.punch.punch_in',
+      'attendance.punch.punch_out',
       'attendance.view_summary',
       'attendance.manage_devices',
       'calendar.view',

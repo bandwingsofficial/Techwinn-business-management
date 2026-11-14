@@ -21,7 +21,7 @@ export class ListApprovedLeaveAvailabilityHandler {
       'tasks.assign',
       'tasks.create',
       'tasks.read',
-      'attendance.view_all',
+      'attendance.records.view',
       'attendance.correct_records',
     ]);
     const items = await this.availability.listAvailabilityForDate(

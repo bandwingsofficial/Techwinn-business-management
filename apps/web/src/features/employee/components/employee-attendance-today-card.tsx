@@ -123,6 +123,8 @@ export function EmployeeAttendanceTodayCard({
   loading,
   clockMs,
   punchAction,
+  allowPunchIn = true,
+  allowPunchOut = true,
   onPunchIn,
   onPunchOut,
 }: {
@@ -130,6 +132,8 @@ export function EmployeeAttendanceTodayCard({
   loading: boolean;
   clockMs: number;
   punchAction: 'in' | 'out' | null;
+  allowPunchIn?: boolean;
+  allowPunchOut?: boolean;
   onPunchIn: () => void;
   onPunchOut: () => void;
 }) {
@@ -141,8 +145,8 @@ export function EmployeeAttendanceTodayCard({
   const acting = punchAction !== null;
 
   const punchAllowed = desktopUi && Boolean(today?.isDesktopSession);
-  const showPunchIn = phase === 'not_punched' && punchAllowed;
-  const showPunchOut = phase === 'active' && punchAllowed;
+  const showPunchIn = allowPunchIn && phase === 'not_punched' && punchAllowed;
+  const showPunchOut = allowPunchOut && phase === 'active' && punchAllowed;
 
   const canPunchIn = showPunchIn && Boolean(today?.canPunchIn);
   const canPunchOut = showPunchOut && Boolean(today?.canPunchOut);

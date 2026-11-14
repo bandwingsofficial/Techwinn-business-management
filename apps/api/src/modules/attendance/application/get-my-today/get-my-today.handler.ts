@@ -19,7 +19,7 @@ export class GetMyTodayAttendanceHandler {
     now: Date,
     desktopSession: boolean,
   ): Promise<AttendanceMyTodayResponse> {
-    await this.authz.assertPermission(actor, 'attendance.view_own');
+    await this.authz.assertPermission(actor, 'attendance.punch.view');
     const employeeId = await this.authz.requireEmployeeId(actor);
     return this.repository.getMyToday(actor.organizationId, employeeId, now, desktopSession);
   }

@@ -23,7 +23,7 @@ function canViewOrganizationDailyTasks(has, hasAny) {
   if (hasAny('employees.view', 'leads.read', 'clients.read')) return true;
   if (has('projects.read') && has('tasks.read')) return true;
   if (
-    hasAny('attendance.view_own', 'leave.requests.read_own', 'leave.balances.read_own')
+    hasAny('attendance.punch.view', 'leave.requests.read_own', 'leave.balances.read_own')
   ) {
     return false;
   }
@@ -81,7 +81,7 @@ test('project manager without tasks.read uses team scope', () => {
 });
 
 test('employee with only tasks.read stays on own scope', () => {
-  const permissions = new Set(['tasks.read', 'attendance.view_own']);
+  const permissions = new Set(['tasks.read', 'attendance.punch.view']);
   const has = (key) => permissions.has(key);
   const hasAny = (...keys) => keys.some((k) => permissions.has(k));
   const canOrg = canViewOrganizationDailyTasks(has, hasAny);
@@ -110,7 +110,7 @@ test('?workspace=my with tasks.read selects personal API', () => {
 });
 
 test('projects.read without tasks.read does not unlock org scope', () => {
-  const permissions = new Set(['projects.read', 'attendance.view_own']);
+  const permissions = new Set(['projects.read', 'attendance.punch.view']);
   const has = (key) => permissions.has(key);
   const hasAny = (...keys) => keys.some((k) => permissions.has(k));
   const canOrg = canViewOrganizationDailyTasks(has, hasAny);

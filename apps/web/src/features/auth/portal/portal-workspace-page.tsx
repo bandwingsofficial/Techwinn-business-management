@@ -6,7 +6,8 @@ import { ClientsPage } from '@/features/admin/crm/components/clients-page';
 import { ServicePackagesPage } from '@/features/admin/crm/components/service-packages-page';
 import { AdminDailyTasksWorkspace } from '@/features/admin/daily-tasks/components/admin-daily-tasks-workspace';
 import { DailyTasksHistoryPage } from '@/features/admin/daily-tasks/components/daily-tasks-history-page';
-import { AdminAttendanceWorkspace } from '@/features/admin/attendance/components/admin-attendance-workspace';
+import { AdminAttendanceRecordsWorkspace } from '@/features/admin/attendance/components/admin-attendance-records-workspace';
+import { AdminAttendancePunchWorkspace } from '@/features/admin/attendance/components/admin-attendance-punch-workspace';
 import { AdminLeaveRequestsWorkspace } from '@/features/admin/leave/components/admin-leave-requests-workspace';
 import { AdminOrgCalendarWorkspace } from '@/features/admin/org-calendar/components/admin-org-calendar-workspace';
 import { RolesPage } from '@/features/admin/org-access/components/roles-page';
@@ -59,7 +60,9 @@ const STATIC_PORTAL_ROUTES: Readonly<Record<string, RouteRender>> = {
   employees: () =>
     withSuspense(tableSkeleton(), <EmployeesPage />),
   attendance: () =>
-    withSuspense(tableSkeleton(), <AdminAttendanceWorkspace />),
+    withSuspense(tableSkeleton(), <AdminAttendanceRecordsWorkspace />),
+  'attendance/punch': () =>
+    withSuspense(tableSkeleton(), <AdminAttendancePunchWorkspace />),
   leave: () => <AdminLeaveRequestsWorkspace />,
   calendar: () =>
     withSuspense(tableSkeleton(), <AdminOrgCalendarWorkspace />),

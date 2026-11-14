@@ -1,4 +1,4 @@
-import type { PermissionKey } from '@techwin/contracts';
+import { isSuperAdminPortalSlug, type PermissionKey } from '@techwin/contracts';
 import {
   canUseEmployeeSelfService,
   type MembershipAccessContext,
@@ -15,6 +15,18 @@ import {
 } from './admin-nav-config';
 import { canAccessNavItem, isDashboardNavConfigHref } from './nav-item-access';
 import { shouldShowNavHref } from './navigation-route-policy';
+
+const ATTENDANCE_PUNCH_NAV_CONFIG_HREF = '/admin/attendance/punch';
+
+/** Super Admin manages org attendance records; punch self-service is not in their sidebar. */
+function shouldShowAttendancePunchNavItem(configHref: string, portalSegment: string): boolean {
+  if (configHref !== ATTENDANCE_PUNCH_NAV_CONFIG_HREF) return true;
+  return !isSuperAdminPortalSlug(portalSegment);
+}
+
+function resolvePortalNavHref(configHref: string, portalSegment: string): string {
+  return adminFeaturePathToPortal(configHref, portalSegment);
+}
 
 export type AdminNavGroupWithAccess = AdminNavGroup;
 
@@ -59,6 +71,7 @@ export function filterAdminNav(
         continue;
       }
 
+      if (!shouldShowAttendancePunchNavItem(item.href, portalSegment)) continue;
       if (!shouldShowNavHref(item.href, granted, access)) continue;
       if (!canAccessNavItem(item.href, granted, access)) continue;
 
@@ -66,7 +79,7 @@ export function filterAdminNav(
       if (ownerGroup && ownerGroup !== group.id) continue;
       if (renderedConfigHrefs.has(item.href)) continue;
 
-      const href = adminFeaturePathToPortal(item.href, portalSegment);
+      const href = resolvePortalNavHref(item.href, portalSegment);
       const seen = items.some((entry) => entry.kind === 'link' && entry.href === href);
       if (seen) continue;
 

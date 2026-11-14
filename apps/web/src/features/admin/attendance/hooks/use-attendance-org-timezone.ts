@@ -7,10 +7,11 @@ import { fetchAttendanceSettings } from '@/features/attendance/api/attendance';
 export function useAttendanceOrgTimeZone(enabled = true): string {
   const { hasAny } = usePermissions();
   const canReadAttendanceSettings = hasAny(
-    'attendance.manage_settings',
+    'attendance.records.manage_settings',
     'calendar.view',
     'calendar.view_all',
-    'attendance.view_own',
+    'attendance.punch.view',
+    'attendance.records.view',
   );
   const [timeZone, setTimeZone] = useState('UTC');
 

@@ -22,7 +22,6 @@ export function filterEmployeeNav(
     { href: '/employee/dashboard', label: 'Dashboard' },
     { href: '/employee/daily-tasks', label: 'My tasks' },
     { href: '/employee/task-calendar', label: 'Task calendar' },
-    { href: '/employee/attendance', label: 'Attendance' },
     { href: '/employee/calendar', label: 'Calendar' },
     { href: '/employee/leave', label: 'Leave' },
   ];
