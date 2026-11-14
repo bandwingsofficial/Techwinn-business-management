@@ -26,6 +26,7 @@ const ORGANIZATION_WORKSPACE_ROUTES: readonly string[] = [
   '/admin/users',
   '/admin/roles',
   '/admin/leave',
+  '/admin/leave-management',
   '/admin/leave-types',
   '/admin/leave-balances',
   '/admin/employee-leave-records',

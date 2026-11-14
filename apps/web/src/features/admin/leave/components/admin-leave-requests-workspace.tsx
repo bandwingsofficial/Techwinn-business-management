@@ -2,7 +2,8 @@
 
 import type { LeaveRequestItem, LeaveRequestStatus } from '@techwin/contracts';
 import { Check, Eye, Loader2, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,15 @@ import { describeCrmError } from '@/features/admin/crm/utils/errors';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
 import { useAdminAccess } from '@/features/admin/auth/components/admin-access-provider';
 import {
+  LEAVE_MANAGEMENT_APPROVE,
+  LEAVE_MANAGEMENT_DETAILS_VIEW,
+  LEAVE_MANAGEMENT_REJECT,
+  type LeaveManagementStatusTab,
+  hasLeaveManagementPermission,
+  permittedLeaveManagementTabs,
+  resolveLeaveManagementTab,
+} from '@techwin/contracts';
+import {
   approveLeaveRequest,
   getLeaveRequest,
   listLeaveRequests,
@@ -51,7 +61,23 @@ import { isAbortError } from '@/shared/lib/abort-error';
 import { cn } from '@/shared/lib/utils';
 import { Search } from 'lucide-react';
 
-type StatusTab = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
+type StatusTab = LeaveManagementStatusTab;
+
+const TAB_LABELS: Readonly<Record<StatusTab, string>> = {
+  PENDING: 'Pending',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  ALL: 'All',
+};
+
+function parseStatusTabParam(value: string | null): StatusTab | null {
+  if (!value) return null;
+  const upper = value.trim().toUpperCase();
+  if (upper === 'PENDING' || upper === 'APPROVED' || upper === 'REJECTED' || upper === 'ALL') {
+    return upper;
+  }
+  return null;
+}
 
 const TAB_TRIGGER_CLASS =
   'h-8 rounded-md px-3 text-xs data-[state=active]:border data-[state=active]:border-[#E8E8EF] data-[state=active]:bg-white data-[state=active]:text-[#5B35B5] data-[state=active]:shadow-xs';
@@ -104,13 +130,20 @@ function formatDateRange(row: LeaveRequestItem) {
 
 export function AdminLeaveRequestsWorkspace() {
   const toast = useAdminToast();
-  const { has } = useAdminAccess();
-  const canApprove = has('leave.requests.approve');
-  const canReject = has('leave.requests.reject');
+  const access = useAdminAccess();
+  const searchParams = useSearchParams();
+  const granted = access.permissionSet;
+  const canApprove = hasLeaveManagementPermission(granted, LEAVE_MANAGEMENT_APPROVE);
+  const canReject = hasLeaveManagementPermission(granted, LEAVE_MANAGEMENT_REJECT);
+  const canViewDetails = hasLeaveManagementPermission(granted, LEAVE_MANAGEMENT_DETAILS_VIEW);
+  const allowedTabs = useMemo(() => permittedLeaveManagementTabs(granted), [granted]);
   const { pending, run } = useAsyncAction();
   const { dashboardBreadcrumb } = usePortalNavigation();
 
-  const [statusTab, setStatusTab] = useState<StatusTab>('PENDING');
+  const [statusTab, setStatusTab] = useState<StatusTab>(() => {
+    const preferred = parseStatusTabParam(searchParams.get('tab'));
+    return resolveLeaveManagementTab(granted, preferred) ?? 'PENDING';
+  });
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -160,6 +193,19 @@ export function AdminLeaveRequestsWorkspace() {
   }, [load]);
 
   useEffect(() => {
+    const preferred = parseStatusTabParam(searchParams.get('tab'));
+    const resolved = resolveLeaveManagementTab(granted, preferred);
+    if (resolved) setStatusTab(resolved);
+  }, [granted, searchParams]);
+
+  useEffect(() => {
+    if (allowedTabs.length === 0) return;
+    if (!allowedTabs.includes(statusTab)) {
+      setStatusTab(allowedTabs[0]!);
+    }
+  }, [allowedTabs, statusTab]);
+
+  useEffect(() => {
     setPage(1);
   }, [statusTab, search]);
 
@@ -174,6 +220,7 @@ export function AdminLeaveRequestsWorkspace() {
   const tableRefreshing = isDataTableRefreshing({ loading, rowCount: items.length });
 
   const openView = async (row: LeaveRequestItem) => {
+    if (!canViewDetails) return;
     setViewTarget(row);
     setViewLoading(true);
     try {
@@ -222,13 +269,22 @@ export function AdminLeaveRequestsWorkspace() {
     { label: 'Leave Management' },
   ] as const;
 
+  if (allowedTabs.length === 0) {
+    return (
+      <div className="grid w-full min-w-0 max-w-full gap-3 pt-1">
+        <AdminBreadcrumb breadcrumbs={[dashboardBreadcrumb, { label: 'Human Resources' }, { label: 'Leave Management' }]} />
+        <CrmErrorAlert message="You do not have permission to view any leave request tabs." />
+      </div>
+    );
+  }
+
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 pt-1">
       <AdminBreadcrumb breadcrumbs={breadcrumbs} className="mb-0.5" />
       <section className="workspace-surface min-w-0">
         <div className="rounded-lg">
           <CrmToolbarHeader
-            title="Leave requests"
+            title="Leave Requests"
             description="Review, approve, or reject employee leave applications."
             className="rounded-none border-0 bg-card shadow-none"
             titleSectionClassName="xl:max-w-none xl:min-w-0 xl:flex-[1_1_auto]"
@@ -240,18 +296,11 @@ export function AdminLeaveRequestsWorkspace() {
                   className="shrink-0"
                 >
                   <TabsList className="h-9 shrink-0 border border-[#E8E8EF] bg-[#F8F9FC] p-0.5">
-                    <TabsTrigger value="PENDING" className={TAB_TRIGGER_CLASS}>
-                      Pending
-                    </TabsTrigger>
-                    <TabsTrigger value="APPROVED" className={TAB_TRIGGER_CLASS}>
-                      Approved
-                    </TabsTrigger>
-                    <TabsTrigger value="REJECTED" className={TAB_TRIGGER_CLASS}>
-                      Rejected
-                    </TabsTrigger>
-                    <TabsTrigger value="ALL" className={TAB_TRIGGER_CLASS}>
-                      All
-                    </TabsTrigger>
+                    {allowedTabs.map((tab) => (
+                      <TabsTrigger key={tab} value={tab} className={TAB_TRIGGER_CLASS}>
+                        {TAB_LABELS[tab]}
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </Tabs>
                 <form
@@ -345,9 +394,11 @@ export function AdminLeaveRequestsWorkspace() {
                 <TableCell>{statusBadge(row.status)}</TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex items-center gap-0.5">
-                    <TableIconButton label="View request" onClick={() => void openView(row)}>
-                      <Eye className="size-4" aria-hidden />
-                    </TableIconButton>
+                    {canViewDetails ? (
+                      <TableIconButton label="View request" onClick={() => void openView(row)}>
+                        <Eye className="size-4" aria-hidden />
+                      </TableIconButton>
+                    ) : null}
                     {row.status === 'PENDING' ? (
                       <>
                         {canApprove ? (
@@ -406,17 +457,44 @@ export function AdminLeaveRequestsWorkspace() {
                   <dd className="text-right">{viewTarget.leaveTypeName}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Dates</dt>
+                  <dt className="text-muted-foreground">Start date</dt>
+                  <dd className="text-right">{viewTarget.startDate}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">End date</dt>
+                  <dd className="text-right">{viewTarget.endDate}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Duration</dt>
                   <dd className="text-right">{formatDateRange(viewTarget)}</dd>
                 </div>
+                {viewTarget.isHalfDay ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Half day</dt>
+                    <dd className="text-right">
+                      {viewTarget.halfDayDate ?? viewTarget.startDate}
+                      {viewTarget.halfDaySession ? ` (${viewTarget.halfDaySession})` : ''}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Total days</dt>
                   <dd className="text-right tabular-nums">{viewTarget.totalDays}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Application date</dt>
+                  <dd className="text-right">{viewTarget.appliedAt.slice(0, 10)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Status</dt>
                   <dd>{statusBadge(viewTarget.status)}</dd>
                 </div>
+                {viewTarget.decidedAt ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Decision date</dt>
+                    <dd className="text-right">{viewTarget.decidedAt.slice(0, 10)}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-muted-foreground mb-1">Reason</dt>
                   <dd className="rounded-md bg-muted/40 p-2">{viewTarget.reason}</dd>

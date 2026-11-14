@@ -53,5 +53,6 @@ export * from './org-calendar-permission-keys';
 export * from './leave-types-permission-keys';
 export * from './leave-balances-permission-keys';
 export * from './employee-leave-records-permission-keys';
+export * from './leave-management-permission-keys';
 export * from './org-calendar';
 export * from './leave';

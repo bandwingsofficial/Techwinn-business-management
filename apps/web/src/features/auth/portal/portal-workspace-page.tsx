@@ -55,6 +55,7 @@ const STATIC_PORTAL_ROUTES: Readonly<Record<string, RouteRender>> = {
   users: () =>
     withSuspense(tableSkeleton(), <UsersPage />),
   'leave-balances': () => <LeaveBalancesPage />,
+  'leave-management': () => <AdminLeaveRequestsWorkspace />,
   'leave-types': () => <LeaveTypesPage />,
   'employee-leave-records': () => <EmployeeLeaveRecordsPage />,
   employees: () =>
@@ -64,6 +65,7 @@ const STATIC_PORTAL_ROUTES: Readonly<Record<string, RouteRender>> = {
   'attendance/punch': () =>
     withSuspense(tableSkeleton(), <AdminAttendancePunchWorkspace />),
   leave: () => <AdminLeaveRequestsWorkspace />,
+  // `leave-management` is canonical; `leave` retained for older portal paths.
   calendar: () =>
     withSuspense(tableSkeleton(), <AdminOrgCalendarWorkspace />),
   pipeline: () => <PipelinesPage />,

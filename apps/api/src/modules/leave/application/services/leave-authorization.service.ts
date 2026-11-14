@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PermissionKey } from '#contracts';
+import { hasLeaveManagementPermission } from '#contracts';
 import {
   PermissionCheckerService,
   type OrgAccessActor,
@@ -53,5 +54,22 @@ export class LeaveAuthorizationService {
     if (actor.isPlatformSuperAdmin) return true;
     const effective = await this.resolveEffective(actor);
     return effective.has(key);
+  }
+
+  async hasLeaveManagementPermission(
+    actor: OrgAccessActor,
+    key: PermissionKey,
+  ): Promise<boolean> {
+    if (actor.isPlatformSuperAdmin) return true;
+    const effective = await this.resolveEffective(actor);
+    return hasLeaveManagementPermission(effective, key);
+  }
+
+  async requireLeaveManagementPermission(
+    actor: OrgAccessActor,
+    key: PermissionKey,
+  ): Promise<void> {
+    if (await this.hasLeaveManagementPermission(actor, key)) return;
+    throw new LeaveForbiddenError();
   }
 }

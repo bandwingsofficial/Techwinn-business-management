@@ -16,6 +16,10 @@ import {
   LEGACY_LEAVE_BALANCES_POLICY_PERMISSION_KEYS,
 } from './leave-balances-permission-keys';
 import { EMPLOYEE_LEAVE_RECORDS_PERMISSION_KEYS } from './employee-leave-records-permission-keys';
+import {
+  LEAVE_MANAGEMENT_PERMISSION_KEYS,
+  LEGACY_LEAVE_MANAGEMENT_ADMIN_PERMISSION_KEYS,
+} from './leave-management-permission-keys';
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions';
 import {
@@ -304,21 +308,26 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'employee-leave-records',
             label: 'Employee Leave Records',
             href: '/admin/employee-leave-records',
-            permissionKeys: [...EMPLOYEE_LEAVE_RECORDS_PERMISSION_KEYS],
-          },
-          {
-            id: 'leave-requests',
-            label: 'Leave Management',
-            href: '/admin/leave',
             permissionKeys: [
-              'leave.requests.read_all',
-              'leave.requests.read_own',
-              'leave.requests.create',
-              'leave.requests.approve',
-              'leave.requests.reject',
-              'leave.requests.cancel',
+              ...EMPLOYEE_LEAVE_RECORDS_PERMISSION_KEYS,
               'leave.balances.read',
               'leave.balances.adjust',
+            ],
+          },
+          {
+            id: 'leave-management',
+            label: 'Leave Management',
+            href: '/admin/leave-management',
+            permissionKeys: [...LEAVE_MANAGEMENT_PERMISSION_KEYS],
+          },
+          {
+            id: 'employee-self-service-leave',
+            label: 'Employee Leave (self-service)',
+            href: '/employee/leave',
+            permissionKeys: [
+              'leave.requests.create',
+              'leave.requests.read_own',
+              'leave.requests.cancel',
               'leave.balances.read_own',
             ],
           },
@@ -412,6 +421,7 @@ const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_ORG_CALENDAR_PERMISSION_KEYS,
   ...LEGACY_LEAVE_TYPES_PERMISSION_KEYS,
   ...LEGACY_LEAVE_BALANCES_POLICY_PERMISSION_KEYS,
+  ...LEGACY_LEAVE_MANAGEMENT_ADMIN_PERMISSION_KEYS,
   ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
 ]);

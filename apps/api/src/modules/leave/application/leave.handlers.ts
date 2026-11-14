@@ -18,6 +18,13 @@ import {
   LEAVE_BALANCES_TOGGLE_STATUS,
   LEAVE_BALANCES_UPDATE,
   LEAVE_BALANCES_VIEW,
+  LEAVE_MANAGEMENT_APPROVE,
+  LEAVE_MANAGEMENT_DETAILS_VIEW,
+  LEAVE_MANAGEMENT_REJECT,
+  LEAVE_MANAGEMENT_TAB_PENDING,
+  LEAVE_MANAGEMENT_VIEW,
+  leaveManagementTabPermissionForListFilter,
+  leaveManagementTabPermissionForRequestStatus,
 } from '#contracts';
 import type {
   AdjustEmployeeLeaveBalanceRequest,
@@ -377,7 +384,9 @@ export class ListLeaveRequestsHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, query: LeaveRequestListQuery): Promise<LeaveRequestListResponse> {
-    await this.authz.requireAnyPermission(actor, ['leave.requests.read_all']);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_VIEW);
+    const tabPermission = leaveManagementTabPermissionForListFilter(query.status);
+    await this.authz.requireLeaveManagementPermission(actor, tabPermission);
     return this.repository.listLeaveRequests(actor.organizationId, query, {});
   }
 }
@@ -390,8 +399,12 @@ export class GetLeaveRequestHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, requestId: string): Promise<LeaveRequestItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.requests.read_all']);
-    return this.repository.getLeaveRequest(actor.organizationId, requestId, {});
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_VIEW);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_DETAILS_VIEW);
+    const item = await this.repository.getLeaveRequest(actor.organizationId, requestId, {});
+    const statusTab = leaveManagementTabPermissionForRequestStatus(item.status);
+    await this.authz.requireLeaveManagementPermission(actor, statusTab);
+    return item;
   }
 }
 
@@ -425,7 +438,7 @@ export class ListMyLeaveRequestsHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, query: LeaveRequestListQuery): Promise<LeaveRequestListResponse> {
-    await this.authz.requireAnyPermission(actor, ['leave.requests.read_own', 'leave.requests.read_all']);
+    await this.authz.requireAnyPermission(actor, ['leave.requests.read_own']);
     const employeeId = await this.authz.requireEmployeeId(actor);
     return this.repository.listLeaveRequests(actor.organizationId, query, { employeeId });
   }
@@ -554,7 +567,10 @@ export class CancelLeaveRequestHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, requestId: string, reason: string): Promise<LeaveRequestItem> {
-    const canReadAll = await this.authz.hasPermission(actor, 'leave.requests.read_all');
+    const canReadAll = await this.authz.hasLeaveManagementPermission(
+      actor,
+      LEAVE_MANAGEMENT_VIEW,
+    );
     let result: LeaveRequestItem;
     if (canReadAll) {
       await this.authz.requireAnyPermission(actor, ['leave.requests.cancel']);
@@ -590,7 +606,9 @@ export class ApproveLeaveRequestHandler {
   ) {}
 
   async execute(actor: OrgAccessActor, requestId: string): Promise<LeaveRequestItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.requests.approve']);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_VIEW);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_TAB_PENDING);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_APPROVE);
     const result = await this.repository.approveLeaveRequest(
       actor.organizationId,
       requestId,
@@ -613,7 +631,9 @@ export class RejectLeaveRequestHandler {
     requestId: string,
     rejectionReason: string,
   ): Promise<LeaveRequestItem> {
-    await this.authz.requireAnyPermission(actor, ['leave.requests.reject']);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_VIEW);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_TAB_PENDING);
+    await this.authz.requireLeaveManagementPermission(actor, LEAVE_MANAGEMENT_REJECT);
     return this.repository.rejectLeaveRequest(
       actor.organizationId,
       requestId,

@@ -16,6 +16,7 @@ export * from './org-calendar-permission-keys.js';
 export * from './leave-types-permission-keys.js';
 export * from './leave-balances-permission-keys.js';
 export * from './employee-leave-records-permission-keys.js';
+export * from './leave-management-permission-keys.js';
 export * from './org-access-unrestricted.js';
 export * from './organization-role-display.js';
 export * from './crm-pipeline-permissions.js';

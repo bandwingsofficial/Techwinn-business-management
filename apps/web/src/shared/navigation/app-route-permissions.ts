@@ -1,4 +1,5 @@
 import {
+  canAccessLeaveManagementPage,
   canAccessTaskCalendar,
   hasUnrestrictedOrgPermissions,
   SYSTEM_ROLE_KEYS,
@@ -41,7 +42,8 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/leave-types': ['leave_types.view'],
   '/admin/leave-balances': ['leave_balances.view'],
   '/admin/employee-leave-records': ['employee_leave_records.view'],
-  '/admin/leave': ['leave.requests.read_all'],
+  '/admin/leave': ['leave.management.view'],
+  '/admin/leave-management': ['leave.management.view'],
   '/admin/pipeline': ['crm.pipeline.view'],
   '/admin/leads': ['crm.leads.view'],
   '/admin/packages': ['crm.service_packages.view'],
@@ -199,6 +201,10 @@ export function canAccessAppPath(
   }
 
   const canonical = canonicalPermissionPath(path);
+  if (canonical === '/admin/leave' || canonical === '/admin/leave-management') {
+    return canAccessLeaveManagementPage(permissions);
+  }
+
   const projectPlanAccess = canAccessProjectTasksPlanPath(path, permissions);
   if (projectPlanAccess !== null) return projectPlanAccess;
   const projectPlanAccessCanonical = canAccessProjectTasksPlanPath(canonical, permissions);

@@ -268,7 +268,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       },
       {
         kind: 'link',
-        href: '/admin/leave',
+        href: '/admin/leave-management',
         label: 'Leave Management',
         icon: CalendarDays,
       },

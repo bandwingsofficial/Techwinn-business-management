@@ -35,8 +35,12 @@ function canAccessAppPath(pathname, permissions, access) {
       permissions.has('leave.requests.create')
     );
   }
-  if (path === '/admin/leave') {
-    return permissions.has('leave.requests.read_all');
+  if (path === '/admin/leave' || path === '/admin/leave-management') {
+    return (
+      permissions.has('leave.management.view') &&
+      (permissions.has('leave.management.tab.pending') ||
+        permissions.has('leave.management.tab.all'))
+    );
   }
   return true;
 }
@@ -52,7 +56,8 @@ const ALL_PERMS = new Set([
   'leave.balances.read_own',
   'leave.requests.read_own',
   'leave.requests.create',
-  'leave.requests.read_all',
+  'leave.management.view',
+  'leave.management.tab.all',
   'attendance.punch.view',
   'attendance.records.view',
   'organisation_calendar.view',
