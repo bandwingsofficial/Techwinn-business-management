@@ -184,45 +184,11 @@
     box-shadow: var(--shadow-workspace-surface);
   }
 
-  /* =========================================
-     DASHBOARD BACKGROUND
-     Soft ice-blue with subtle lavender waves
-     ========================================= */
-
+  /* Dashboard: plain white (see also dashboard-page-background.css). */
   .tw-dashboard-page,
   main:has(.tw-dashboard-page) {
-    background-color: #eff5ff;
-    background-image:
-      radial-gradient(
-        ellipse 48% 28% at 48% 4%,
-        rgb(207 207 255 / 34%) 0%,
-        rgb(218 220 255 / 16%) 48%,
-        transparent 100%
-      ),
-      radial-gradient(
-        ellipse 42% 26% at 82% 15%,
-        rgb(213 220 255 / 28%) 0%,
-        transparent 100%
-      ),
-      radial-gradient(
-        ellipse 40% 30% at 16% 25%,
-        rgb(222 228 255 / 34%) 0%,
-        transparent 100%
-      ),
-      radial-gradient(
-        ellipse 55% 35% at 58% 65%,
-        rgb(226 233 255 / 22%) 0%,
-        transparent 100%
-      ),
-      linear-gradient(
-        135deg,
-        #f2f6ff 0%,
-        #edf4ff 48%,
-        #f0f5ff 100%
-      );
-
-    background-repeat: no-repeat;
-    background-size: cover;
+    background-color: #ffffff;
+    background-image: none;
   }
 
   .tw-dashboard-page {

@@ -4,6 +4,7 @@ import type { DashboardKpiMetric } from '@techwin/contracts';
 import { MoreHorizontal, TrendingDown, TrendingUp } from 'lucide-react';
 import { useId } from 'react';
 import {
+  DASHBOARD_GRID_CARD_CLASS,
   DASHBOARD_MODULE_THEME,
   type DashboardModuleKey,
   dashboardModuleFromWidgetKey,
@@ -68,9 +69,8 @@ export function DashboardKpiStrip({
       {visible.map((metric, index) => (
         <article
           key={metric.label}
-          className="tw-dashboard-card-shadow relative flex h-[108px] min-w-0 items-center gap-3 overflow-hidden rounded-[10px] border px-3.5 py-3"
+          className={`${DASHBOARD_GRID_CARD_CLASS} relative flex h-[108px] min-w-0 items-center gap-3 overflow-hidden rounded-[10px] px-3.5 py-3`}
           style={{
-            borderColor: theme.border,
             backgroundColor: theme.soft,
           }}
         >

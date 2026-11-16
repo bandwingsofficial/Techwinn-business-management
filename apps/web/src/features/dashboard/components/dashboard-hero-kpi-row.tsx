@@ -7,7 +7,10 @@ import type {
 import { MoreHorizontal, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { getDashboardWidget } from '../api/dashboard';
-import { DASHBOARD_HERO_KPI_SLOTS } from '../constants/dashboard-theme';
+import {
+  DASHBOARD_GRID_CARD_CLASS,
+  DASHBOARD_HERO_KPI_SLOTS,
+} from '../constants/dashboard-theme';
 
 const SPARKLINE_PATHS = [
   'M2 25 C12 20 15 11 25 16 S39 24 49 12 S63 20 73 10 S87 13 98 3',
@@ -149,10 +152,9 @@ export function DashboardHeroKpiRow({
         return (
           <article
             key={slot.widgetKey}
-            className="tw-dashboard-card-shadow relative grid h-[118px] min-w-0 grid-cols-[46px_minmax(0,1fr)] items-center gap-x-2.5 rounded-[10px] border px-3 py-3 sm:grid-cols-[46px_minmax(0,1fr)_70px]"
+            className={`${DASHBOARD_GRID_CARD_CLASS} relative grid h-[118px] min-w-0 grid-cols-[46px_minmax(0,1fr)] items-center gap-x-2.5 rounded-[10px] px-3 py-3 sm:grid-cols-[46px_minmax(0,1fr)_70px]`}
             style={{
               backgroundColor: slot.cardBg,
-              borderColor: slot.border,
             }}
           >
             <MoreHorizontal
@@ -222,7 +224,7 @@ export function DashboardHeroKpiRowSkeleton() {
       {Array.from({ length: 4 }).map((_, index) => (
         <div
           key={index}
-          className="tw-dashboard-card-shadow h-[118px] animate-pulse rounded-[10px] border border-[#E0EDFF] bg-[#F1F6FF]"
+          className={`${DASHBOARD_GRID_CARD_CLASS} h-[118px] animate-pulse rounded-[10px] bg-[#F1F6FF]`}
         />
       ))}
     </div>

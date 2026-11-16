@@ -31,7 +31,7 @@ export class UploadEmployeeProfileImageHandler {
         throw new EmployeeValidationError(error.message);
       }
       if (error instanceof MediaStorageError) {
-        throw new EmployeeValidationError('Profile image upload failed. Try again.');
+        throw new EmployeeValidationError(error.message);
       }
       throw error;
     }

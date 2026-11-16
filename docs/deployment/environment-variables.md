@@ -69,7 +69,7 @@ Leave unset until needed (schema keeps them optional):
 | `PORT` | Runtime | `3000` (Coolify) |
 | `HOSTNAME` | Runtime | `0.0.0.0` |
 | `API_INTERNAL_URL` | **Runtime (server-only)** | Internal Docker/Coolify origin of the API, e.g. `http://<api-service>:4000`. Used by App Router `/api/v1` proxy. **Not** a build arg (no `next.config` rewrite bake-in). Not a secret; never `NEXT_PUBLIC_*`. Production rejects missing / loopback / non-http(s) / paths. |
-| `NEXT_PUBLIC_API_BASE_URL` | Optional | Leave **empty** so the browser uses same-origin `/api/v1` (required for `SameSite=Strict` cookies). Never put secrets here. |
+| `NEXT_PUBLIC_API_BASE_URL` | Optional | Leave **empty** so the browser uses same-origin `/api/v1` (required for `SameSite=Strict` cookies and employee profile image uploads). **Do not** set this to `https://api2…` on the web service — cross-origin multipart requests fail CSRF checks even when JSON API calls appear to work. Never put secrets here. |
 
 Production public hosts: Web `https://crm.techwinn.com`, API `https://api2.techwinn.com`.
 

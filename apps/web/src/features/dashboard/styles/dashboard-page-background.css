@@ -1,8 +1,11 @@
 
 /**
- * Dashboard page background
- * Clean, solid white. No gradients or decorative waves.
+ * Dashboard page background — solid white, no gradients.
  */
+
+:root {
+  --dashboard-card-border: #d4def7;
+}
 
 main:has(.tw-dashboard-page) {
   background: #ffffff;
@@ -18,7 +21,18 @@ main:has(.tw-dashboard-page) {
   overflow-x: hidden;
 }
 
-/* Same box-shadow as `.admin-app-header` in globals.css (`--shadow-chrome-header`). */
+/**
+ * Admin header shadow only (prefer `tw-dashboard-grid-card` on grid cards).
+ * Same token as `.admin-app-header` in globals.css.
+ */
 .tw-dashboard-card-shadow {
+  box-shadow: var(--shadow-chrome-header);
+}
+
+/**
+ * Standard chrome for KPI cards, chart widgets, tables, and placeholders.
+ */
+.tw-dashboard-grid-card {
+  border: 1px solid var(--dashboard-card-border);
   box-shadow: var(--shadow-chrome-header);
 }

@@ -172,7 +172,7 @@ export class EmployeesController {
   }
 
   @Post('profile-image')
-  @RequirePermissions('employees.create')
+  @RequirePermissions('employees.create', 'employees.edit', 'employees.update')
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 5 * 1024 * 1024 },

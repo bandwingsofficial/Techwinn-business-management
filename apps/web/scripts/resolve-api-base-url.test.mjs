@@ -28,10 +28,10 @@ test('same-origin configured base is preserved', () => {
   );
 });
 
-test('production public API origin is preserved when intentionally configured', () => {
+test('cross-origin public API URL is forced to same-origin proxy', () => {
   assert.equal(
     resolveApiBaseUrl('https://api2.techwinn.com', 'https://crm.techwinn.com'),
-    'https://api2.techwinn.com',
+    '',
   );
 });
 

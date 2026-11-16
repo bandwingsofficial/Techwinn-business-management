@@ -28,7 +28,10 @@ import {
   DashboardHeroKpiRowSkeleton,
 } from '@/features/dashboard/components/dashboard-hero-kpi-row';
 import { DashboardWidgetCard } from '@/features/dashboard/components/dashboard-widget-card';
-import { DASHBOARD_HERO_KPI_WIDGET_KEYS } from '@/features/dashboard/constants/dashboard-theme';
+import {
+  DASHBOARD_GRID_CARD_CLASS,
+  DASHBOARD_HERO_KPI_WIDGET_KEYS,
+} from '@/features/dashboard/constants/dashboard-theme';
 import { DASHBOARD_GRID_CLASS } from '@/features/dashboard/utils/dashboard-grid';
 
 import { cn } from '@/shared/lib/utils';
@@ -250,7 +253,7 @@ export function WorkspaceDashboard() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className="tw-dashboard-card-shadow col-span-1 h-[280px] animate-pulse rounded-xl border border-[#D4DEF7] bg-white sm:col-span-2 xl:col-span-2"
+                className={`${DASHBOARD_GRID_CARD_CLASS} col-span-1 h-[280px] animate-pulse rounded-xl bg-white sm:col-span-2 xl:col-span-2`}
               />
             ))}
           </div>
@@ -261,7 +264,7 @@ export function WorkspaceDashboard() {
             </p>
           </div>
         ) : widgets.length === 0 ? (
-          <div className="tw-dashboard-card-shadow rounded-xl border border-[#D4DEF7] bg-white p-10 text-center">
+          <div className={`${DASHBOARD_GRID_CARD_CLASS} rounded-xl bg-white p-10 text-center`}>
             <h2 className="text-lg font-semibold text-[#0F172A]">
               Your dashboard is ready.
             </h2>

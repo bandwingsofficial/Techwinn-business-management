@@ -10,8 +10,8 @@ export type DashboardModuleKey =
   | 'leave'
   | 'reports';
 
-/** Base ice-blue colour used by the dashboard background. */
-export const DASHBOARD_PAGE_BACKGROUND = '#F5F8FF';
+/** Dashboard page background (solid white). */
+export const DASHBOARD_PAGE_BACKGROUND = '#FFFFFF';
 
 /** Shared white card surface on the dashboard background. */
 export const DASHBOARD_CARD_SURFACE = {
@@ -20,6 +20,12 @@ export const DASHBOARD_CARD_SURFACE = {
   /** Matches `.admin-app-header` (`var(--shadow-chrome-header)` in globals.css). */
   shadow: 'var(--shadow-chrome-header)',
 } as const;
+
+/**
+ * Single class for every dashboard grid card: 1px border + admin header shadow.
+ * Defined in `dashboard-page-background.css`.
+ */
+export const DASHBOARD_GRID_CARD_CLASS = 'tw-dashboard-grid-card';
 
 export const DASHBOARD_MODULE_THEME: Record<
   DashboardModuleKey,

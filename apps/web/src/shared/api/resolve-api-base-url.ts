@@ -48,15 +48,18 @@ export function resolveApiBaseUrl(
 
   try {
     const api = new URL(base, pageOrigin);
-    if (api.origin === new URL(pageOrigin).origin) return base;
-    if (isLoopbackHost(api.hostname) && isLoopbackHost(new URL(pageOrigin).hostname)) {
+    const page = new URL(pageOrigin);
+    if (api.origin === page.origin) return base;
+    if (isLoopbackHost(api.hostname) && isLoopbackHost(page.hostname)) {
       // Cross-port loopback breaks CSRF cookie readability; force same-origin proxy.
       return '';
     }
+    // Cross-origin API hosts (e.g. api2 vs crm) break `SameSite=Strict` cookies and
+    // double-submit CSRF on multipart uploads — always proxy via the web origin.
+    return '';
   } catch {
     return base;
   }
-  return base;
 }
 
 export type ResolveApiInternalUrlOptions = {

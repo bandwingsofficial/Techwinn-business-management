@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { getDashboardWidget } from '../api/dashboard';
 import {
   DASHBOARD_CARD_SURFACE,
+  DASHBOARD_GRID_CARD_CLASS,
   DASHBOARD_MODULE_THEME,
   dashboardModuleFromWidgetKey,
 } from '../constants/dashboard-theme';
@@ -111,12 +112,12 @@ export function DashboardWidgetCard({
     <article
       className={cn(
         dashboardWidgetColClass(span),
-        'tw-dashboard-card-shadow flex h-full min-w-0 flex-col overflow-hidden rounded-xl border',
+        DASHBOARD_GRID_CARD_CLASS,
+        'flex h-full min-w-0 flex-col overflow-hidden rounded-xl',
         className,
       )}
       style={{
         backgroundColor: DASHBOARD_CARD_SURFACE.background,
-        borderColor: DASHBOARD_CARD_SURFACE.border,
       }}
     >
       {/* Widget header */}
@@ -220,10 +221,7 @@ function KpiSkeleton() {
       {Array.from({ length: 4 }).map((_, index) => (
         <div
           key={index}
-          className="tw-dashboard-card-shadow h-[108px] animate-pulse rounded-[10px] border bg-white"
-          style={{
-            borderColor: DASHBOARD_CARD_SURFACE.border,
-          }}
+          className={`${DASHBOARD_GRID_CARD_CLASS} h-[108px] animate-pulse rounded-[10px] bg-white`}
         />
       ))}
     </div>

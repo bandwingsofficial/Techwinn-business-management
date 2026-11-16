@@ -18,6 +18,7 @@ import type {
 } from '../types';
 import { accessTokenStore } from '@/shared/api/api-client';
 import { apiConfig } from '@/shared/api/api-config';
+import { ApiError } from '@/shared/api/api-error';
 import { readCookie } from '@/shared/lib/cookies';
 
 export function listEmployees(
@@ -124,7 +125,7 @@ export async function uploadEmployeeProfileImage(
     headers,
   });
   if (!response.ok) {
-    throw new Error('Profile image upload failed.');
+    throw await ApiError.fromResponse(response);
   }
   return (await response.json()) as EmployeeProfileImageUploadResponse;
 }

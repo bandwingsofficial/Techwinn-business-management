@@ -141,8 +141,20 @@ export class StoredFileService {
         contentType: sniffed,
         contentLength: file.size,
       });
-    } catch {
-      throw new MediaStorageError();
+    } catch (error) {
+      const storageHint =
+        this.settings.storageProvider === 's3'
+          ? 'Could not save the file to object storage. Check S3 credentials, region, bucket name, and IAM permissions (s3:PutObject).'
+          : 'Could not save the file to storage.';
+      const awsCode =
+        error && typeof error === 'object' && 'name' in error
+          ? String((error as { name?: string }).name)
+          : 'unknown';
+      this.logger.warn(
+        { provider, bucket, awsCode, category: params.category },
+        'storage.upload.put_object_failed',
+      );
+      throw new MediaStorageError(storageHint);
     }
 
     try {
