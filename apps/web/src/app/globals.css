@@ -1,3 +1,4 @@
+
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -10,7 +11,7 @@
   --sidebar-transition-duration: 320ms;
   --sidebar-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Neutral workspace palette (ClickUp-inspired) */
+  /* Neutral workspace palette */
   --background: oklch(1 0 0);
   --foreground: oklch(0.278 0.033 264.67);
   --card: oklch(1 0 0);
@@ -35,27 +36,35 @@
   --nav-active-bg: #f0f0f0;
   --nav-active-fg: #262626;
   --nav-hover-bg: #f5f5f5;
+
   --shadow-elevation-sm: 0 1px 2px rgb(15 23 42 / 0.04);
-  --shadow-elevation-md: 0 1px 3px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04);
-  /** Soft separators for admin chrome (no solid borders). */
+  --shadow-elevation-md:
+    0 1px 3px rgb(15 23 42 / 0.06),
+    0 1px 2px rgb(15 23 42 / 0.04);
+
   --shadow-chrome-header: 0 8px 20px -14px rgb(15 23 42 / 0.18);
   --shadow-chrome-sidebar: 8px 0 20px -14px rgb(15 23 42 / 0.18);
   --shadow-table-header-bottom: 0 6px 18px -10px rgb(15 23 42 / 0.16);
   --shadow-table-header-top: 0 -6px 18px -10px rgb(15 23 42 / 0.16);
-  --shadow-workspace-surface: 0 -8px 28px -14px rgb(15 23 42 / 0.09),
-    0 8px 28px -14px rgb(15 23 42 / 0.09), 8px 0 28px -14px rgb(15 23 42 / 0.07),
+
+  --shadow-workspace-surface:
+    0 -8px 28px -14px rgb(15 23 42 / 0.09),
+    0 8px 28px -14px rgb(15 23 42 / 0.09),
+    8px 0 28px -14px rgb(15 23 42 / 0.07),
     -8px 0 28px -14px rgb(15 23 42 / 0.07);
 }
 
 @theme inline {
   --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 6px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -82,9 +91,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   html {
     -webkit-text-size-adjust: 100%;
   }
+
   @keyframes data-table-shimmer {
     100% {
       transform: translateX(100%);
@@ -100,10 +111,11 @@
       'cv11' 1;
   }
 
-  /** Horizontal chip row in SearchableMultiSelect — thin track, no arrow buttons. */
   .multi-select-chip-scroll {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+    scrollbar-color:
+      color-mix(in oklch, var(--muted-foreground) 35%, transparent)
+      transparent;
   }
 
   .multi-select-chip-scroll::-webkit-scrollbar {
@@ -116,7 +128,11 @@
 
   .multi-select-chip-scroll::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    background: color-mix(
+      in oklch,
+      var(--muted-foreground) 35%,
+      transparent
+    );
   }
 
   .multi-select-chip-scroll::-webkit-scrollbar-button {
@@ -168,19 +184,67 @@
     box-shadow: var(--shadow-workspace-surface);
   }
 
+  /* =========================================
+     DASHBOARD BACKGROUND
+     Soft ice-blue with subtle lavender waves
+     ========================================= */
+
+  .tw-dashboard-page,
+  main:has(.tw-dashboard-page) {
+    background-color: #eff5ff;
+    background-image:
+      radial-gradient(
+        ellipse 48% 28% at 48% 4%,
+        rgb(207 207 255 / 34%) 0%,
+        rgb(218 220 255 / 16%) 48%,
+        transparent 100%
+      ),
+      radial-gradient(
+        ellipse 42% 26% at 82% 15%,
+        rgb(213 220 255 / 28%) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        ellipse 40% 30% at 16% 25%,
+        rgb(222 228 255 / 34%) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        ellipse 55% 35% at 58% 65%,
+        rgb(226 233 255 / 22%) 0%,
+        transparent 100%
+      ),
+      linear-gradient(
+        135deg,
+        #f2f6ff 0%,
+        #edf4ff 48%,
+        #f0f5ff 100%
+      );
+
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  .tw-dashboard-page {
+    min-height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   .table-header-shadow {
     position: relative;
     z-index: 1;
     box-shadow: var(--shadow-table-header-bottom);
   }
 
-  /** Shadow band between toolbar and column header row. */
   .table-header-edge {
     display: block;
     width: 100%;
     height: 0;
     flex-shrink: 0;
-    box-shadow: var(--shadow-table-header-top), var(--shadow-table-header-bottom);
+    box-shadow:
+      var(--shadow-table-header-top),
+      var(--shadow-table-header-bottom);
   }
 
   .admin-sidebar-shell {

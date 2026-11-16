@@ -1,0 +1,156 @@
+import { Inject, Injectable } from '@nestjs/common';
+import type {
+  DashboardConfigurationPatch,
+  DashboardDateRangePreset,
+  DashboardMeResponse,
+  DashboardSummaryResponse,
+  DashboardWidgetData,
+  DashboardWidgetDescriptor,
+} from '#contracts';
+import {
+  DASHBOARD_OVERVIEW_SUMMARY,
+  dashboardWidgetGridSpan,
+  hasDashboardPermission,
+  permittedDashboardWidgets,
+} from '#contracts';
+import type { OrgAccessActor } from '../../org-access/application/shared/org-access-actor.js';
+import { DashboardAuthorizationService } from './services/dashboard-authorization.service.js';
+import { DashboardDataService } from './services/dashboard-data.service.js';
+import { DashboardLayoutService } from './services/dashboard-layout.service.js';
+
+function resolveDateRange(preset: DashboardDateRangePreset): { from: Date; to: Date } {
+  const to = new Date();
+  const from = new Date(to);
+  switch (preset) {
+    case 'today':
+      from.setUTCHours(0, 0, 0, 0);
+      break;
+    case 'week':
+      from.setUTCDate(from.getUTCDate() - 7);
+      break;
+    case 'month':
+      from.setUTCMonth(from.getUTCMonth() - 1);
+      break;
+    case 'quarter':
+      from.setUTCMonth(from.getUTCMonth() - 3);
+      break;
+    case 'year':
+      from.setUTCFullYear(from.getUTCFullYear() - 1);
+      break;
+    default:
+      from.setUTCMonth(from.getUTCMonth() - 1);
+  }
+  return { from, to };
+}
+
+function applyLayout(
+  widgets: readonly DashboardWidgetDescriptor[],
+  layout: { widgetOrder: readonly string[]; hiddenWidgets: readonly string[] },
+): readonly DashboardWidgetDescriptor[] {
+  const hidden = new Set(layout.hiddenWidgets);
+  const visible = widgets.filter((w) => !hidden.has(w.key));
+  if (layout.widgetOrder.length === 0) return visible;
+  const orderIndex = new Map(layout.widgetOrder.map((key, index) => [key, index]));
+  return [...visible].sort((a, b) => {
+    const ai = orderIndex.get(a.key) ?? Number.MAX_SAFE_INTEGER;
+    const bi = orderIndex.get(b.key) ?? Number.MAX_SAFE_INTEGER;
+    if (ai !== bi) return ai - bi;
+    return a.key.localeCompare(b.key);
+  });
+}
+
+@Injectable()
+export class GetDashboardMeHandler {
+  constructor(
+    @Inject(DashboardAuthorizationService) private readonly authz: DashboardAuthorizationService,
+    @Inject(DashboardLayoutService) private readonly layout: DashboardLayoutService,
+  ) {}
+
+  async execute(
+    actor: OrgAccessActor,
+    preset: DashboardDateRangePreset = 'month',
+  ): Promise<DashboardMeResponse> {
+    const effective = await this.authz.assertDashboardAccess(actor);
+    const layout = await this.layout.getLayout(actor);
+    const permitted = permittedDashboardWidgets(effective).map((widget) => {
+      const scope = this.authz.scopeForWidget(widget.key, effective) ?? undefined;
+      return {
+        key: widget.key,
+        section: widget.section,
+        title: widget.title,
+        description: widget.description,
+        kind: widget.kind,
+        size: widget.size,
+        gridColumnSpan: dashboardWidgetGridSpan(widget),
+        ...(widget.chartHeight ? { chartHeight: widget.chartHeight } : {}),
+        ...(scope ? { scope } : {}),
+      } satisfies DashboardWidgetDescriptor;
+    });
+    const range = resolveDateRange(preset);
+    return {
+      widgets: applyLayout(permitted, layout),
+      layout,
+      dateRange: {
+        preset,
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+}
+
+@Injectable()
+export class GetDashboardWidgetHandler {
+  constructor(
+    @Inject(DashboardAuthorizationService) private readonly authz: DashboardAuthorizationService,
+    @Inject(DashboardDataService) private readonly data: DashboardDataService,
+  ) {}
+
+  async execute(
+    actor: OrgAccessActor,
+    widgetKey: string,
+    preset: DashboardDateRangePreset = 'month',
+  ): Promise<DashboardWidgetData> {
+    const effective = await this.authz.assertWidgetAccess(actor, widgetKey);
+    const scope = this.authz.scopeForWidget(widgetKey, effective);
+    const range = resolveDateRange(preset);
+    return this.data.loadWidget(actor, widgetKey, scope, range.from, range.to);
+  }
+}
+
+@Injectable()
+export class PatchDashboardConfigurationHandler {
+  constructor(
+    @Inject(DashboardAuthorizationService) private readonly authz: DashboardAuthorizationService,
+    @Inject(DashboardLayoutService) private readonly layout: DashboardLayoutService,
+  ) {}
+
+  async execute(actor: OrgAccessActor, patch: DashboardConfigurationPatch) {
+    const effective = await this.authz.assertDashboardAccess(actor);
+    const permittedKeys = new Set(permittedDashboardWidgets(effective).map((w) => w.key));
+    const widgetOrder = patch.widgetOrder?.filter((key) => permittedKeys.has(key));
+    const hiddenWidgets = patch.hiddenWidgets?.filter((key) => permittedKeys.has(key));
+    return this.layout.patchLayout(actor, { widgetOrder, hiddenWidgets });
+  }
+}
+
+@Injectable()
+export class GetDashboardSummaryHandler {
+  constructor(
+    @Inject(GetDashboardWidgetHandler) private readonly widgets: GetDashboardWidgetHandler,
+    @Inject(DashboardAuthorizationService) private readonly authz: DashboardAuthorizationService,
+  ) {}
+
+  async execute(actor: OrgAccessActor): Promise<DashboardSummaryResponse> {
+    const effective = await this.authz.assertDashboardAccess(actor);
+    if (!hasDashboardPermission(effective, DASHBOARD_OVERVIEW_SUMMARY)) {
+      return { overview: [], generatedAt: new Date().toISOString() };
+    }
+    const overview = await this.widgets.execute(actor, 'overview.welcome', 'month');
+    return {
+      overview: overview.kpis ?? [],
+      generatedAt: new Date().toISOString(),
+    };
+  }
+}

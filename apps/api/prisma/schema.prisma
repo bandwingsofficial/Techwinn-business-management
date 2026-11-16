@@ -87,6 +87,7 @@ model PlatformAdmin {
   assignedProjectTasks ProjectTask[] @relation("ProjectTaskAssignee")
   memberships          OrganizationMembership[] @relation("MembershipAdmin")
   invitedMemberships   OrganizationMembership[] @relation("MembershipInvitedBy")
+  dashboardLayouts     OrganizationAdminDashboardLayout[]
   sentInvitations      OrganizationInvitation[] @relation("InvitationInvitedBy")
   createdStoredObjects StoredObject[]           @relation("StoredObjectCreatedBy")
   createdDailyTasks    DailyTask[]              @relation("DailyTaskCreatedBy")
@@ -233,6 +234,7 @@ model Organization {
   leaveRequests              LeaveRequest[]
   leaveRequestDates          LeaveRequestDate[]
   leaveRequestStatusEvents   LeaveRequestStatusEvent[]
+  dashboardLayouts           OrganizationAdminDashboardLayout[]
 
   @@map("organizations")
 }
@@ -1222,6 +1224,20 @@ model OrganizationInvitationRole {
 
   @@id([invitationId, roleId])
   @@map("organization_invitation_roles")
+}
+
+model OrganizationAdminDashboardLayout {
+  organizationId String   @map("organization_id") @db.Uuid
+  adminId        String   @map("admin_id") @db.Uuid
+  widgetOrder    String[] @default([]) @map("widget_order")
+  hiddenWidgets  String[] @default([]) @map("hidden_widgets")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  admin        PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, adminId])
+  @@map("organization_admin_dashboard_layouts")
 }
 
 // --- Daily tasks (separate from project phase tasks) ---

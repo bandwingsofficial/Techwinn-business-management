@@ -24,6 +24,12 @@ import { LEGACY_USERS_PAGE_PERMISSION_KEYS, USERS_PERMISSION_KEYS } from './user
 import { PROJECT_PERMISSION_KEYS, TASK_PERMISSION_KEYS } from './projects-permissions.js';
 import { EMPLOYEES_HIERARCHY_EXCLUDED_KEYS } from './employees-permissions.js';
 import {
+  DASHBOARD_FINANCE_EXPENSE,
+  DASHBOARD_FINANCE_OUTSTANDING,
+  DASHBOARD_FINANCE_REVENUE,
+  DASHBOARD_FINANCE_SUMMARY,
+} from './dashboard-permission-keys.js';
+import {
   PERMISSION_DEFINITIONS,
   PERMISSION_KEYS,
   type PermissionDefinition,
@@ -69,7 +75,137 @@ export const PERMISSION_HIERARCHY: readonly PermissionHierarchyModule[] = [
             id: 'dashboard',
             label: 'Dashboard',
             href: '/admin/dashboard',
-            permissionKeys: [],
+            permissionKeys: ['dashboard.view'],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'dashboard-setup',
+    label: 'Dashboard Setup',
+    groups: [
+      {
+        id: 'dashboard-access',
+        label: 'Dashboard access',
+        pages: [
+          {
+            id: 'dashboard-view',
+            label: 'View Dashboard',
+            href: '/admin/dashboard',
+            permissionKeys: ['dashboard.view'],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-overview-widgets',
+        label: 'Overview',
+        pages: [
+          {
+            id: 'dashboard-overview',
+            label: 'Overview widgets',
+            permissionKeys: ['dashboard.overview.summary'],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-tasks-widgets',
+        label: 'Daily Tasks',
+        pages: [
+          {
+            id: 'dashboard-tasks',
+            label: 'Task widgets',
+            permissionKeys: [
+              'dashboard.tasks.summary',
+              'dashboard.tasks.all',
+              'dashboard.tasks.team',
+              'dashboard.tasks.assigned',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-crm-widgets',
+        label: 'CRM',
+        pages: [
+          {
+            id: 'dashboard-crm',
+            label: 'CRM widgets',
+            permissionKeys: [
+              'dashboard.crm.summary',
+              'dashboard.crm.leads.all',
+              'dashboard.crm.leads.team',
+              'dashboard.crm.leads.assigned',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-projects-widgets',
+        label: 'Projects',
+        pages: [
+          {
+            id: 'dashboard-projects',
+            label: 'Project widgets',
+            permissionKeys: [
+              'dashboard.projects.summary',
+              'dashboard.projects.all',
+              'dashboard.projects.assigned',
+              'dashboard.projects.progress',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-employees-widgets',
+        label: 'Employees',
+        pages: [
+          {
+            id: 'dashboard-employees',
+            label: 'Employee widgets',
+            permissionKeys: ['dashboard.employees.summary', 'dashboard.employees.statistics'],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-attendance-widgets',
+        label: 'Attendance',
+        pages: [
+          {
+            id: 'dashboard-attendance',
+            label: 'Attendance widgets',
+            permissionKeys: [
+              'dashboard.attendance.summary',
+              'dashboard.attendance.team',
+              'dashboard.attendance.own',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-leave-widgets',
+        label: 'Leave',
+        pages: [
+          {
+            id: 'dashboard-leave',
+            label: 'Leave widgets',
+            permissionKeys: [
+              'dashboard.leave.summary',
+              'dashboard.leave.requests.all',
+              'dashboard.leave.own',
+              'dashboard.leave.balance',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'dashboard-reports-widgets',
+        label: 'Reports',
+        pages: [
+          {
+            id: 'dashboard-reports',
+            label: 'Report widgets',
+            permissionKeys: ['dashboard.reports.summary', 'dashboard.reports.performance'],
           },
         ],
       },
@@ -419,6 +555,10 @@ const PERMISSION_HIERARCHY_EXCLUDED_KEYS = new Set<PermissionKey>([
   ...LEGACY_USERS_PAGE_PERMISSION_KEYS,
   ...EMPLOYEES_HIERARCHY_EXCLUDED_KEYS,
   ...DAILY_TASKS_AUXILIARY_PERMISSION_KEYS,
+  DASHBOARD_FINANCE_SUMMARY,
+  DASHBOARD_FINANCE_REVENUE,
+  DASHBOARD_FINANCE_EXPENSE,
+  DASHBOARD_FINANCE_OUTSTANDING,
 ]);
 
 /** Ensures every catalog key appears on at least one hierarchy page. Keys may appear on multiple pages when backend shares them. */

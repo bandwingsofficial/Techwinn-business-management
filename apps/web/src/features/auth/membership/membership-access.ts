@@ -1,4 +1,5 @@
 import {
+  canAccessDashboardPage,
   isSuperAdminPortalSlug,
   LEGACY_SUPER_ADMIN_PORTAL_SLUG,
   SYSTEM_ROLE_KEYS,
@@ -40,8 +41,8 @@ export function canAccessWorkspaceDashboard(
   permissions?: ReadonlySet<PermissionKey>,
 ): boolean {
   if (hasWorkspaceDashboardMembershipAccess(context)) return true;
-  if (permissions && permissions.size > 0) {
-    return hasOrganizationWorkspacePermissionSignals(permissions, context);
+  if (permissions && canAccessDashboardPage(permissions)) {
+    return true;
   }
   return false;
 }

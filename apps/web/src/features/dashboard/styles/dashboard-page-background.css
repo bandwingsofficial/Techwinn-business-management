@@ -1,0 +1,24 @@
+
+/**
+ * Dashboard page background
+ * Clean, solid white. No gradients or decorative waves.
+ */
+
+main:has(.tw-dashboard-page) {
+  background: #ffffff;
+  background-image: none;
+}
+
+.tw-dashboard-page {
+  position: relative;
+  min-height: 100%;
+  width: 100%;
+  background: #ffffff;
+  background-image: none;
+  overflow-x: hidden;
+}
+
+/* Same box-shadow as `.admin-app-header` in globals.css (`--shadow-chrome-header`). */
+.tw-dashboard-card-shadow {
+  box-shadow: var(--shadow-chrome-header);
+}

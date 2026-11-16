@@ -1,7 +1,9 @@
 import {
+  canAccessDashboardPage,
   canAccessLeaveManagementPage,
   hasUsersPermission,
   USERS_VIEW,
+  DASHBOARD_VIEW,
   canAccessTaskCalendar,
   hasUnrestrictedOrgPermissions,
   SYSTEM_ROLE_KEYS,
@@ -33,7 +35,7 @@ const ORGANIZATION_DAILY_TASK_BOARD_ROUTES: ReadonlySet<string> = new Set([
 /** Unified route → permission map for all authenticated app paths (`/admin` and `/employee`). */
 export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionKey[]>> = {
   '/admin': [],
-  '/admin/dashboard': [],
+  '/admin/dashboard': [DASHBOARD_VIEW],
   '/admin/users': ['users.view'],
   '/admin/roles': ['roles.read'],
   '/admin/employees': ['employees.view'],
@@ -63,12 +65,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/whatsapp/broadcasts': ['whatsapp.broadcasts.manage'],
   '/admin/whatsapp/reports': ['whatsapp.view_all', 'whatsapp.channels.manage'],
   '/employee': [],
-  '/employee/dashboard': [
-    'attendance.punch.view',
-    'leave.requests.read_own',
-    'leave.balances.read_own',
-    'leave.requests.create',
-  ],
+  '/employee/dashboard': [DASHBOARD_VIEW],
   '/employee/daily-tasks': ['tasks.read'],
   '/employee/task-calendar': ['project_management.task_calendar.view'],
   '/employee/attendance': ['attendance.records.view'],
@@ -81,7 +78,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
     'leave.balances.read_own',
   ],
   '/project-manager': [],
-  '/project-manager/dashboard': [],
+  '/project-manager/dashboard': [DASHBOARD_VIEW],
   '/project-manager/profile': [],
   '/project-manager/pipeline': ['crm.pipeline.view'],
   '/project-manager/leads': ['crm.leads.view'],
@@ -186,12 +183,12 @@ export function canAccessAppPath(
   if (expectedPortalSegment && path === portalDashboardPath(expectedPortalSegment)) {
     if (expectedPortalSegment === SYSTEM_ROLE_KEYS.employee) {
       if (access && !canUseEmployeeSelfService(access)) return false;
-      return true;
+      return canAccessDashboardPage(permissions);
     }
     if (access && !canAccessWorkspaceDashboard(access, permissions)) {
       return false;
     }
-    return true;
+    return canAccessDashboardPage(permissions);
   }
 
   if (access && (path === '/admin' || path === '/admin/dashboard')) {
