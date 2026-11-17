@@ -32,13 +32,32 @@ function mapHrefToPortalSegment(href, portalSegment) {
   return `/${parts.join('/')}`;
 }
 
+const EMPLOYEE_SELF_SERVICE_EXACT = new Set([
+  '/employee/dashboard',
+  '/employee/leave',
+  '/employee/daily-tasks',
+  '/employee/task-calendar',
+]);
+const EMPLOYEE_SELF_SERVICE_PREFIXES = ['/employee/attendance', '/employee/calendar'];
+
+function isEmployeeSelfServicePath(normalized) {
+  if (EMPLOYEE_SELF_SERVICE_EXACT.has(normalized)) return true;
+  return EMPLOYEE_SELF_SERVICE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
 function canonicalPermissionPath(pathname) {
   const normalized = normalizePathname(pathname);
   const parts = normalized.split('/').filter(Boolean);
   if (parts.length < 2) return normalized;
   const head = parts[0];
-  if (head === 'admin' || head === 'employee' || head === 'project-manager') {
+  if (head === 'admin' || head === 'project-manager') {
     return normalized;
+  }
+  if (head === 'employee') {
+    if (isEmployeeSelfServicePath(normalized)) return normalized;
+    return `/admin/${parts.slice(1).join('/')}`;
   }
   if (head === 'super-admin' || head === 'owner') {
     return `/admin/${parts.slice(1).join('/')}`;
@@ -159,4 +178,12 @@ test('trusted portal paths are not rewritten', () => {
   for (const portal of PORTALS) {
     assert.equal(rewritePathToTrustedPortal(`/${portal}/daily-tasks`, portal), null);
   }
+});
+
+test('employee org modules use /admin permission keys', () => {
+  assert.equal(canonicalPermissionPath('/employee/leave-management'), '/admin/leave-management');
+  assert.equal(canonicalPermissionPath('/employee/project-tasks'), '/admin/project-tasks');
+  assert.equal(canonicalPermissionPath('/employee/daily-tasks/history'), '/admin/daily-tasks/history');
+  assert.equal(canonicalPermissionPath('/employee/leave'), '/employee/leave');
+  assert.equal(canonicalPermissionPath('/employee/daily-tasks'), '/employee/daily-tasks');
 });

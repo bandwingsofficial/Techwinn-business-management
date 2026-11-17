@@ -1,5 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { formatProjectNumber } from '#validation';
+import {
+  formatProjectNumber,
+  isValidProjectNumber,
+  parseProjectNumberSequence,
+} from '#validation';
+import {
+  isOrganizationCodeFormatError,
+  mapOrganizationCodeUniqueViolation,
+  resolveOrganizationCodeOnCreate,
+} from '../../../../../../../../lib/persistence/organization-code-allocation.js';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../../../infrastructure/database/prisma.service.js';
@@ -468,9 +477,18 @@ export class PrismaProjectRepository implements ProjectRepository {
 
     const projectId = crypto.randomUUID();
 
-    await this.prisma.$transaction(async (tx) => {
-      const seq = await this.nextSequence(tx, organizationId, PROJECT_NUMBER_SEQUENCE_KEY);
-      const projectNumber = formatProjectNumber(seq);
+    try {
+      await this.prisma.$transaction(async (tx) => {
+      const projectNumber = await resolveOrganizationCodeOnCreate(tx, {
+        organizationId,
+        sequenceKey: PROJECT_NUMBER_SEQUENCE_KEY,
+        providedCode: input.projectNumber,
+        formatFromSequence: formatProjectNumber,
+        isValidFormat: isValidProjectNumber,
+        parseSequence: parseProjectNumberSequence,
+        normalize: (value) => value.toUpperCase(),
+        invalidFormatMessage: 'Project number is invalid.',
+      });
       await tx.project.create({
         data: {
           id: projectId,
@@ -507,7 +525,22 @@ export class PrismaProjectRepository implements ProjectRepository {
         type: 'PROJECT_CREATED',
         entityId: projectId,
       });
-    });
+      });
+    } catch (error) {
+      if (isOrganizationCodeFormatError(error)) {
+        throw new ProjectValidationError(error.message);
+      }
+      const duplicate = mapOrganizationCodeUniqueViolation(
+        error,
+        'project_number',
+        'A project with this number already exists.',
+        'projectNumber',
+      );
+      if (duplicate) {
+        throw new ProjectValidationError(duplicate.message);
+      }
+      throw error;
+    }
 
     const created = await this.getProject(organizationId, projectId);
     if (!created) throw new ProjectNotFoundError('Project');

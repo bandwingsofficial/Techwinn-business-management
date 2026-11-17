@@ -4,6 +4,7 @@ import type { ClientType } from '../enums/client-type.enum.js';
 export const CLIENT_SEQUENCE_KEY = 'client' as const;
 
 export interface CreateClientData {
+  readonly referenceNumber?: string;
   readonly type: ClientType;
   readonly name: string;
   readonly primaryContact?: string;

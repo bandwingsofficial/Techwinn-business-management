@@ -87,7 +87,7 @@ export function employeeFormToPayload(
     readonly profileImageStoredObjectId?: string | null;
   },
 ) {
-  return {
+  const base = {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     workEmail: form.workEmail,
@@ -106,5 +106,9 @@ export function employeeFormToPayload(
       : {}),
     ...(options.includeSalary ? { salaryStructure: options.salaryForm } : {}),
   };
+  if (!options.editingId && form.employeeCode.trim()) {
+    return { ...base, employeeCode: form.employeeCode.trim().toUpperCase() };
+  }
+  return base;
 }
 

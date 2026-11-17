@@ -6,6 +6,7 @@ import type {
 
 export function toCreateEmployeeInput(body: CreateEmployeeRequest): CreateEmployeeInput {
   return {
+    ...(body.employeeCode !== undefined ? { employeeCode: body.employeeCode } : {}),
     firstName: body.firstName,
     lastName: body.lastName,
     workEmail: body.workEmail,

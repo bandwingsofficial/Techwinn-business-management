@@ -116,7 +116,9 @@ export function servicePackageToForm(pkg: CrmServicePackage): ServicePackageForm
 export function buildServicePackagePayload(
   form: ServicePackageFormState,
 ): CreateServicePackageRequest {
+  const code = form.displayCode.trim() ? form.displayCode.trim().toUpperCase() : undefined;
   return {
+    code,
     name: form.name.trim(),
     categories: form.categories,
     shortDescription: form.shortDescription.trim() || undefined,

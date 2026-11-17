@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { MONEY_PARSE_ERROR, normalizeMoneyInput } from './money';
+import { optionalOrgCodeInputSchema } from './org-code-input';
+import { isValidServicePackageCode } from './service-package-code';
 import { normalizeGstRatePercent } from './service-package-pricing';
+
+const servicePackageCodeInputSchema = optionalOrgCodeInputSchema({
+  isValid: isValidServicePackageCode,
+  invalidMessage: 'Enter a valid package code (TECH-PKG-0001).',
+  normalize: (value) => value.toUpperCase(),
+});
 
 const moneyString = z.union([
   z
@@ -128,6 +136,7 @@ const deliveryFields = {
 /** Plain object shape — no object-level refinements (Zod 4 requires .partial() before refinements). */
 export const servicePackageRequestObjectSchema = z
   .object({
+    code: servicePackageCodeInputSchema,
     name: z.string().trim().min(1, 'Enter a package name.').max(160),
     categories: z
       .array(catalogSelectionSchema)

@@ -69,7 +69,10 @@ export type PermissionsContextValue = {
   readonly sessionEmployee: MySessionEmployeeSummary | null;
   readonly membershipRoleLabel: string;
   readonly navAccess: MembershipAccessContext;
-  readonly loading: false;
+  /** `false` once an initial permission snapshot is available (bootstrap or API). */
+  readonly permissionsReady: boolean;
+  /** @deprecated Use {@link permissionsReady} — inverted for legacy hooks. */
+  readonly loading: boolean;
   readonly has: (key: PermissionKey) => boolean;
   readonly hasAny: (...keys: PermissionKey[]) => boolean;
   readonly hasAll: (...keys: PermissionKey[]) => boolean;
@@ -316,7 +319,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       sessionEmployee,
       membershipRoleLabel: formatMembershipRoleLabel(admin, roles),
       navAccess,
-      loading: false,
+      permissionsReady: !initializing || hasUsableAccess(snapshot),
+      loading: initializing && !hasUsableAccess(snapshot),
       has,
       hasAny,
       hasAll,

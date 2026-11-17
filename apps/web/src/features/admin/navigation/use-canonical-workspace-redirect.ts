@@ -10,11 +10,11 @@ import {
 } from './navigation-route-policy';
 
 /**
- * Sends organization-workspace users away from `/employee` task URLs onto the
- * canonical `/admin` routes (preserving query string).
+ * Sends organization-workspace users on `/employee` task URLs to the portal-prefixed
+ * org route when it differs from the current path (e.g. admin user on `/employee/daily-tasks`).
+ * Employee portal org vs self-service is resolved in {@link EmployeeDailyTasksRoute} / calendar route.
  *
- * @returns `true` while a redirect is required so callers can skip rendering
- * the employee-scoped page and avoid a self-service flash.
+ * @returns `true` while a redirect is in flight.
  */
 export function useCanonicalWorkspaceRedirect(): boolean {
   const router = useRouter();

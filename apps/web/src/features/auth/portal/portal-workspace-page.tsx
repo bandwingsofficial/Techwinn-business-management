@@ -1,3 +1,4 @@
+import { SYSTEM_ROLE_KEYS } from '@techwin/contracts';
 import { redirect } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,7 +31,6 @@ import { LeaveTypesPage } from '@/features/leave-types/pages/leave-types-page';
 import { TaskCalendarPage } from '@/features/project-management/task-calendar';
 const RESERVED_WORKSPACE_PORTALS: ReadonlySet<string> = new Set([
   'admin',
-  'employee',
   'project-manager',
 ]);
 
@@ -100,6 +100,10 @@ function isDynamicWorkspacePortal(portal: string): boolean {
   return !RESERVED_WORKSPACE_PORTALS.has(portal);
 }
 
+function supportsMirroredWorkspaceRoutes(portal: string): boolean {
+  return isDynamicWorkspacePortal(portal) || portal === SYSTEM_ROLE_KEYS.employee;
+}
+
 /**
  * Renders an existing admin workspace page under `/{portal}/...` without duplicating route files.
  */
@@ -107,7 +111,7 @@ export function renderPortalWorkspacePage(
   portal: string,
   segments: readonly string[],
 ): ReactNode | null {
-  if (!isDynamicWorkspacePortal(portal)) return null;
+  if (!supportsMirroredWorkspaceRoutes(portal)) return null;
   if (segments.length === 0) return null;
 
   const routeKey = segments.join('/');

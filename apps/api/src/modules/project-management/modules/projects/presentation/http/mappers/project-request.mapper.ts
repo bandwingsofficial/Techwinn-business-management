@@ -6,6 +6,7 @@ export function toCreateProjectInput(
   createdByAdminId: string,
 ): CreateProjectInput {
   return {
+    ...(body.projectNumber !== undefined ? { projectNumber: body.projectNumber } : {}),
     name: body.name,
     priority: body.priority,
     projectManagerAdminId: body.projectManagerAdminId ?? null,

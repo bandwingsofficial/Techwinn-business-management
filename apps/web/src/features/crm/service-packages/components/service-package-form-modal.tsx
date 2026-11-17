@@ -159,7 +159,6 @@ export function ServicePackageFormModal({
   );
 
   const packageFieldError = (key: string) => mergeFieldErrors(packageLiveFields.errors, fieldErrors, key);
-  const [codePreview, setCodePreview] = useState('');
   const [codePreviewHint, setCodePreviewHint] = useState('');
 
   useEffect(() => {
@@ -181,17 +180,18 @@ export function ServicePackageFormModal({
   useEffect(() => {
     if (!open || editingId) return;
     const controller = new AbortController();
-    setCodePreview('');
+    setForm((current) => ({ ...current, displayCode: '' }));
     setCodePreviewHint('Loading next package code…');
     void previewServicePackageCode(controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
-        setCodePreview(result.code);
-        setCodePreviewHint('Preview only — the server assigns the final code when you save.');
+        setForm((current) =>
+          current.displayCode.trim() ? current : { ...current, displayCode: result.code },
+        );
+        setCodePreviewHint('Auto-generated default — you can change it before saving.');
       })
       .catch(() => {
         if (controller.signal.aborted) return;
-        setCodePreview('');
         setCodePreviewHint('Could not load code preview.');
       });
     return () => controller.abort();
@@ -298,17 +298,22 @@ export function ServicePackageFormModal({
                 <div className={formFieldControlShellClass}>
                   <Input
                     id="pkg-code"
-                    readOnly
-                    value={editingId ? form.displayCode : codePreview}
+                    readOnly={Boolean(editingId)}
+                    value={form.displayCode}
                     placeholder={
-                      editingId
-                        ? CRM_FORM_PLACEHOLDERS.packageCodeReadonly
-                        : CRM_FORM_PLACEHOLDERS.packageCodeLoading
+                      !editingId && codePreviewHint.startsWith('Loading')
+                        ? CRM_FORM_PLACEHOLDERS.packageCodeLoading
+                        : undefined
                     }
                     className={cn(
                       CRM_PIPELINE_FORM_FIELD_CLASS,
-                      'bg-muted/50 font-mono text-sm',
+                      editingId ? 'bg-muted/50' : 'font-mono',
+                      'text-sm',
                     )}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, displayCode: event.target.value }));
+                      clearFormFieldError(setFieldErrors, 'code');
+                    }}
                   />
                 </div>
                 {!editingId && codePreviewHint ? (

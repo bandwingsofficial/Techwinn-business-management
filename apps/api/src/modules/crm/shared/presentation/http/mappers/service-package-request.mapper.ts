@@ -31,6 +31,7 @@ export const toCreateServicePackageInput = (
   createdByAdminId: string,
 ): CreateServicePackageInput => ({
   ...mapConfiguration(body),
+  ...(body.code !== undefined ? { code: body.code } : {}),
   name: body.name,
   categories: body.categories,
   basePrice: body.basePrice,

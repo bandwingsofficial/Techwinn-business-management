@@ -161,15 +161,24 @@ export function ClientFormModal({
   }, [open, editingId, client?.id, client?.updatedAt]);
 
   useEffect(() => {
+    if (!open || isEdit) return;
+    setForm((current) => ({ ...current, referencePreview: '' }));
+  }, [open, isEdit]);
+
+  useEffect(() => {
     if (!open || isEdit || !preview?.referenceNumber) return;
-    setForm((current) => ({ ...current, referencePreview: preview.referenceNumber }));
+    setForm((current) =>
+      current.referencePreview.trim()
+        ? current
+        : { ...current, referencePreview: preview.referenceNumber },
+    );
   }, [open, isEdit, preview?.referenceNumber]);
 
   const referenceHint = useMemo(() => {
     if (isEdit) return 'Assigned client code.';
     if (previewLoading) return 'Loading next client number…';
     if (preview?.referenceNumber) {
-      return 'Preview only — the server assigns the final number when you save.';
+      return 'Auto-generated default — you can change it before saving.';
     }
     return 'Could not load number preview.';
   }, [isEdit, preview?.referenceNumber, previewLoading]);
@@ -278,20 +287,30 @@ export function ClientFormModal({
                 <div className={formFieldControlShellClass}>
                   <Input
                     id="client-code"
-                    readOnly
-                    value={isEdit ? form.referencePreview : form.referencePreview || '—'}
+                    readOnly={isEdit}
+                    value={form.referencePreview}
                     placeholder={
-                      !isEdit && previewLoading
-                        ? CRM_FORM_PLACEHOLDERS.packageCodeLoading
-                        : CRM_FORM_PLACEHOLDERS.packageCodeReadonly
+                      !isEdit && previewLoading ? CRM_FORM_PLACEHOLDERS.packageCodeLoading : undefined
                     }
-                    className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'bg-muted/50 font-mono text-sm')}
+                    className={cn(
+                      CRM_PIPELINE_FORM_FIELD_CLASS,
+                      isEdit ? 'bg-muted/50' : 'font-mono',
+                      'text-sm',
+                    )}
                     aria-describedby="client-code-hint"
+                    aria-invalid={Boolean(formErrors.referenceNumber)}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, referencePreview: event.target.value }));
+                      clearFormFieldError(setFormErrors, 'referenceNumber');
+                    }}
                   />
                 </div>
                 <p id="client-code-hint" className="text-muted-foreground text-xs">
                   {referenceHint}
                 </p>
+                {formErrors.referenceNumber ? (
+                  <p className="text-destructive text-xs">{formErrors.referenceNumber}</p>
+                ) : null}
               </div>
 
               <CrmFormField

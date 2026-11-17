@@ -18,7 +18,7 @@ import {
   deleteServicePackage as deleteRow,
   getServicePackage as getRow,
   listServicePackages as listRows,
-  nextServicePackageCode,
+  resolveServicePackageCode,
   previewServicePackageCode as previewCodeRow,
   updateServicePackage as updateRow,
 } from '../service-package-prisma.store.js';
@@ -50,7 +50,7 @@ export class PrismaServicePackageRepository implements ServicePackageRepository 
   ): Promise<ServicePackageReadModel> {
     ServicePackage.validateCreate(input);
     return this.prisma.$transaction(async (tx) => {
-      const code = await nextServicePackageCode(tx, organizationId);
+      const code = await resolveServicePackageCode(tx, organizationId, input.code);
       const created = await createRow(tx, organizationId, input, code);
       await writeAudit(tx, organizationId, { ...audit, entityId: created.id });
       return created;

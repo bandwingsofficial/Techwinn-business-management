@@ -73,6 +73,26 @@ export function mapHrefToPortalSegment(href: string, portalSegment: string): str
   return `/${parts.join('/')}`;
 }
 
+const EMPLOYEE_SELF_SERVICE_EXACT_PATHS: ReadonlySet<string> = new Set([
+  '/employee/dashboard',
+  '/employee/leave',
+  '/employee/daily-tasks',
+  '/employee/task-calendar',
+]);
+
+/** Self-service subtrees (e.g. punch under attendance) — not org HR/PM module paths. */
+const EMPLOYEE_SELF_SERVICE_ROUTE_PREFIXES: readonly string[] = [
+  '/employee/attendance',
+  '/employee/calendar',
+];
+
+function isEmployeeSelfServicePermissionPath(normalized: string): boolean {
+  if (EMPLOYEE_SELF_SERVICE_EXACT_PATHS.has(normalized)) return true;
+  return EMPLOYEE_SELF_SERVICE_ROUTE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
 /** Maps unknown portal paths to the canonical `/admin/...` key used in permission tables when needed. */
 export function canonicalPermissionPath(pathname: string): string {
   const normalized =
@@ -80,8 +100,12 @@ export function canonicalPermissionPath(pathname: string): string {
   const parts = normalized.split('/').filter(Boolean);
   if (parts.length < 2) return normalized;
   const head = parts[0]!;
-  if (head === SYSTEM_ROLE_KEYS.admin || head === SYSTEM_ROLE_KEYS.employee) {
+  if (head === SYSTEM_ROLE_KEYS.admin) {
     return normalized;
+  }
+  if (head === SYSTEM_ROLE_KEYS.employee) {
+    if (isEmployeeSelfServicePermissionPath(normalized)) return normalized;
+    return `/admin/${parts.slice(1).join('/')}`;
   }
   if (isSuperAdminPortalSlug(head)) {
     return `/admin/${parts.slice(1).join('/')}`;

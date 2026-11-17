@@ -17,3 +17,11 @@ const SERVICE_PACKAGE_CODE_REGEX = /^TECH-PKG-\d{4,}$/;
 export function isValidServicePackageCode(code: string): boolean {
   return SERVICE_PACKAGE_CODE_REGEX.test(code.trim().toUpperCase());
 }
+
+export function parseServicePackageCodeSequence(code: string): number | null {
+  const trimmed = code.trim().toUpperCase();
+  const match = /^TECH-PKG-(\d+)$/.exec(trimmed);
+  if (!match) return null;
+  const value = Number.parseInt(match[1]!, 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}

@@ -252,7 +252,7 @@ export function EmployeeFormDialog({
       .then((result) => {
         if (controller.signal.aborted) return;
         setForm((f) => ({ ...f, employeeCode: result.employeeCode }));
-        setCodePreviewHint('Preview only — the server assigns the final code when you save.');
+        setCodePreviewHint('Auto-generated default — you can change it before saving.');
       })
       .catch(() => {
         if (controller.signal.aborted) return;
@@ -464,13 +464,21 @@ export function EmployeeFormDialog({
 
               {(!isCreate || showEmploymentInformation) ? (
                 <div className={formGridClass}>
-                  <CrmFormField id="emp-code" label="Employee code">
+                  <CrmFormField
+                    id="emp-code"
+                    label="Employee code"
+                    error={fieldError('employeeCode')}
+                  >
                     <Input
                       id="emp-code"
                       value={form.employeeCode}
-                      readOnly
-                      disabled
-                      className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'font-mono opacity-80')}
+                      disabled={pending || !isCreate}
+                      readOnly={!isCreate}
+                      className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'font-mono')}
+                      onChange={(event) => {
+                        clearFormFieldError(setFormErrors, 'employeeCode');
+                        setForm((f) => ({ ...f, employeeCode: event.target.value }));
+                      }}
                     />
                     {isCreate && codePreviewHint ? (
                       <p className="text-muted-foreground mt-1 text-xs">{codePreviewHint}</p>

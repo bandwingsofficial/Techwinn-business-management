@@ -2,9 +2,19 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import { CrmNotFoundError } from '../../../../../../shared/domain/errors/crm.errors.js';
+import {
+  formatQuotationDocumentNumber,
+  isValidQuotationDocumentNumber,
+  parseQuotationDocumentSequence,
+} from '#validation';
+import {
+  isOrganizationCodeFormatError,
+  mapOrganizationCodeUniqueViolation,
+  resolveOrganizationCodeOnCreate,
+} from '../../../../../../../../lib/persistence/organization-code-allocation.js';
+import { CrmValidationError } from '../../../../../../shared/domain/errors/crm.errors.js';
 import { SEQUENCE_KEYS } from '../../../../../../shared/domain/repositories/crm.repository.js';
 import {
-  nextSequence,
   writeAudit,
   type CrmPersistenceHost,
 } from '../../../../../../shared/infrastructure/persistence/prisma/repositories/crm-persistence.shared.js';
@@ -121,10 +131,20 @@ export class PrismaQuotationRepository implements QuotationRepository {
     const quotationId = input.id;
     const rows = input.lineItems.map((line) => toLineItemRow(line));
 
-    const row = await this.prisma.$transaction(async (tx) => {
+    let row;
+    try {
+      row = await this.prisma.$transaction(async (tx) => {
       const seqKey = input.type === 'QUOTATION' ? SEQUENCE_KEYS.quotation : SEQUENCE_KEYS.proposal;
-      const seq = await nextSequence(tx, organizationId, seqKey);
-      const documentNumber = QuotationNumberService.formatAssignedNumber(input.type, seq);
+      const documentNumber = await resolveOrganizationCodeOnCreate(tx, {
+        organizationId,
+        sequenceKey: seqKey,
+        providedCode: input.documentNumber,
+        formatFromSequence: (sequence) => formatQuotationDocumentNumber(input.type, sequence),
+        isValidFormat: (code) => isValidQuotationDocumentNumber(code, input.type),
+        parseSequence: (code) => parseQuotationDocumentSequence(code, input.type),
+        normalize: (value) => value.toUpperCase(),
+        invalidFormatMessage: 'Quotation number is invalid.',
+      });
 
       const quotation = await tx.quotationDocument.create({
         data: {
@@ -185,7 +205,24 @@ export class PrismaQuotationRepository implements QuotationRepository {
         where: { id: quotation.id },
         include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
       });
-    });
+      });
+    } catch (error) {
+      if (isOrganizationCodeFormatError(error)) {
+        throw new CrmValidationError(error.message, [
+          { path: 'documentNumber', message: error.message },
+        ]);
+      }
+      const duplicate = mapOrganizationCodeUniqueViolation(
+        error,
+        'document_number',
+        'A quotation with this number already exists.',
+        'documentNumber',
+      );
+      if (duplicate) {
+        throw new CrmValidationError(duplicate.message, [duplicate]);
+      }
+      throw error;
+    }
     return toQuotation(row);
   }
 

@@ -13,7 +13,9 @@ export type AdminAccessContextValue = {
   readonly permissions: readonly PermissionKey[];
   readonly permissionSet: ReadonlySet<PermissionKey>;
   readonly navGroups: readonly AdminNavGroupWithAccess[];
-  readonly loading: false;
+  readonly permissionsReady: boolean;
+  /** @deprecated Use {@link permissionsReady} — inverted for legacy hooks. */
+  readonly loading: boolean;
   readonly has: (key: PermissionKey) => boolean;
   readonly hasAny: (...keys: PermissionKey[]) => boolean;
   readonly hasAll: (...keys: PermissionKey[]) => boolean;
@@ -42,7 +44,8 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
         permissions: access.permissions,
         permissionSet: access.permissionSet,
         navGroups: [],
-        loading: false,
+        permissionsReady: access.permissionsReady,
+        loading: !access.permissionsReady,
         has: access.has,
         hasAny: access.hasAny,
         hasAll: access.hasAll,
@@ -53,7 +56,8 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
       permissions: access.permissions,
       permissionSet: access.permissionSet,
       navGroups: filterAdminNav(access.permissions, access.navAccess, access.portalSegment),
-      loading: false,
+      permissionsReady: access.permissionsReady,
+      loading: !access.permissionsReady,
       has: access.has,
       hasAny: access.hasAny,
       hasAll: access.hasAll,
@@ -62,6 +66,7 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
   }, [access]);
 
   const redirectTarget = useMemo(() => {
+    if (!access.permissionsReady) return null;
     if (value.permissionSet.size === 0) return null;
 
     const portalRewrite = rewritePathToTrustedPortal(pathname, access.portalSegment);
@@ -78,15 +83,15 @@ export function AdminAccessProvider({ children }: { children: ReactNode }) {
 
     const fallback = authorizedNavDestination ?? access.defaultDashboard;
     return pathname !== fallback ? fallback : null;
-  }, [access.defaultDashboard, access.navAccess, access.portalSegment, pathname, value]);
+  }, [access.defaultDashboard, access.navAccess, access.permissionsReady, access.portalSegment, pathname, value]);
 
   useEffect(() => {
-    if (!redirectTarget) return;
+    if (!access.permissionsReady || !redirectTarget) return;
     const qs = searchParams.toString();
     router.replace(qs ? `${redirectTarget}?${qs}` : redirectTarget);
-  }, [redirectTarget, router, searchParams]);
+  }, [access.permissionsReady, redirectTarget, router, searchParams]);
 
-  if (redirectTarget) {
+  if (!access.permissionsReady || redirectTarget) {
     return <WorkspaceShellSkeleton />;
   }
 

@@ -63,8 +63,12 @@ export function clientToForm(client: CrmClient): ClientFormState {
 }
 
 export function buildCreateClientPayload(form: ClientFormState): CreateClientRequest {
+  const referenceNumber = form.referencePreview.trim()
+    ? form.referencePreview.trim().toUpperCase()
+    : undefined;
   return {
     type: form.type,
+    referenceNumber,
     name: form.name.trim(),
     primaryContact: form.primaryContact.trim() || undefined,
     email: form.email.trim() || null,

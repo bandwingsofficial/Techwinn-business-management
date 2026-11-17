@@ -35,6 +35,7 @@ export interface QuotationListFilters {
 
 export interface CreateQuotationData {
   readonly type: QuotationDocumentType;
+  readonly documentNumber?: string;
   readonly title: string;
   readonly description?: string;
   readonly scopeOfWork?: string;

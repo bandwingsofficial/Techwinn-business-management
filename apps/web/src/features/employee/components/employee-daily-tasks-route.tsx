@@ -1,12 +1,18 @@
 'use client';
 
-import { WorkspaceShellSkeleton } from '@/components/loading/skeletons';
+import { AdminDailyTasksWorkspace } from '@/features/admin/daily-tasks/components/admin-daily-tasks-workspace';
+import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import { EmployeeDailyTasksWorkspace } from '@/features/employee/components/employee-daily-tasks-workspace';
-import { useCanonicalWorkspaceRedirect } from '@/features/admin/navigation/use-canonical-workspace-redirect';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
 
-/** Self-service tasks; organization-workspace accounts are redirected to `/admin/daily-tasks`. */
+/**
+ * Same URL (`/employee/daily-tasks`) serves org-wide Daily Tasks or self-service my tasks
+ * depending on effective permissions — portal prefix is unchanged.
+ */
 export function EmployeeDailyTasksRoute() {
-  const redirecting = useCanonicalWorkspaceRedirect();
-  if (redirecting) return <WorkspaceShellSkeleton />;
+  const { has, hasAny } = usePermissions();
+  if (canViewOrganizationDailyTasks(has, hasAny)) {
+    return <AdminDailyTasksWorkspace />;
+  }
   return <EmployeeDailyTasksWorkspace />;
 }

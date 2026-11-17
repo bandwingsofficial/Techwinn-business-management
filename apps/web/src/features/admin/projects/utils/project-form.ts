@@ -108,6 +108,9 @@ function phaseRowToPayload(row: ProjectPhaseFormRow) {
 
 export function formToCreatePayload(form: ProjectFormState) {
   return {
+  ...(form.projectNumber.trim()
+    ? { projectNumber: form.projectNumber.trim().toUpperCase() }
+    : {}),
     name: form.name.trim(),
     priority: form.priority,
     projectManagerAdminId: form.projectManagerAdminId.trim() ? form.projectManagerAdminId : null,

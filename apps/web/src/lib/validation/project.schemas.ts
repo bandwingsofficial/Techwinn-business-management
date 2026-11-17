@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import { MONEY_PARSE_ERROR, normalizeMoneyInput } from './money';
+import { isValidProjectNumber } from './project-number';
+import { optionalOrgCodeInputSchema } from './org-code-input';
+
+const projectNumberInputSchema = optionalOrgCodeInputSchema({
+  isValid: isValidProjectNumber,
+  invalidMessage: 'Enter a valid project number (TECH-PRJ-0001).',
+  normalize: (value) => value.toUpperCase(),
+});
 import { collectProjectPhaseScheduleIssues } from './project-phase-schedule';
 import { collectTaskPhaseDateFieldErrors } from './project-task-phase-dates';
 import { projectTaskPrioritySchema } from './project-task-priority.schema';
@@ -175,6 +183,7 @@ function applyProjectRequestChecks(ctx: {
 const projectRequestObjectSchema = z
   .object({
     name: z.string().trim().min(1, 'Enter a project name.').max(200),
+    projectNumber: projectNumberInputSchema,
     priority: projectPrioritySchema,
     projectManagerAdminId: optionalNullableUuid,
     startDate: dateOnly,

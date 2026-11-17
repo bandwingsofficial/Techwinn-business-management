@@ -238,7 +238,7 @@ export function QuotationFormModal({
       .then((result) => {
         if (controller.signal.aborted) return;
         setForm((current) => ({ ...current, documentNumber: result.documentNumber }));
-        setCodePreviewHint('Preview only — the server assigns the final number when you save.');
+        setCodePreviewHint('Auto-generated default — you can change it before saving.');
       })
       .catch(() => {
         if (controller.signal.aborted) return;
@@ -351,6 +351,9 @@ export function QuotationFormModal({
 
     return {
       type: 'QUOTATION' as const,
+      ...(isCreate && form.documentNumber.trim()
+        ? { documentNumber: form.documentNumber.trim().toUpperCase() }
+        : {}),
       clientId: form.clientId.trim() || null,
       clientName: form.clientName.trim(),
       companyName: form.companyName.trim() || undefined,
@@ -382,7 +385,7 @@ export function QuotationFormModal({
     setFieldErrors({});
     try {
       if (editingId) {
-        const { type: _type, ...updateBody } = parsed.data;
+        const { type: _type, documentNumber: _documentNumber, ...updateBody } = parsed.data;
         await run(() => updateQuotation(editingId, updateBody));
         toast.success('Quotation updated.');
       } else {
@@ -421,19 +424,29 @@ export function QuotationFormModal({
                 <div className={formFieldControlShellClass}>
                   <Input
                     id="prop-number"
-                    readOnly
+                    readOnly={!isCreate}
                     value={form.documentNumber}
                     placeholder={
-                      isCreate
+                      isCreate && !form.documentNumber
                         ? CRM_FORM_PLACEHOLDERS.packageCodeLoading
-                        : CRM_FORM_PLACEHOLDERS.packageCodeReadonly
+                        : undefined
                     }
-                    className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'bg-muted/50 font-mono text-sm')}
+                    className={cn(
+                      CRM_PIPELINE_FORM_FIELD_CLASS,
+                      isCreate ? 'font-mono' : 'bg-muted/50',
+                      'text-sm',
+                    )}
+                    aria-invalid={Boolean(fieldError('documentNumber'))}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, documentNumber: event.target.value }));
+                      clearFormFieldError(setFieldErrors, 'documentNumber');
+                    }}
                   />
                 </div>
                 {isCreate && codePreviewHint ? (
                   <p className="text-muted-foreground text-xs">{codePreviewHint}</p>
                 ) : null}
+                <CrmInlineFieldError message={fieldError('documentNumber')} reserveSpace={false} />
               </div>
               <CrmFormField id="prop-issue" label="Quotation date" required>
                 <Input

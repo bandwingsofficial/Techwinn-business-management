@@ -114,6 +114,7 @@ export interface ProjectDetailRecord extends ProjectListRecord {
 }
 
 export interface CreateProjectInput {
+  readonly projectNumber?: string;
   readonly name: string;
   readonly priority: ProjectPriority;
   readonly projectManagerAdminId?: string | null;

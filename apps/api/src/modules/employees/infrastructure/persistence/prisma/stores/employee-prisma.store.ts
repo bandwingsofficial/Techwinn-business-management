@@ -3,6 +3,16 @@ import { EMPLOYEE_ROUTES } from '#contracts';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { type MemberAccountTransactionPort } from '../../../../../org-access/index.js';
+import {
+  formatEmployeeCode,
+  isValidEmployeeCode,
+  parseEmployeeCodeSequence,
+} from '#validation';
+import {
+  isOrganizationCodeFormatError,
+  mapOrganizationCodeUniqueViolation,
+  resolveOrganizationCodeOnCreate,
+} from '../../../../../../lib/persistence/organization-code-allocation.js';
 import { EMPLOYEE_SEQUENCE_KEY } from '../../../../domain/constants/employee-sequence.js';
 import {
   EmployeeNotFoundError,
@@ -376,8 +386,16 @@ export class EmployeePrismaStore {
     let row: EmployeeRow;
     try {
       row = await this.prisma.$transaction(async (tx) => {
-        const seq = await this.nextSequence(tx, organizationId);
-        const employeeCode = EmployeeNumberService.formatFromSequence(seq);
+        const employeeCode = await resolveOrganizationCodeOnCreate(tx, {
+          organizationId,
+          sequenceKey: EMPLOYEE_SEQUENCE_KEY,
+          providedCode: input.employeeCode,
+          formatFromSequence: formatEmployeeCode,
+          isValidFormat: isValidEmployeeCode,
+          parseSequence: parseEmployeeCodeSequence,
+          normalize: (value) => value.toUpperCase(),
+          invalidFormatMessage: 'Employee code is invalid.',
+        });
         let platformAdminId = input.platformAdminId ?? null;
         if (loginAccount) {
           try {
@@ -471,6 +489,20 @@ export class EmployeePrismaStore {
         });
       });
     } catch (error) {
+      if (isOrganizationCodeFormatError(error)) {
+        throw new EmployeeValidationError(error.message, [
+          { path: 'employeeCode', message: error.message },
+        ]);
+      }
+      const duplicateCode = mapOrganizationCodeUniqueViolation(
+        error,
+        'employee_code',
+        'An employee with this code already exists.',
+        'employeeCode',
+      );
+      if (duplicateCode) {
+        throw new EmployeeValidationError(duplicateCode.message, [duplicateCode]);
+      }
       rethrowEmployeeUniqueViolation(error);
       throw error;
     }

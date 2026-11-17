@@ -9,8 +9,17 @@ import {
   leadPhoneSchema,
   optionalLeadEmailSchema,
 } from './lead-contact';
+import { isValidClientReferenceNumber } from './client-reference-code';
 import { MONEY_PARSE_ERROR, normalizeMoneyInput } from './money';
+import { optionalOrgCodeInputSchema } from './org-code-input';
+import { isValidQuotationDocumentNumber } from './quotation-document-code';
 import { normalizeQuotationTaxRateFraction } from './quotation-pricing';
+
+const clientReferenceNumberInputSchema = optionalOrgCodeInputSchema({
+  isValid: isValidClientReferenceNumber,
+  invalidMessage: 'Enter a valid client code (CL-000001).',
+  normalize: (value) => value.toUpperCase(),
+});
 
 const uuid = z.uuid({ error: 'Invalid identifier.' });
 
@@ -311,6 +320,7 @@ export const createLeadActivityRequestSchema = z
 export const createClientRequestSchema = z
   .object({
     type: clientTypeSchema,
+    referenceNumber: clientReferenceNumberInputSchema,
     name: z.string().trim().min(1, 'Enter a name.').max(160),
     primaryContact: z.string().max(160).optional(),
     email: z.email().max(254).nullable().optional(),
@@ -442,11 +452,29 @@ const refineQuotationIssueExpiryRange = (
   }
 };
 
+const quotationDocumentNumberInputSchema = z.string().optional();
+
 export const createQuotationRequestSchema = quotationBodyFieldsSchema
   .extend({
     type: quotationDocumentTypeSchema,
+    documentNumber: quotationDocumentNumberInputSchema,
   })
-  .superRefine(refineQuotationIssueExpiryRange);
+  .superRefine(refineQuotationIssueExpiryRange)
+  .superRefine((value, ctx) => {
+    const raw = value.documentNumber?.trim();
+    if (!raw) return;
+    const normalized = raw.toUpperCase();
+    if (!isValidQuotationDocumentNumber(normalized, value.type)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['documentNumber'],
+        message:
+          value.type === 'QUOTATION'
+            ? 'Enter a valid quotation number (TECH-QUO-0001).'
+            : 'Enter a valid proposal number (TECH-PRO-0001).',
+      });
+    }
+  });
 
 export const updateQuotationRequestSchema = quotationBodyFieldsSchema
   .partial()

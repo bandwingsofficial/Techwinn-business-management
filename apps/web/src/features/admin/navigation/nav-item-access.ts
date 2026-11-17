@@ -1,5 +1,6 @@
 import {
   canAccessTaskCalendar,
+  canAccessLeaveManagementPage,
   hasUnrestrictedOrgPermissions,
   type PermissionKey,
 } from '@techwin/contracts';
@@ -63,6 +64,10 @@ export function canAccessNavItem(
 
   if (ORGANIZATION_TASK_CALENDAR_NAV_HREFS.has(configHref)) {
     return canAccessTaskCalendar(permissions);
+  }
+
+  if (configHref === '/admin/leave-management' || configHref === '/admin/leave') {
+    return canAccessLeaveManagementPage(permissions);
   }
 
   const allRequired = APP_ROUTE_PERMISSIONS_ALL[configHref];

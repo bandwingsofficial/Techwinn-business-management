@@ -132,6 +132,7 @@ export interface PaginatedEmployees {
 }
 
 export interface CreateEmployeeInput {
+  readonly employeeCode?: string;
   readonly firstName: string;
   readonly lastName: string;
   readonly workEmail: string;

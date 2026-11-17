@@ -1,7 +1,15 @@
 import { z } from 'zod';
+import { isValidEmployeeCode } from './employee-code.js';
 import { employeeSalaryStructureSchema } from './employee-salary.js';
+import { optionalOrgCodeInputSchema } from './org-code-input.js';
 import { profileImageStoredObjectIdSchema } from './stored-object.js';
 import { leadEmailSchema, leadPhoneSchema } from './lead-contact.js';
+
+const employeeCodeInputSchema = optionalOrgCodeInputSchema({
+  isValid: isValidEmployeeCode,
+  invalidMessage: 'Enter a valid employee code (TECH-EMP-0001).',
+  normalize: (value) => value.toUpperCase(),
+});
 
 export const employeeEmploymentStatusSchema = z.enum([
   'ACTIVE',
@@ -49,6 +57,7 @@ export const createEmployeeRequestSchema = z
     workEmail: employeeContactFields.workEmail,
     phone: employeeContactFields.phone,
     alternatePhone: employeeContactFields.alternatePhone,
+    employeeCode: employeeCodeInputSchema,
     ...employeeEmploymentFields,
     salaryStructure: employeeSalaryStructureSchema.optional(),
   })

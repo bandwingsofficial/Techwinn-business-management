@@ -2,9 +2,14 @@ import {
   formatServicePackageCode,
   isValidServicePackageCode,
   normalizeGstRatePercent,
+  parseServicePackageCodeSequence,
   SERVICE_PACKAGE_CODE_SEQUENCE_KEY,
 } from '#validation';
-import type { Prisma } from '../../../../../../../generated/prisma/client.js';
+import {
+  isOrganizationCodeFormatError,
+  resolveOrganizationCodeOnCreate,
+} from '../../../../../../../lib/persistence/organization-code-allocation.js';
+import { Prisma } from '../../../../../../../generated/prisma/client.js';
 import type { ServicePackageReadModel } from '../../../domain/types/service-package-read-model.js';
 import type { ServicePackageWriteInput } from '../../../domain/types/service-package.types.js';
 import {
@@ -66,19 +71,31 @@ export async function nextServicePackageCode(
   tx: Prisma.TransactionClient,
   organizationId: string,
 ): Promise<string> {
-  const row = await tx.organizationSequence.upsert({
-    where: {
-      organizationId_key: { organizationId, key: SERVICE_PACKAGE_CODE_SEQUENCE_KEY },
-    },
-    create: { organizationId, key: SERVICE_PACKAGE_CODE_SEQUENCE_KEY, lastValue: 1 },
-    update: { lastValue: { increment: 1 } },
-    select: { lastValue: true },
-  });
-  const code = formatServicePackageCode(row.lastValue);
-  if (!isValidServicePackageCode(code)) {
-    throw new Error('Generated service package code failed validation.');
+  return resolveServicePackageCode(tx, organizationId);
+}
+
+export async function resolveServicePackageCode(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  providedCode?: string | null,
+): Promise<string> {
+  try {
+    return await resolveOrganizationCodeOnCreate(tx, {
+      organizationId,
+      sequenceKey: SERVICE_PACKAGE_CODE_SEQUENCE_KEY,
+      providedCode,
+      formatFromSequence: formatServicePackageCode,
+      isValidFormat: isValidServicePackageCode,
+      parseSequence: parseServicePackageCodeSequence,
+      normalize: (value) => value.toUpperCase(),
+      invalidFormatMessage: 'Invalid service package code.',
+    });
+  } catch (error) {
+    if (isOrganizationCodeFormatError(error)) {
+      throw new ServicePackageConflictError(error.message);
+    }
+    throw error;
   }
-  return code;
 }
 
 export async function listServicePackages(
@@ -154,6 +171,9 @@ export async function createServicePackage(
     });
     return toRecord(row);
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new ServicePackageConflictError('A package with this code already exists.');
+    }
     if (error instanceof Error && error.message.includes('Unique constraint')) {
       throw new ServicePackageConflictError('A package with this code already exists.');
     }

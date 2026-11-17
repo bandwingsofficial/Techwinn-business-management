@@ -7,6 +7,7 @@ export function toCreateClientInput(
   body: CreateClientRequest,
 ): Omit<CreateClientData, 'createdByAdminId'> {
   return {
+    ...(body.referenceNumber !== undefined ? { referenceNumber: body.referenceNumber } : {}),
     type: body.type,
     name: body.name,
     primaryContact: body.primaryContact,

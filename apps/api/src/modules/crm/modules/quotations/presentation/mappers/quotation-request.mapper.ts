@@ -26,6 +26,7 @@ export const toCreateQuotationInput = (body: CreateQuotationRequest): Omit<
   'createdByAdminId'
 > => ({
   type: body.type,
+  ...(body.documentNumber !== undefined ? { documentNumber: body.documentNumber } : {}),
   title: body.title,
   description: body.description,
   scopeOfWork: body.scopeOfWork,

@@ -1,12 +1,17 @@
 'use client';
 
-import { WorkspaceShellSkeleton } from '@/components/loading/skeletons';
+import { canAccessTaskCalendar } from '@techwin/contracts';
 import { TaskCalendarPage } from '@/features/project-management/task-calendar';
-import { useCanonicalWorkspaceRedirect } from '@/features/admin/navigation/use-canonical-workspace-redirect';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
 
-/** Self-service calendar; organization-workspace accounts are redirected to `/admin/task-calendar`. */
+/** Same URL (`/employee/task-calendar`) — organization vs self-service scope from permissions. */
 export function EmployeeTaskCalendarRoute() {
-  const redirecting = useCanonicalWorkspaceRedirect();
-  if (redirecting) return <WorkspaceShellSkeleton />;
-  return <TaskCalendarPage dataScope="self" dailyTasksBasePath="/employee/daily-tasks" />;
+  const { permissionSet } = usePermissions();
+  const organizationScope = canAccessTaskCalendar(permissionSet);
+  return (
+    <TaskCalendarPage
+      dataScope={organizationScope ? 'organization' : 'self'}
+      dailyTasksBasePath="/employee/daily-tasks"
+    />
+  );
 }

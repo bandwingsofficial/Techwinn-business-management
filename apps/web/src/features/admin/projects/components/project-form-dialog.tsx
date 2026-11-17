@@ -391,17 +391,29 @@ export function ProjectFormDialog({
                 <div className="grid min-w-0 gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <CrmFieldLabel htmlFor="project-number">Project number</CrmFieldLabel>
-                    <span className="text-muted-foreground shrink-0 text-xs font-normal">
-                      Auto-generated
-                    </span>
+                    {!editingId ? (
+                      <span className="text-muted-foreground shrink-0 text-xs font-normal">
+                        Editable default
+                      </span>
+                    ) : null}
                   </div>
                   <Input
                     id="project-number"
-                    readOnly
+                    readOnly={Boolean(editingId)}
+                    disabled={pending || projectFullyReadOnly}
                     value={form.projectNumber}
                     placeholder={!editingId && !form.projectNumber ? 'Loading…' : undefined}
-                    className={cn(PROJECT_FORM_FIELD_CLASS, 'text-muted-foreground')}
+                    className={cn(
+                      PROJECT_FORM_FIELD_CLASS,
+                      editingId ? 'text-muted-foreground' : 'font-mono',
+                    )}
+                    aria-invalid={Boolean(fieldError('projectNumber'))}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, projectNumber: event.target.value }));
+                      clearFormFieldError(setFieldErrors, 'projectNumber');
+                    }}
                   />
+                  <CrmInlineFieldError message={fieldError('projectNumber')} reserveSpace={false} />
                 </div>
               </div>
 
