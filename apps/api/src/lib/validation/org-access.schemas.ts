@@ -68,6 +68,7 @@ export const provisionMemberRequestSchema = z
 export const updateMemberRequestSchema = z
   .object({
     displayName: z.string().trim().min(1).max(120).optional(),
+    email: leadEmailSchema.optional(),
     phone: optionalStoredPhoneSchema,
   })
   .strict()

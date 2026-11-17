@@ -3,5 +3,6 @@ export type UpdateMemberProfileCommand = {
   readonly membershipId: string;
   readonly actorAdminId: string;
   readonly displayName?: string;
+  readonly email?: string;
   readonly phone?: string | null;
 };

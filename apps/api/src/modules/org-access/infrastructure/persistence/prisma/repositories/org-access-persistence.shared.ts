@@ -517,6 +517,56 @@ export function rolesIncludeSuperAdmin(roles: readonly { portalSlug: string }[])
 /** @deprecated Use {@link rolesIncludeSuperAdmin}. */
 export const rolesIncludeOwner = rolesIncludeSuperAdmin;
 
+export function assertRolesAllowedForNewMemberAccount(
+  roles: readonly { portalSlug: string }[],
+): void {
+  if (rolesIncludeSuperAdmin(roles)) {
+    throw new OrgAccessValidationError(
+      'Super Admin membership cannot be created through account provisioning.',
+      [
+        {
+          path: 'roleIds',
+          message: 'Super Admin cannot be assigned when creating a new account.',
+        },
+      ],
+    );
+  }
+}
+
+export function assertSuperAdminRoleNotNewlyAssigned(
+  nextRoles: readonly { portalSlug: string }[],
+  previousRoles: readonly { portalSlug: string }[],
+): void {
+  if (rolesIncludeSuperAdmin(nextRoles) && !rolesIncludeSuperAdmin(previousRoles)) {
+    throw new OrgAccessValidationError(
+      'Super Admin cannot be assigned when updating account roles.',
+      [
+        {
+          path: 'roleIds',
+          message: 'Super Admin cannot be assigned when updating account roles.',
+        },
+      ],
+    );
+  }
+}
+
+export async function assertLoginEmailAvailableForProfileUpdate(
+  prisma: Pick<PrismaService, 'platformAdmin'>,
+  email: string,
+  excludeAdminId: string,
+): Promise<void> {
+  const normalized = normalizeEmail(email);
+  const existing = await prisma.platformAdmin.findUnique({
+    where: { email: normalized },
+    select: { id: true, deletedAt: true },
+  });
+  if (!existing || existing.id === excludeAdminId) return;
+  throw new OrgAccessValidationError(
+    'A sign-in account already exists for this email.',
+    [{ path: 'email', message: 'A sign-in account already exists for this email.' }],
+  );
+}
+
 export function assertOrgRoleMutable(
   role: { readonly portalSlug: string },
   action: 'modify' | 'delete',

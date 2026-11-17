@@ -325,6 +325,7 @@ export class OrgAccessController {
       membershipId: id,
       actorAdminId: ctx.adminId,
       displayName: body.displayName,
+      email: body.email,
       phone: body.phone,
     });
     return toOrgMemberListItem(updated);

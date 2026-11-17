@@ -17,6 +17,7 @@ export class UpdateMemberProfileHandler {
       command.membershipId,
       {
         ...(command.displayName !== undefined ? { displayName: command.displayName } : {}),
+        ...(command.email !== undefined ? { email: command.email } : {}),
         ...(command.phone !== undefined ? { phone: command.phone } : {}),
       },
       command.actorAdminId,

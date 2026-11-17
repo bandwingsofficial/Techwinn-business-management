@@ -163,7 +163,7 @@ export interface OrgAccessRepository {
   updateMemberProfile(
     organizationId: string,
     membershipId: string,
-    input: { displayName?: string; phone?: string | null },
+    input: { displayName?: string; email?: string; phone?: string | null },
     actorAdminId: string,
   ): Promise<OrgMemberRecord>;
   resetMemberPassword(

@@ -25,7 +25,10 @@ import {
 import {
   assertActorCanGrantRoles,
   assertActorCanManageMember,
+  assertLoginEmailAvailableForProfileUpdate,
+  assertRolesAllowedForNewMemberAccount,
   assertRolesAssignable,
+  assertSuperAdminRoleNotNewlyAssigned,
   countActiveOwners,
   ensureSystemRoleByPortalSlug,
   loadMembershipOrThrow,
@@ -139,6 +142,10 @@ export class OrgAccessMembersPersistence {
       membership,
     );
     const roles = await assertRolesAssignable(this.prisma, organizationId, roleIds);
+    const previousActiveRoles = membership.roleLinks
+      .map((link) => link.role)
+      .filter((role) => role.status === 'ACTIVE');
+    assertSuperAdminRoleNotNewlyAssigned(roles, previousActiveRoles);
     await assertActorCanGrantRoles(
       this.prisma,
       this.permissions.resolveEffectivePermissions,
@@ -147,9 +154,7 @@ export class OrgAccessMembersPersistence {
       roles,
     );
     const assigningOwner = rolesIncludeOwner(roles);
-    const hadOwnerRole = rolesIncludeOwner(
-      membership.roleLinks.map((link) => link.role),
-    );
+    const hadOwnerRole = rolesIncludeSuperAdmin(previousActiveRoles);
 
     if (membership.isOwner && hadOwnerRole && !assigningOwner) {
       const owners = await countActiveOwners(this.prisma, organizationId);
@@ -300,7 +305,7 @@ export class OrgAccessMembersPersistence {
   async updateMemberProfile(
     organizationId: string,
     membershipId: string,
-    input: { displayName?: string; phone?: string | null },
+    input: { displayName?: string; email?: string; phone?: string | null },
     actorAdminId: string,
   ): Promise<OrgMemberRecord> {
     const membership = await loadMembershipOrThrow(this.prisma, organizationId, membershipId);
@@ -311,7 +316,11 @@ export class OrgAccessMembersPersistence {
       actorAdminId,
       membership,
     );
-    if (input.displayName === undefined && input.phone === undefined) {
+    if (
+      input.displayName === undefined &&
+      input.email === undefined &&
+      input.phone === undefined
+    ) {
       throw new OrgAccessValidationError('Provide at least one field to update.');
     }
     const displayName =
@@ -322,14 +331,107 @@ export class OrgAccessMembersPersistence {
     const phone =
       input.phone === undefined ? undefined : normalizedLeadPhoneOrNull(input.phone);
 
-    const row = await this.prisma.$transaction(async (tx) => {
+    let email: string | undefined;
+    if (input.email !== undefined) {
+      email = normalizeEmail(input.email);
+      if (email !== normalizeEmail(membership.admin.email)) {
+        await assertLoginEmailAvailableForProfileUpdate(
+          this.prisma,
+          email,
+          membership.adminId,
+        );
+        const linkedEmployee = await this.prisma.employee.findFirst({
+          where: { organizationId, platformAdminId: membership.adminId },
+          select: { id: true },
+        });
+        if (linkedEmployee) {
+          const emailTaken = await this.prisma.employee.findFirst({
+            where: {
+              organizationId,
+              workEmail: email,
+              id: { not: linkedEmployee.id },
+            },
+            select: { id: true },
+          });
+          if (emailTaken) {
+            throw new OrgAccessValidationError(
+              'This email is already used by another employee in the organization.',
+              [
+                {
+                  path: 'email',
+                  message: 'This email is already used by another employee in the organization.',
+                },
+              ],
+            );
+          }
+        }
+      }
+    }
+
+    if (phone !== undefined) {
+      const linkedEmployee = await this.prisma.employee.findFirst({
+        where: { organizationId, platformAdminId: membership.adminId },
+        select: { id: true },
+      });
+      if (phone && linkedEmployee) {
+        const phoneTaken = await this.prisma.employee.findFirst({
+          where: {
+            organizationId,
+            phone,
+            id: { not: linkedEmployee.id },
+          },
+          select: { id: true },
+        });
+        if (phoneTaken) {
+          throw new OrgAccessValidationError(
+            'This phone number is already used by another employee in the organization.',
+            [
+              {
+                path: 'phone',
+                message: 'This phone number is already used by another employee in the organization.',
+              },
+            ],
+          );
+        }
+      }
+    }
+
+    const currentEmail = normalizeEmail(membership.admin.email);
+    const emailChanged = email !== undefined && email !== currentEmail;
+    const now = new Date();
+
+    let row: Awaited<ReturnType<typeof loadMembershipOrThrow>>;
+    try {
+      row = await this.prisma.$transaction(async (tx) => {
       await tx.platformAdmin.update({
         where: { id: membership.adminId },
         data: {
           ...(displayName !== undefined ? { displayName } : {}),
+          ...(email !== undefined ? { email } : {}),
           ...(phone !== undefined ? { phone } : {}),
         },
       });
+      if (emailChanged || phone !== undefined) {
+        const linkedEmployee = await tx.employee.findFirst({
+          where: { organizationId, platformAdminId: membership.adminId },
+          select: { id: true },
+        });
+        if (linkedEmployee) {
+          await tx.employee.update({
+            where: { id: linkedEmployee.id },
+            data: {
+              ...(emailChanged && email !== undefined ? { workEmail: email } : {}),
+              ...(phone !== undefined ? { phone } : {}),
+            },
+          });
+        }
+      }
+      if (emailChanged) {
+        await tx.platformSession.updateMany({
+          where: { adminId: membership.adminId, revokedAt: null, expiresAt: { gt: now } },
+          data: { revokedAt: now, revokedReason: 'CREDENTIALS_RESET' },
+        });
+      }
       const updated = await tx.organizationMembership.findFirstOrThrow({
         where: { id: membershipId },
         include: memberInclude,
@@ -339,9 +441,25 @@ export class OrgAccessMembersPersistence {
         type: 'MEMBER_UPDATED',
         entityType: 'membership',
         entityId: membershipId,
+        metadata: {
+          ...(emailChanged ? { emailChanged: true, previousEmail: membership.admin.email } : {}),
+        },
       });
       return updated;
     });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new OrgAccessValidationError(
+          'A sign-in account already exists for this email.',
+          [{ path: 'email', message: 'A sign-in account already exists for this email.' }],
+        );
+      }
+      throw error;
+    }
+
+    if (emailChanged) {
+      await this.permissions.invalidatePermissionCache(organizationId, membership.adminId);
+    }
 
     return toMemberRecord(row);
   }
@@ -402,6 +520,7 @@ export class OrgAccessMembersPersistence {
   ): Promise<{ isOwner: boolean }> {
     const email = normalizeEmail(input.email);
     const roles = await assertRolesAssignable(this.prisma, organizationId, input.roleIds);
+    assertRolesAllowedForNewMemberAccount(roles);
     await assertActorCanGrantRoles(
       this.prisma,
       this.permissions.resolveEffectivePermissions,

@@ -18,3 +18,16 @@ export function selectGrantableRoles(
       role.permissionKeys.every((key) => actor.permissions.has(key)),
   );
 }
+
+/** Roles offered when provisioning a new sign-in account (never includes Super Admin). */
+export function selectCreatableAccountRoles(
+  roles: readonly OrgRoleListItem[],
+  actor: GrantableRoleActor,
+): readonly OrgRoleListItem[] {
+  return selectGrantableRoles(roles, actor).filter(
+    (role) => !isSuperAdminPortalSlug(role.portalSlug),
+  );
+}
+
+/** Same exclusion as create-account role pickers — used for Edit Account. */
+export const selectEditableAccountRoles = selectCreatableAccountRoles;

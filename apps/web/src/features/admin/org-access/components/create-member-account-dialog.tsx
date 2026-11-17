@@ -31,6 +31,7 @@ import {
 import { ORG_ACCESS_CREATE_ACCOUNT_GENERIC_ERROR } from '../utils/org-access-form-errors';
 import { useZodFormFields } from '@/shared/form/use-zod-form-fields';
 import { cn } from '@/shared/lib/utils';
+import { isSuperAdminPortalSlug } from '@techwin/contracts';
 import type { OrgRoleListItem } from '../types';
 import { PASSWORD_REQUIREMENTS, PasswordToggle } from './password-toggle';
 
@@ -110,9 +111,14 @@ export function CreateMemberAccountDialog({
     liveFields.reset();
   };
 
+  const creatableAccountRoles = useMemo(
+    () => grantableRoles.filter((role) => !isSuperAdminPortalSlug(role.portalSlug)),
+    [grantableRoles],
+  );
+
   const selectedRoles = useMemo(
-    () => grantableRoles.filter((role) => form.roleIds.includes(role.id)),
-    [form.roleIds, grantableRoles],
+    () => creatableAccountRoles.filter((role) => form.roleIds.includes(role.id)),
+    [form.roleIds, creatableAccountRoles],
   );
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -150,7 +156,7 @@ export function CreateMemberAccountDialog({
     }
   };
 
-  const roleListScrollable = grantableRoles.length > 6;
+  const roleListScrollable = creatableAccountRoles.length > 6;
 
   const dismissFieldError = (key: string) => {
     clearFormFieldError(setServerErrors, key);
@@ -248,70 +254,9 @@ export function CreateMemberAccountDialog({
                 />
               </CrmFormField>
 
-              <CrmFormField
-                id="create-password"
-                label="Password"
-                required
-                validated
-                error={fieldError('password')}
-              >
-                <div className="relative">
-                  <Input
-                    id="create-password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    disabled={pending}
-                    value={form.password}
-                    className={cn(formControlStateClass(liveFields.controlState('password')), 'pr-11')}
-                    {...liveFields.controlProps('password', 'create-password')}
-                    onChange={(event) => {
-                      setForm((current) => ({ ...current, password: event.target.value }));
-                      dismissFieldError( 'password');
-                    }}
-                  />
-                  <PasswordToggle
-                    pressed={showPassword}
-                    onToggle={() => setShowPassword((value) => !value)}
-                    disabled={pending}
-                  />
-                </div>
-                <p className="text-muted-foreground text-xs leading-snug">{PASSWORD_REQUIREMENTS}</p>
-              </CrmFormField>
             </div>
 
             <div className="grid gap-5">
-              <CrmFormField
-                id="create-confirm-password"
-                label="Confirm password"
-                required
-                validated
-                error={fieldError('confirmPassword')}
-              >
-                <div className="relative">
-                  <Input
-                    id="create-confirm-password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    disabled={pending}
-                    value={form.confirmPassword}
-                    className={cn(
-                      formControlStateClass(liveFields.controlState('confirmPassword')),
-                      'pr-11',
-                    )}
-                    {...liveFields.controlProps('confirmPassword', 'create-confirm-password')}
-                    onChange={(event) => {
-                      setForm((current) => ({ ...current, confirmPassword: event.target.value }));
-                      dismissFieldError( 'confirmPassword');
-                    }}
-                  />
-                  <PasswordToggle
-                    pressed={showConfirmPassword}
-                    onToggle={() => setShowConfirmPassword((value) => !value)}
-                    disabled={pending}
-                  />
-                </div>
-              </CrmFormField>
-
               <CrmFormField
                 id="create-role-ids"
                 label="Assigned roles"
@@ -330,9 +275,8 @@ export function CreateMemberAccountDialog({
                 >
                   <legend className="sr-only">Assigned roles</legend>
                   <p className="text-muted-foreground mb-2 text-xs leading-snug">
-                    Choose the roles this member can use after sign-in. Super Admin is the protected
-                    system role and is never assigned automatically. Only roles you are allowed to assign
-                    are listed.
+                    Choose the roles this member can use after sign-in. Super Admin cannot be assigned when
+                    creating an account. Only roles you are allowed to assign are listed.
                   </p>
                   {selectedRoles.length > 0 ? (
                     <div className="mb-2 flex min-w-0 flex-wrap gap-1" aria-live="polite">
@@ -351,10 +295,10 @@ export function CreateMemberAccountDialog({
                       roleListScrollable && 'max-h-44 overflow-y-auto',
                     )}
                   >
-                    {grantableRoles.length === 0 ? (
+                    {creatableAccountRoles.length === 0 ? (
                       <p className="text-muted-foreground px-1 py-2 text-sm">No assignable roles are available.</p>
                     ) : (
-                      grantableRoles.map((role) => {
+                      creatableAccountRoles.map((role) => {
                         const checked = form.roleIds.includes(role.id);
                         return (
                           <label
@@ -388,6 +332,73 @@ export function CreateMemberAccountDialog({
 
               <p className="text-muted-foreground text-xs leading-snug">
                 An employee record with the same work email is linked to this account automatically.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:col-span-2 md:grid-cols-2 md:items-start">
+              <CrmFormField
+                id="create-password"
+                label="Password"
+                required
+                validated
+                error={fieldError('password')}
+              >
+                <div className="relative">
+                  <Input
+                    id="create-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    disabled={pending}
+                    value={form.password}
+                    className={cn(formControlStateClass(liveFields.controlState('password')), 'pr-11')}
+                    {...liveFields.controlProps('password', 'create-password')}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, password: event.target.value }));
+                      dismissFieldError('password');
+                    }}
+                  />
+                  <PasswordToggle
+                    pressed={showPassword}
+                    onToggle={() => setShowPassword((value) => !value)}
+                    disabled={pending}
+                  />
+                </div>
+              </CrmFormField>
+
+              <CrmFormField
+                id="create-confirm-password"
+                label="Confirm password"
+                required
+                validated
+                error={fieldError('confirmPassword')}
+              >
+                <div className="relative">
+                  <Input
+                    id="create-confirm-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    disabled={pending}
+                    value={form.confirmPassword}
+                    className={cn(
+                      formControlStateClass(liveFields.controlState('confirmPassword')),
+                      'pr-11',
+                    )}
+                    {...liveFields.controlProps('confirmPassword', 'create-confirm-password')}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, confirmPassword: event.target.value }));
+                      dismissFieldError('confirmPassword');
+                    }}
+                  />
+                  <PasswordToggle
+                    pressed={showConfirmPassword}
+                    onToggle={() => setShowConfirmPassword((value) => !value)}
+                    disabled={pending}
+                  />
+                </div>
+              </CrmFormField>
+
+              <p className="text-muted-foreground text-xs leading-snug md:col-start-1">
+                {PASSWORD_REQUIREMENTS}
               </p>
             </div>
           </div>

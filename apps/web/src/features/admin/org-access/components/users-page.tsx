@@ -88,6 +88,7 @@ import {
   isOrgAccessSchemaContractError,
   ORG_ACCESS_CREATE_ACCOUNT_GENERIC_ERROR,
 } from '../utils/org-access-form-errors';
+import { isSuperAdminPortalSlug } from '@techwin/contracts';
 import { selectGrantableRoles } from '../utils/grantable-roles';
 import { labelMembershipStatus } from '../utils/labels';
 import {
@@ -299,8 +300,9 @@ export function UsersPage() {
 
   const handleEditSubmit = async (payload: {
     displayName: string;
+    email: string;
     phone: string | null;
-    roleIds: string[];
+    roleId: string;
     status?: OrganizationMembershipStatus;
   }) => {
     if (!memberFormTarget) return;
@@ -308,14 +310,22 @@ export function UsersPage() {
       await run(() =>
         updateOrgMember(memberFormTarget.membershipId, {
           displayName: payload.displayName,
+          email: payload.email,
           phone: payload.phone,
         }),
       );
       if (canUpdateProfile) {
-        await run(() =>
-          assignOrgMemberRoles(memberFormTarget.membershipId, { roleIds: payload.roleIds }),
+        const memberHadSuperAdmin = memberFormTarget.roles.some((role) =>
+          isSuperAdminPortalSlug(role.portalSlug),
         );
-        invalidateMyPermissionsCache();
+        const priorRoleId = memberFormTarget.roles[0]?.id;
+        const roleAssignmentUnchanged = payload.roleId === priorRoleId;
+        if (!(memberHadSuperAdmin && roleAssignmentUnchanged)) {
+          await run(() =>
+            assignOrgMemberRoles(memberFormTarget.membershipId, { roleIds: [payload.roleId] }),
+          );
+          invalidateMyPermissionsCache();
+        }
       }
       if (
         canChangeStatus &&

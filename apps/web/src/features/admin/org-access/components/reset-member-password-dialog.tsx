@@ -181,7 +181,7 @@ export function ResetMemberPasswordDialog({
               <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 New credentials
               </p>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
                 <div className="grid gap-2">
                   <CrmFieldLabel htmlFor="reset-password" required>
                     New password
@@ -210,7 +210,6 @@ export function ResetMemberPasswordDialog({
                       disabled={pending}
                     />
                   </div>
-                  <p className="text-muted-foreground text-xs leading-snug">{PASSWORD_REQUIREMENTS}</p>
                   <CrmInlineFieldError message={fieldError('password')} reserveSpace={false} />
                 </div>
 
@@ -244,6 +243,10 @@ export function ResetMemberPasswordDialog({
                   </div>
                   <CrmInlineFieldError message={fieldError('confirmPassword')} reserveSpace={false} />
                 </div>
+
+                <p className="text-muted-foreground text-xs leading-snug sm:col-start-1">
+                  {PASSWORD_REQUIREMENTS}
+                </p>
               </div>
             </div>
           </div>

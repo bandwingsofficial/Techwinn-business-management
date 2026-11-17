@@ -10,6 +10,7 @@ import type { OrgAccessPermissionsPersistence } from './org-access-permissions.p
 import {
   INVITATION_TTL_MS,
   assertActorCanGrantRoles,
+  assertRolesAllowedForNewMemberAccount,
   assertRolesBelongToOrg,
   hashToken,
   normalizeEmail,
@@ -29,6 +30,7 @@ export class OrgAccessInvitationsPersistence {
   ): Promise<{ invitationId: string; email: string; expiresAt: string; acceptToken: string }> {
     const email = normalizeEmail(input.email);
     const roles = await assertRolesBelongToOrg(this.prisma, organizationId, input.roleIds);
+    assertRolesAllowedForNewMemberAccount(roles);
     await assertActorCanGrantRoles(
       this.prisma,
       this.permissions.resolveEffectivePermissions,
@@ -260,6 +262,7 @@ export class OrgAccessInvitationsPersistence {
               select: { id: true, portalSlug: true },
             })
           : [];
+      assertRolesAllowedForNewMemberAccount(roles);
       const isOwner = roles.some((role) => isSuperAdminPortalSlug(role.portalSlug));
       const membershipId = randomUUID();
 

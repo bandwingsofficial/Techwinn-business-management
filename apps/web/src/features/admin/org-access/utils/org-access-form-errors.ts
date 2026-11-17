@@ -39,6 +39,9 @@ export function humanizeOrgAccessFieldError(field: string, rawMessage: string): 
     if (message === LEAD_PHONE_INVALID || message.includes('mobile')) {
       return 'Enter a valid phone number.';
     }
+    if (/already|in use|taken/i.test(message)) {
+      return 'This phone number is already in use.';
+    }
   }
 
   if (field === 'email') {

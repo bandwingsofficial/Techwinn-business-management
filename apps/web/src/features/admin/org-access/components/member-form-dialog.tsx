@@ -7,7 +7,7 @@ import {
   safeParseProvisionMemberRequest,
   updateMemberRequestSchema,
 } from '@techwin/validation';
-import type { EmployeeListItem } from '@techwin/contracts';
+import { isSuperAdminPortalSlug, type EmployeeListItem } from '@techwin/contracts';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
@@ -34,7 +34,7 @@ import {
 } from '@/features/admin/crm/constants';
 import { CrmFieldLabel, CrmInlineFieldError } from '@/features/admin/crm/components/crm-feedback';
 import { focusFirstInvalidField, formControlStateClass } from '@/shared/form/form-control-state';
-import { clearFormFieldError, mergeFieldErrors, zodErrorToFieldMap } from '@/shared/form/zod-field-error';
+import { clearFormFieldError, mergeFieldErrors } from '@/shared/form/zod-field-error';
 import { useZodFormFields } from '@/shared/form/use-zod-form-fields';
 import { cn } from '@/shared/lib/utils';
 import { formatDateTime } from '@/shared/lib/format';
@@ -74,8 +74,9 @@ type CreateFormState = {
 
 type EditFormState = {
   displayName: string;
+  email: string;
   phone: string;
-  roleIds: string[];
+  roleId: string;
   status: OrganizationMembershipStatus;
 };
 
@@ -125,38 +126,11 @@ function employeeCatalogGroups(
 function memberToEditForm(member: OrgMemberListItem): EditFormState {
   return {
     displayName: member.displayName,
+    email: member.email,
     phone: member.phoneNumber ?? '',
-    roleIds: member.roles.map((role) => role.id),
+    roleId: member.roles[0]?.id ?? '',
     status: member.status === 'ACTIVE' || member.status === 'SUSPENDED' ? member.status : 'ACTIVE',
   };
-}
-
-function roleCatalogGroups(roles: readonly OrgRoleListItem[]): readonly CatalogOptionGroup[] {
-  if (roles.length === 0) return [];
-  return [
-    {
-      category: 'Organization roles',
-      options: roles.map((role) => ({
-        id: role.id,
-        label: role.name,
-        category: role.description.trim() || (role.isSystem ? 'System role' : 'Custom role'),
-      })),
-    },
-  ];
-}
-
-function selectionsFromRoleIds(
-  roleIds: readonly string[],
-  catalog: readonly OrgRoleListItem[],
-): CatalogSelection[] {
-  return roleIds.map((id) => {
-    const role = catalog.find((item) => item.id === id);
-    return {
-      id,
-      label: role?.name ?? id,
-      category: role?.description.trim() || 'Role',
-    };
-  });
 }
 
 export function MemberFormDialog({
@@ -191,8 +165,9 @@ export function MemberFormDialog({
   onCreateSubmit: (payload: z.infer<typeof provisionMemberRequestSchema>) => Promise<void>;
   onEditSubmit: (payload: {
     displayName: string;
+    email: string;
     phone: string | null;
-    roleIds: string[];
+    roleId: string;
     status?: OrganizationMembershipStatus;
   }) => Promise<void>;
   onSchemaContractError?: (message: string) => void;
@@ -208,7 +183,53 @@ export function MemberFormDialog({
   const [linkableEmployees, setLinkableEmployees] = useState<readonly EmployeeListItem[]>([]);
   const [linkableEmployeesLoading, setLinkableEmployeesLoading] = useState(false);
 
-  const roleCatalog = grantableRoles.length > 0 ? grantableRoles : allRoles;
+  const createAccountRoles = useMemo(() => {
+    const fromGrantable = grantableRoles.filter((role) => !isSuperAdminPortalSlug(role.portalSlug));
+    if (fromGrantable.length > 0) return fromGrantable;
+    return allRoles.filter(
+      (role) => role.status === 'ACTIVE' && !isSuperAdminPortalSlug(role.portalSlug),
+    );
+  }, [grantableRoles, allRoles]);
+
+  const editAccountRoles = useMemo(() => {
+    const currentId = editForm?.roleId;
+    const current = currentId ? allRoles.find((role) => role.id === currentId) : undefined;
+    const fromGrantable = grantableRoles.filter(
+      (role) => role.status === 'ACTIVE' && !isSuperAdminPortalSlug(role.portalSlug),
+    );
+    if (fromGrantable.length > 0) {
+      if (
+        current &&
+        !isSuperAdminPortalSlug(current.portalSlug) &&
+        !fromGrantable.some((role) => role.id === current.id)
+      ) {
+        return [current, ...fromGrantable];
+      }
+      return fromGrantable;
+    }
+    const active = allRoles.filter(
+      (role) => role.status === 'ACTIVE' && !isSuperAdminPortalSlug(role.portalSlug),
+    );
+    if (
+      current &&
+      !isSuperAdminPortalSlug(current.portalSlug) &&
+      !active.some((role) => role.id === current.id)
+    ) {
+      return [current, ...active];
+    }
+    return active;
+  }, [allRoles, editForm?.roleId, grantableRoles]);
+
+  const editRoleIsSuperAdmin = useMemo(() => {
+    if (!editForm?.roleId) return false;
+    const role = allRoles.find((item) => item.id === editForm.roleId);
+    return role ? isSuperAdminPortalSlug(role.portalSlug) : false;
+  }, [allRoles, editForm?.roleId]);
+
+  const editSuperAdminRoleName = useMemo(() => {
+    if (!editForm?.roleId) return 'Super Admin';
+    return allRoles.find((item) => item.id === editForm.roleId)?.name ?? 'Super Admin';
+  }, [allRoles, editForm?.roleId]);
 
   const requiresEmployeeLink = useMemo(
     () => roleSelectionIsEmployeeRole(createForm.roleId, allRoles),
@@ -244,8 +265,10 @@ export function MemberFormDialog({
     }
     if (member) {
       setEditForm(memberToEditForm(member));
+    } else {
+      setEditForm(null);
     }
-  }, [open, isCreate, member]);
+  }, [open, isCreate, member?.membershipId]);
 
   const createFieldSchemas = useMemo(
     () => ({
@@ -285,12 +308,10 @@ export function MemberFormDialog({
     return raw ? humanizeOrgAccessFieldError(key, raw) : undefined;
   };
 
-  const roleGroups = useMemo(() => roleCatalogGroups(grantableRoles), [grantableRoles]);
-
-  const editRoleSelections = useMemo(
-    () => selectionsFromRoleIds(editForm?.roleIds ?? [], roleCatalog),
-    [editForm?.roleIds, roleCatalog],
-  );
+  const editFieldError = (key: string) => {
+    const raw = mergeFieldErrors({}, { ...serverErrors, ...apiFieldErrors }, key);
+    return raw ? humanizeOrgAccessFieldError(key, raw) : undefined;
+  };
 
   const employeeGroups = useMemo(
     () => employeeCatalogGroups(linkableEmployees),
@@ -409,23 +430,25 @@ export function MemberFormDialog({
     const phoneTrimmed = editForm.phone.trim();
     const profileParsed = updateMemberRequestSchema.safeParse({
       displayName: editForm.displayName.trim(),
+      email: editForm.email.trim(),
       phone: phoneTrimmed ? phoneTrimmed : null,
     });
     if (!profileParsed.success) {
-      setServerErrors(zodErrorToFieldMap(profileParsed.error));
+      setServerErrors(mapOrgAccessZodFieldErrors(profileParsed.error));
       focusFirstInvalidField();
       return;
     }
-    if (canManageRoles && editForm.roleIds.length === 0) {
-      setServerErrors({ roleIds: 'Select at least one role.' });
+    if (canManageRoles && !editForm.roleId) {
+      setServerErrors({ roleIds: 'Select a role.' });
       focusFirstInvalidField();
       return;
     }
     try {
       await onEditSubmit({
         displayName: profileParsed.data.displayName ?? editForm.displayName.trim(),
+        email: profileParsed.data.email ?? editForm.email.trim(),
         phone: profileParsed.data.phone ?? null,
-        roleIds: [...editForm.roleIds],
+        roleId: editForm.roleId,
         status: canChangeStatus ? editForm.status : undefined,
       });
       onOpenChange(false);
@@ -457,7 +480,7 @@ export function MemberFormDialog({
                 <CrmFieldLabel htmlFor="member-create-role" required>
                   Select account role
                 </CrmFieldLabel>
-                {grantableRoles.length === 0 ? (
+                {createAccountRoles.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
                     No assignable roles are available.
                   </p>
@@ -478,7 +501,7 @@ export function MemberFormDialog({
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
-                      {grantableRoles.map((role) => (
+                      {createAccountRoles.map((role) => (
                         <SelectItem key={role.id} value={role.id}>
                           {role.name}
                         </SelectItem>
@@ -648,70 +671,76 @@ export function MemberFormDialog({
                         />
                       </div>
                     )}
-                    <div className="grid gap-2">
-                      <CrmFieldLabel htmlFor="member-create-password" required>
-                        Password
-                      </CrmFieldLabel>
-                      <div className="relative">
-                        <Input
-                          id="member-create-password"
-                          type={showPassword ? 'text' : 'password'}
-                          autoComplete="new-password"
-                          disabled={pending}
-                          value={createForm.password}
-                          className={cn(
-                            CRM_PIPELINE_FORM_FIELD_CLASS,
-                            'pr-11',
-                            formControlStateClass(createLiveFields.controlState('password')),
-                          )}
-                          onChange={(event) => {
-                            setCreateForm((c) => ({ ...c, password: event.target.value }));
-                            dismissFieldError('password');
-                          }}
-                        />
-                        <PasswordToggle
-                          pressed={showPassword}
-                          onToggle={() => setShowPassword((v) => !v)}
-                          disabled={pending}
-                        />
-                      </div>
-                      <p className="text-muted-foreground text-xs">{PASSWORD_REQUIREMENTS}</p>
-                      <CrmInlineFieldError
-                        message={createFieldError('password')}
-                        reserveSpace={false}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <CrmFieldLabel htmlFor="member-create-confirm" required>
-                        Confirm password
-                      </CrmFieldLabel>
-                      <div className="relative">
-                        <Input
-                          id="member-create-confirm"
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          autoComplete="new-password"
-                          disabled={pending}
-                          value={createForm.confirmPassword}
-                          className={cn(
-                            CRM_PIPELINE_FORM_FIELD_CLASS,
-                            'pr-11',
-                            formControlStateClass(createLiveFields.controlState('confirmPassword')),
-                          )}
-                          onChange={(event) => {
-                            setCreateForm((c) => ({ ...c, confirmPassword: event.target.value }));
-                            dismissFieldError('confirmPassword');
-                          }}
-                        />
-                        <PasswordToggle
-                          pressed={showConfirmPassword}
-                          onToggle={() => setShowConfirmPassword((v) => !v)}
-                          disabled={pending}
+                    <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2 sm:items-start sm:gap-4">
+                      <div className="grid gap-2">
+                        <CrmFieldLabel htmlFor="member-create-password" required>
+                          Password
+                        </CrmFieldLabel>
+                        <div className="relative">
+                          <Input
+                            id="member-create-password"
+                            type={showPassword ? 'text' : 'password'}
+                            autoComplete="new-password"
+                            disabled={pending}
+                            value={createForm.password}
+                            className={cn(
+                              CRM_PIPELINE_FORM_FIELD_CLASS,
+                              'pr-11',
+                              formControlStateClass(createLiveFields.controlState('password')),
+                            )}
+                            onChange={(event) => {
+                              setCreateForm((c) => ({ ...c, password: event.target.value }));
+                              dismissFieldError('password');
+                            }}
+                          />
+                          <PasswordToggle
+                            pressed={showPassword}
+                            onToggle={() => setShowPassword((v) => !v)}
+                            disabled={pending}
+                          />
+                        </div>
+                        <CrmInlineFieldError
+                          message={createFieldError('password')}
+                          reserveSpace={false}
                         />
                       </div>
-                      <CrmInlineFieldError
-                        message={createFieldError('confirmPassword')}
-                        reserveSpace={false}
-                      />
+                      <div className="grid gap-2">
+                        <CrmFieldLabel htmlFor="member-create-confirm" required>
+                          Confirm password
+                        </CrmFieldLabel>
+                        <div className="relative">
+                          <Input
+                            id="member-create-confirm"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            autoComplete="new-password"
+                            disabled={pending}
+                            value={createForm.confirmPassword}
+                            className={cn(
+                              CRM_PIPELINE_FORM_FIELD_CLASS,
+                              'pr-11',
+                              formControlStateClass(
+                                createLiveFields.controlState('confirmPassword'),
+                              ),
+                            )}
+                            onChange={(event) => {
+                              setCreateForm((c) => ({ ...c, confirmPassword: event.target.value }));
+                              dismissFieldError('confirmPassword');
+                            }}
+                          />
+                          <PasswordToggle
+                            pressed={showConfirmPassword}
+                            onToggle={() => setShowConfirmPassword((v) => !v)}
+                            disabled={pending}
+                          />
+                        </div>
+                        <CrmInlineFieldError
+                          message={createFieldError('confirmPassword')}
+                          reserveSpace={false}
+                        />
+                      </div>
+                      <p className="text-muted-foreground text-xs leading-snug sm:col-start-1">
+                        {PASSWORD_REQUIREMENTS}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -726,6 +755,7 @@ export function MemberFormDialog({
           </form>
         ) : editForm && member ? (
           <form
+            key={member.membershipId}
             id={EDIT_FORM_ID}
             noValidate
             className="min-h-0 flex-1 overflow-y-auto px-6 py-2"
@@ -761,39 +791,111 @@ export function MemberFormDialog({
                 </dl>
               ) : null}
 
+              {canManageRoles || effectiveReadOnly ? (
+                <div className="grid gap-3">
+                  <CrmFieldLabel htmlFor="member-edit-role" required={!effectiveReadOnly && canManageRoles}>
+                    Select account role
+                  </CrmFieldLabel>
+                  {editRoleIsSuperAdmin ? (
+                    <Input
+                      id="member-edit-role"
+                      readOnly
+                      disabled={pending || effectiveReadOnly}
+                      value={editSuperAdminRoleName}
+                      className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'bg-muted/40')}
+                    />
+                  ) : editAccountRoles.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No assignable roles are available.</p>
+                  ) : (
+                    <Select
+                      value={editForm.roleId || undefined}
+                      disabled={pending || effectiveReadOnly || !canManageRoles}
+                      onValueChange={(roleId) => {
+                        setEditForm((c) => (c ? { ...c, roleId } : c));
+                        dismissFieldError('roleIds');
+                      }}
+                    >
+                      <SelectTrigger
+                        id="member-edit-role"
+                        className={cn(
+                          CRM_PIPELINE_FORM_FIELD_CLASS,
+                          'w-full',
+                          effectiveReadOnly && 'bg-muted/40',
+                          formControlStateClass(editFieldError('roleIds') ? 'invalid' : 'neutral'),
+                        )}
+                      >
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {editAccountRoles.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <CrmInlineFieldError message={editFieldError('roleIds')} reserveSpace={false} />
+                  {!effectiveReadOnly ? (
+                    <p className="text-muted-foreground text-xs leading-snug">
+                      {editRoleIsSuperAdmin
+                        ? 'This account has the protected Super Admin role. It cannot be reassigned here.'
+                        : 'The selected role controls what this member can access after sign-in.'}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="grid gap-4">
                 <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                   Account information
                 </p>
-                <div className="grid gap-2">
-                  <CrmFieldLabel htmlFor="member-edit-email">Email address</CrmFieldLabel>
-                  <Input
-                    id="member-edit-email"
-                    readOnly
-                    value={member.email}
-                    className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'bg-muted/40')}
-                  />
-                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 sm:col-span-2">
                     <CrmFieldLabel htmlFor="member-edit-name" required={!effectiveReadOnly}>
                       Full name
                     </CrmFieldLabel>
                     <Input
                       id="member-edit-name"
+                      autoComplete="name"
                       readOnly={effectiveReadOnly}
                       disabled={pending}
                       value={editForm.displayName}
                       className={cn(
                         CRM_PIPELINE_FORM_FIELD_CLASS,
-                        formControlStateClass(serverErrors.displayName ? 'invalid' : 'neutral'),
+                        effectiveReadOnly && 'bg-muted/40',
+                        formControlStateClass(editFieldError('displayName') ? 'invalid' : 'neutral'),
                       )}
                       onChange={(event) => {
                         setEditForm((c) => (c ? { ...c, displayName: event.target.value } : c));
                         dismissFieldError('displayName');
                       }}
                     />
-                    <CrmInlineFieldError message={serverErrors.displayName} reserveSpace={false} />
+                    <CrmInlineFieldError message={editFieldError('displayName')} reserveSpace={false} />
+                  </div>
+                  <div className="grid gap-2">
+                    <CrmFieldLabel htmlFor="member-edit-email" required={!effectiveReadOnly}>
+                      Email address
+                    </CrmFieldLabel>
+                    <Input
+                      id="member-edit-email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      readOnly={effectiveReadOnly}
+                      disabled={pending}
+                      value={editForm.email}
+                      className={cn(
+                        CRM_PIPELINE_FORM_FIELD_CLASS,
+                        effectiveReadOnly && 'bg-muted/40',
+                        formControlStateClass(editFieldError('email') ? 'invalid' : 'neutral'),
+                      )}
+                      onChange={(event) => {
+                        setEditForm((c) => (c ? { ...c, email: event.target.value } : c));
+                        dismissFieldError('email');
+                      }}
+                    />
+                    <CrmInlineFieldError message={editFieldError('email')} reserveSpace={false} />
                   </div>
                   <div className="grid gap-2">
                     <CrmFieldLabel htmlFor="member-edit-phone" optional>
@@ -802,46 +904,34 @@ export function MemberFormDialog({
                     <Input
                       id="member-edit-phone"
                       type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       readOnly={effectiveReadOnly}
                       disabled={pending}
+                      placeholder={effectiveReadOnly ? undefined : 'Optional'}
                       value={editForm.phone}
                       className={cn(
                         CRM_PIPELINE_FORM_FIELD_CLASS,
-                        formControlStateClass(serverErrors.phone ? 'invalid' : 'neutral'),
+                        effectiveReadOnly && 'bg-muted/40',
+                        formControlStateClass(editFieldError('phone') ? 'invalid' : 'neutral'),
                       )}
                       onChange={(event) => {
                         setEditForm((c) => (c ? { ...c, phone: event.target.value } : c));
                         dismissFieldError('phone');
                       }}
                     />
-                    <CrmInlineFieldError message={serverErrors.phone} reserveSpace={false} />
+                    <CrmInlineFieldError message={editFieldError('phone')} reserveSpace={false} />
                   </div>
                 </div>
-              </div>
-
-              {canManageRoles || effectiveReadOnly ? (
-                <div className="grid gap-3">
-                  <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    Organization access
+                {!effectiveReadOnly ? (
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    Email is the sign-in identifier. Changing it signs the member out of existing
+                    sessions so the next login must use the new address. To set a new password, use{' '}
+                    <span className="text-foreground font-medium">Reset password</span> on the Users
+                    list.
                   </p>
-                  <SearchableMultiSelect
-                    label="Assigned roles"
-                    searchable
-                    groups={roleGroups}
-                    value={editRoleSelections}
-                    triggerPlaceholder="Search and select roles…"
-                    placeholder="Search roles…"
-                    emptyLabel="No assignable roles are available."
-                    disabled={pending || effectiveReadOnly || !canManageRoles}
-                    controlState={serverErrors.roleIds ? 'invalid' : 'neutral'}
-                    onChange={(next) => {
-                      setEditForm((c) => (c ? { ...c, roleIds: next.map((item) => item.id) } : c));
-                      dismissFieldError('roleIds');
-                    }}
-                  />
-                  <CrmInlineFieldError message={serverErrors.roleIds} reserveSpace={false} />
-                </div>
-              ) : null}
+                ) : null}
+              </div>
 
               {canChangeStatus && !effectiveReadOnly && !member.isOwner ? (
                 <div className="grid gap-2 sm:max-w-xs">
