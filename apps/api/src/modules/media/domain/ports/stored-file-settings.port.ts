@@ -3,6 +3,7 @@ export interface StoredFileSettings {
   readonly presignedTtlSeconds: number;
   readonly storageProvider: 's3' | 'local';
   readonly s3Bucket: string;
+  readonly s3Region: string;
   readonly localBucket: string;
   readonly cleanupWorkerEnabled: boolean;
   readonly cleanupIntervalMs: number;

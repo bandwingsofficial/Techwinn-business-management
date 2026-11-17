@@ -24,7 +24,13 @@ export class S3ObjectStorage implements ObjectStoragePort {
     this.client = new S3Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
+      // Follow bucket-region redirects when AWS_REGION does not match the bucket.
+      followRegionRedirects: true,
     });
+  }
+
+  configuredRegion(): string {
+    return this.config.s3.region;
   }
 
   async putObject(input: PutObjectInput): Promise<void> {

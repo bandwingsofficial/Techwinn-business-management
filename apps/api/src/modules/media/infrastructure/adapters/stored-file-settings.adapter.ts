@@ -12,6 +12,7 @@ export class StoredFileSettingsAdapter implements StoredFileSettings {
   readonly presignedTtlSeconds: number;
   readonly storageProvider: 's3' | 'local';
   readonly s3Bucket: string;
+  readonly s3Region: string;
   readonly localBucket: string;
   readonly cleanupWorkerEnabled: boolean;
   readonly cleanupIntervalMs: number;
@@ -22,6 +23,7 @@ export class StoredFileSettingsAdapter implements StoredFileSettings {
     this.presignedTtlSeconds = config.storage.presignedTtlSeconds;
     this.storageProvider = config.storage.provider;
     this.s3Bucket = config.storage.s3.bucket;
+    this.s3Region = config.storage.s3.region;
     this.localBucket = LOCAL_BUCKET;
     this.cleanupWorkerEnabled = config.storage.cleanupWorkerEnabled;
     this.cleanupIntervalMs = config.storage.cleanupIntervalMs;

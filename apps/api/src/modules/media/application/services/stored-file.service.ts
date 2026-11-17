@@ -29,6 +29,11 @@ import {
   type StoredObjectRecord,
   type StoredObjectRepository,
 } from '../../domain/repositories/stored-object.repository.js';
+import {
+  extractSafeS3Diagnostic,
+  safeS3LogFields,
+  userFacingS3PutMessage,
+} from '../../../../infrastructure/storage/s3-error-diagnostics.js';
 
 /** Categories readable only through their owning module's authorization (never the generic media API). */
 const CONVERSATION_SCOPED_CATEGORIES: ReadonlySet<StoredObjectCategory> = new Set([
@@ -103,6 +108,29 @@ export class StoredFileService {
     return `org/${organizationId}/${category.toLowerCase()}/${randomUUID()}.${ext}`;
   }
 
+  private failPutObject(
+    error: unknown,
+    context: { readonly bucket: string; readonly category: StoredObjectCategory },
+  ): never {
+    if (this.settings.storageProvider !== 's3') {
+      this.logger.warn({ category: context.category, bucket: context.bucket }, 'storage.put_object_failed');
+      throw new MediaStorageError('Could not save the file to storage.');
+    }
+    const diagnostic = extractSafeS3Diagnostic(error, {
+      bucket: context.bucket,
+      configuredRegion: this.settings.s3Region,
+    });
+    this.logger.warn(
+      {
+        provider: 'S3',
+        category: context.category,
+        ...safeS3LogFields(diagnostic),
+      },
+      'storage.upload.put_object_failed',
+    );
+    throw new MediaStorageError(userFacingS3PutMessage(diagnostic), diagnostic.requestId);
+  }
+
   async upload(params: {
     organizationId: string;
     adminId: string;
@@ -142,19 +170,7 @@ export class StoredFileService {
         contentLength: file.size,
       });
     } catch (error) {
-      const storageHint =
-        this.settings.storageProvider === 's3'
-          ? 'Could not save the file to object storage. Check S3 credentials, region, bucket name, and IAM permissions (s3:PutObject).'
-          : 'Could not save the file to storage.';
-      const awsCode =
-        error && typeof error === 'object' && 'name' in error
-          ? String((error as { name?: string }).name)
-          : 'unknown';
-      this.logger.warn(
-        { provider, bucket, awsCode, category: params.category },
-        'storage.upload.put_object_failed',
-      );
-      throw new MediaStorageError(storageHint);
+      this.failPutObject(error, { bucket, category: params.category });
     }
 
     try {
@@ -217,8 +233,8 @@ export class StoredFileService {
         contentType: params.mimeType,
         contentLength: params.buffer.length,
       });
-    } catch {
-      throw new MediaStorageError();
+    } catch (error) {
+      this.failPutObject(error, { bucket, category: params.category });
     }
     try {
       const record = await this.repository.create({

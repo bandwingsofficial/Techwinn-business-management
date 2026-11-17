@@ -70,10 +70,22 @@ export const envSchema = z
 
     /** `local` for development disk storage; `s3` for AWS S3. Defaults to `local` when unset. */
     STORAGE_PROVIDER: z.enum(['local', 's3']).optional(),
-    AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
-    AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-    AWS_REGION: z.string().min(1).default('ap-south-1'),
-    AWS_S3_BUCKET: z.string().min(1).default('techwin-s3'),
+    AWS_ACCESS_KEY_ID: z.preprocess(
+      (value) => (typeof value === 'string' ? value.trim() : value),
+      z.string().min(1).optional(),
+    ),
+    AWS_SECRET_ACCESS_KEY: z.preprocess(
+      (value) => (typeof value === 'string' ? value.trim() : value),
+      z.string().min(1).optional(),
+    ),
+    AWS_REGION: z.preprocess(
+      (value) => (typeof value === 'string' ? value.trim() : value),
+      z.string().min(1).default('ap-south-1'),
+    ),
+    AWS_S3_BUCKET: z.preprocess(
+      (value) => (typeof value === 'string' ? value.trim() : value),
+      z.string().min(1).default('techwin-s3'),
+    ),
     /** Presigned download URL lifetime in seconds. */
     STORAGE_PRESIGNED_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
     /** Employee profile image max upload size in bytes (default 5 MB). */

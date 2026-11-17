@@ -27,7 +27,10 @@ export class MediaConflictError extends Error {
 }
 
 export class MediaStorageError extends Error {
-  constructor(message = 'Storage operation failed.') {
+  constructor(
+    message = 'Storage operation failed.',
+    readonly diagnosticRef?: string | null,
+  ) {
     super(message);
     this.name = 'MediaStorageError';
   }
