@@ -16,7 +16,10 @@ import type {
   PaginatedOrgMembers,
   PreparedMemberAccount,
 } from '../../../../domain/repositories/org-access.repository.js';
-import type { OrganizationMembershipStatus, SystemRoleKey } from '../../../../domain/types/org-access.types.js';
+import type {
+  OrganizationMembershipStatus,
+  SystemRoleKey,
+} from '../../../../domain/types/org-access.types.js';
 import type { OrgAccessPermissionsPersistence } from './org-access-permissions.persistence.js';
 import {
   createMemberAccountInTransaction,
@@ -52,9 +55,7 @@ export class OrgAccessMembersPersistence {
     const where: Prisma.OrganizationMembershipWhereInput = {
       organizationId,
       ...(filters.status ? { status: filters.status } : {}),
-      ...(filters.roleId
-        ? { roleLinks: { some: { roleId: filters.roleId } } }
-        : {}),
+      ...(filters.roleId ? { roleLinks: { some: { roleId: filters.roleId } } } : {}),
       ...(filters.search?.trim()
         ? {
             admin: {
@@ -154,7 +155,7 @@ export class OrgAccessMembersPersistence {
       roles,
     );
     const assigningOwner = rolesIncludeOwner(roles);
-    const hadOwnerRole = rolesIncludeSuperAdmin(previousActiveRoles);
+    const hadOwnerRole = rolesIncludeOwner(previousActiveRoles);
 
     if (membership.isOwner && hadOwnerRole && !assigningOwner) {
       const owners = await countActiveOwners(this.prisma, organizationId);
@@ -316,11 +317,7 @@ export class OrgAccessMembersPersistence {
       actorAdminId,
       membership,
     );
-    if (
-      input.displayName === undefined &&
-      input.email === undefined &&
-      input.phone === undefined
-    ) {
+    if (input.displayName === undefined && input.email === undefined && input.phone === undefined) {
       throw new OrgAccessValidationError('Provide at least one field to update.');
     }
     const displayName =
@@ -328,18 +325,13 @@ export class OrgAccessMembersPersistence {
     if (displayName !== undefined && !displayName) {
       throw new OrgAccessValidationError('Display name is required.');
     }
-    const phone =
-      input.phone === undefined ? undefined : normalizedLeadPhoneOrNull(input.phone);
+    const phone = input.phone === undefined ? undefined : normalizedLeadPhoneOrNull(input.phone);
 
     let email: string | undefined;
     if (input.email !== undefined) {
       email = normalizeEmail(input.email);
       if (email !== normalizeEmail(membership.admin.email)) {
-        await assertLoginEmailAvailableForProfileUpdate(
-          this.prisma,
-          email,
-          membership.adminId,
-        );
+        await assertLoginEmailAvailableForProfileUpdate(this.prisma, email, membership.adminId);
         const linkedEmployee = await this.prisma.employee.findFirst({
           where: { organizationId, platformAdminId: membership.adminId },
           select: { id: true },
@@ -388,7 +380,8 @@ export class OrgAccessMembersPersistence {
             [
               {
                 path: 'phone',
-                message: 'This phone number is already used by another employee in the organization.',
+                message:
+                  'This phone number is already used by another employee in the organization.',
               },
             ],
           );
@@ -403,56 +396,55 @@ export class OrgAccessMembersPersistence {
     let row: Awaited<ReturnType<typeof loadMembershipOrThrow>>;
     try {
       row = await this.prisma.$transaction(async (tx) => {
-      await tx.platformAdmin.update({
-        where: { id: membership.adminId },
-        data: {
-          ...(displayName !== undefined ? { displayName } : {}),
-          ...(email !== undefined ? { email } : {}),
-          ...(phone !== undefined ? { phone } : {}),
-        },
-      });
-      if (emailChanged || phone !== undefined) {
-        const linkedEmployee = await tx.employee.findFirst({
-          where: { organizationId, platformAdminId: membership.adminId },
-          select: { id: true },
+        await tx.platformAdmin.update({
+          where: { id: membership.adminId },
+          data: {
+            ...(displayName !== undefined ? { displayName } : {}),
+            ...(email !== undefined ? { email } : {}),
+            ...(phone !== undefined ? { phone } : {}),
+          },
         });
-        if (linkedEmployee) {
-          await tx.employee.update({
-            where: { id: linkedEmployee.id },
-            data: {
-              ...(emailChanged && email !== undefined ? { workEmail: email } : {}),
-              ...(phone !== undefined ? { phone } : {}),
-            },
+        if (emailChanged || phone !== undefined) {
+          const linkedEmployee = await tx.employee.findFirst({
+            where: { organizationId, platformAdminId: membership.adminId },
+            select: { id: true },
+          });
+          if (linkedEmployee) {
+            await tx.employee.update({
+              where: { id: linkedEmployee.id },
+              data: {
+                ...(emailChanged && email !== undefined ? { workEmail: email } : {}),
+                ...(phone !== undefined && phone !== null ? { phone } : {}),
+              },
+            });
+          }
+        }
+        if (emailChanged) {
+          await tx.platformSession.updateMany({
+            where: { adminId: membership.adminId, revokedAt: null, expiresAt: { gt: now } },
+            data: { revokedAt: now, revokedReason: 'CREDENTIALS_RESET' },
           });
         }
-      }
-      if (emailChanged) {
-        await tx.platformSession.updateMany({
-          where: { adminId: membership.adminId, revokedAt: null, expiresAt: { gt: now } },
-          data: { revokedAt: now, revokedReason: 'CREDENTIALS_RESET' },
+        const updated = await tx.organizationMembership.findFirstOrThrow({
+          where: { id: membershipId },
+          include: memberInclude,
         });
-      }
-      const updated = await tx.organizationMembership.findFirstOrThrow({
-        where: { id: membershipId },
-        include: memberInclude,
+        await writeAudit(tx, organizationId, {
+          adminId: actorAdminId,
+          type: 'MEMBER_UPDATED',
+          entityType: 'membership',
+          entityId: membershipId,
+          metadata: {
+            ...(emailChanged ? { emailChanged: true, previousEmail: membership.admin.email } : {}),
+          },
+        });
+        return updated;
       });
-      await writeAudit(tx, organizationId, {
-        adminId: actorAdminId,
-        type: 'MEMBER_UPDATED',
-        entityType: 'membership',
-        entityId: membershipId,
-        metadata: {
-          ...(emailChanged ? { emailChanged: true, previousEmail: membership.admin.email } : {}),
-        },
-      });
-      return updated;
-    });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new OrgAccessValidationError(
-          'A sign-in account already exists for this email.',
-          [{ path: 'email', message: 'A sign-in account already exists for this email.' }],
-        );
+        throw new OrgAccessValidationError('A sign-in account already exists for this email.', [
+          { path: 'email', message: 'A sign-in account already exists for this email.' },
+        ]);
       }
       throw error;
     }
@@ -574,7 +566,10 @@ export class OrgAccessMembersPersistence {
     }
     const [actor, target] = await Promise.all([
       this.prisma.platformAdmin.findUnique({ where: { id: actorAdminId }, select: { role: true } }),
-      this.prisma.platformAdmin.findUnique({ where: { id: targetAdminId }, select: { role: true } }),
+      this.prisma.platformAdmin.findUnique({
+        where: { id: targetAdminId },
+        select: { role: true },
+      }),
     ]);
     if (target?.role === 'SUPER_ADMIN' && actor?.role !== 'SUPER_ADMIN') {
       throw new OrgAccessForbiddenError('You cannot manage this account.');
@@ -596,7 +591,9 @@ export class OrgAccessMembersPersistence {
         select: { id: true },
       });
       if (!configured) {
-        throw new OrgAccessConflictError('Super Admin role is not configured for this organization.');
+        throw new OrgAccessConflictError(
+          'Super Admin role is not configured for this organization.',
+        );
       }
       return configured.id;
     }
@@ -694,7 +691,12 @@ export class OrgAccessMembersPersistence {
           if (!employee) {
             throw new OrgAccessValidationError(
               'The selected employee is not eligible for account linking.',
-              [{ path: 'employeeId', message: 'Choose an employee without a linked sign-in account.' }],
+              [
+                {
+                  path: 'employeeId',
+                  message: 'Choose an employee without a linked sign-in account.',
+                },
+              ],
             );
           }
         }
