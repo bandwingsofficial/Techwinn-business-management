@@ -224,7 +224,6 @@ export function EmployeeFormDialog({
       setLoginAccess(null);
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- show loading while the employee record is fetched
     setLoadingEmployee(true);
     void getEmployee(editingId)
       .then((detail) => {
