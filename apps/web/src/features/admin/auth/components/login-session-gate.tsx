@@ -92,8 +92,8 @@ export function LoginSessionGate({ children }: { children: ReactNode }) {
 
   if (probing) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-muted-foreground flex items-center gap-2 text-sm" role="status">
+      <div className="flex min-h-[12rem] items-center justify-center py-6">
+        <p className="text-[#667085] flex items-center gap-2 text-[14px]" role="status">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           Checking sign-in…
         </p>
@@ -104,7 +104,7 @@ export function LoginSessionGate({ children }: { children: ReactNode }) {
   return (
     <>
       {probeError ? (
-        <p className="text-muted-foreground mb-4 text-sm" role="status">
+        <p className="text-[#667085] mb-4 text-sm" role="status">
           {probeError}
         </p>
       ) : null}

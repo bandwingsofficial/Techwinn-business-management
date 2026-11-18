@@ -1,18 +1,17 @@
 import type { ReactNode } from 'react';
-import { TechwinLogo } from '@/shared/components/techwin-logo';
+import { AUTH_PAGE_BACKGROUND_CLASS } from '../constants/auth-ui.constants';
+import { PlatformAuthCardShell } from './platform-auth-card-shell';
 
 export function AuthPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-background flex min-h-dvh flex-col items-center px-4 py-8 sm:px-6">
-      <div className="flex w-full max-w-[420px] flex-1 flex-col justify-center">
-        <TechwinLogo subtitle="Platform administration" className="mb-8" />
-        <div className="workspace-surface px-6 py-7 sm:px-8">
-          {children}
-        </div>
-        <p className="text-muted-foreground mt-6 text-center text-xs">
-          Restricted system. Access is limited to authorized platform administrators and is audited.
-        </p>
-      </div>
+    <div
+      className={`${AUTH_PAGE_BACKGROUND_CLASS} relative box-border flex min-h-dvh w-full flex-col items-center justify-center px-5 py-8 sm:px-8 sm:py-10`}
+    >
+      <div aria-hidden className={`fixed inset-0 -z-10 ${AUTH_PAGE_BACKGROUND_CLASS}`} />
+      <PlatformAuthCardShell>{children}</PlatformAuthCardShell>
+      <p className="text-[#667085] mt-4 max-w-[min(100%,960px)] shrink-0 text-center text-[11px] leading-snug">
+        Restricted system. Access is limited to authorized platform administrators and is audited.
+      </p>
     </div>
   );
 }

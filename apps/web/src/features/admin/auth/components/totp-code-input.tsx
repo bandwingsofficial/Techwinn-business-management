@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { cn } from '@/shared/lib/utils';
+import { AUTH_TOTP_DIGIT_CLASS, AUTH_TOTP_GROUP_CLASS } from '../constants/auth-ui.constants';
 
 interface TotpCodeInputProps {
   /** Contiguous digits entered so far (0..length characters). */
@@ -124,7 +125,7 @@ export function TotpCodeInput({
       role="group"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
-      className="flex w-full items-center justify-between gap-2 sm:gap-3"
+      className={AUTH_TOTP_GROUP_CLASS}
     >
       {Array.from({ length }, (_, index) => {
         const digit = value[index] ?? '';
@@ -152,11 +153,9 @@ export function TotpCodeInput({
             aria-label={`Digit ${index + 1} of ${length}`}
             aria-invalid={invalid}
             className={cn(
-              'bg-card text-foreground aspect-square w-full max-w-14 min-w-0 rounded-lg border text-center font-mono text-xl font-semibold shadow-xs transition-[border-color,box-shadow] outline-none sm:text-2xl',
-              'border-input focus:border-ring focus:ring-ring/40 focus:ring-[3px]',
-              digit && 'border-primary/50',
-              invalid && 'border-destructive focus:ring-destructive/25',
-              'disabled:cursor-not-allowed disabled:opacity-60',
+              AUTH_TOTP_DIGIT_CLASS,
+              digit && 'ring-1 ring-[#111111]/10',
+              invalid && 'ring-2 ring-[#DC2626]/35',
             )}
           />
         );

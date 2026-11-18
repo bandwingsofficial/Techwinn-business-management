@@ -14,6 +14,7 @@ import {
 import { suppressPlatformSessionEndedFor } from '@/shared/api/session-ended';
 import { getCurrentSession } from '../api/get-current-session';
 import { refreshSession } from '../api/refresh-session';
+import { AUTH_GATE_LOADING_PANEL_CLASS } from '../constants/auth-ui.constants';
 
 /**
  * TOTP verification is only for Super Admin after password login. If the user
@@ -73,8 +74,8 @@ export function VerifyTotpGate({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-muted-foreground flex items-center gap-2 text-sm" role="status">
+      <div className={AUTH_GATE_LOADING_PANEL_CLASS}>
+        <p className="text-[#667085] flex items-center gap-2 text-[14px]" role="status">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           Checking sign-in…
         </p>
