@@ -32,6 +32,7 @@ export const CRM_ROUTES = {
   client: (id: string) => `${API_PREFIX}/crm/clients/${id}`,
   clientFromLead: (leadId: string) => `${API_PREFIX}/crm/clients/from-lead/${leadId}`,
   clientReferencePreview: `${API_PREFIX}/crm/clients/reference-preview`,
+  clientReferenceAvailability: `${API_PREFIX}/crm/clients/reference-availability`,
   quotations: `${API_PREFIX}/crm/quotations`,
   quotation: (id: string) => `${API_PREFIX}/crm/quotations/${id}`,
   quotationStatus: (id: string) => `${API_PREFIX}/crm/quotations/${id}/status`,
@@ -39,10 +40,12 @@ export const CRM_ROUTES = {
   quotationPrintPdf: (id: string) => `${API_PREFIX}/crm/quotations/${id}/print/pdf`,
   quotationSend: (id: string) => `${API_PREFIX}/crm/quotations/${id}/send`,
   quotationCodePreview: `${API_PREFIX}/crm/quotations/code-preview`,
+  quotationCodeAvailability: `${API_PREFIX}/crm/quotations/code-availability`,
   servicePackages: `${API_PREFIX}/crm/service-packages`,
   servicePackage: (id: string) => `${API_PREFIX}/crm/service-packages/${id}`,
   servicePackageStatus: (id: string) => `${API_PREFIX}/crm/service-packages/${id}/status`,
   servicePackageCodePreview: `${API_PREFIX}/crm/service-packages/code-preview`,
+  servicePackageCodeAvailability: `${API_PREFIX}/crm/service-packages/code-availability`,
 } as const;
 
 export type PipelineStatus = 'ACTIVE' | 'INACTIVE';

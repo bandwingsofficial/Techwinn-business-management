@@ -8,6 +8,7 @@ export const PROJECT_ROUTES = {
   projectStartProduction: (id: string) => `${API_PREFIX}/projects/${id}/start-production`,
   projectComplete: (id: string) => `${API_PREFIX}/projects/${id}/complete`,
   projectNumberPreview: `${API_PREFIX}/projects/number-preview`,
+  projectNumberAvailability: `${API_PREFIX}/projects/number-availability`,
   projectManagers: `${API_PREFIX}/projects/managers`,
   projectClientOptions: `${API_PREFIX}/projects/client-options`,
   clientQuotations: (clientId: string) => `${API_PREFIX}/projects/clients/${clientId}/quotations`,

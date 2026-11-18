@@ -9,7 +9,7 @@ import {
 } from '#validation';
 import {
   isOrganizationCodeFormatError,
-  mapOrganizationCodeUniqueViolation,
+  throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../../../lib/persistence/organization-code-allocation.js';
 import { CrmValidationError } from '../../../../../../shared/domain/errors/crm.errors.js';
@@ -212,15 +212,7 @@ export class PrismaQuotationRepository implements QuotationRepository {
           { path: 'documentNumber', message: error.message },
         ]);
       }
-      const duplicate = mapOrganizationCodeUniqueViolation(
-        error,
-        'document_number',
-        'A quotation with this number already exists.',
-        'documentNumber',
-      );
-      if (duplicate) {
-        throw new CrmValidationError(duplicate.message, [duplicate]);
-      }
+      throwOrganizationCodeDuplicateFromPrisma(error, 'document_number', 'documentNumber');
       throw error;
     }
     return toQuotation(row);

@@ -38,6 +38,8 @@ export const API_ERROR_CODES = {
   TAG_IN_USE: 'TAG_IN_USE',
   /** Lead conversion: another client already uses this phone in the organization. */
   DUPLICATE_CLIENT_PHONE: 'DUPLICATE_CLIENT_PHONE',
+  /** Organization-scoped auto-generated code already assigned to another record. */
+  DUPLICATE_ORGANIZATION_CODE: 'DUPLICATE_ORGANIZATION_CODE',
 } as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES];

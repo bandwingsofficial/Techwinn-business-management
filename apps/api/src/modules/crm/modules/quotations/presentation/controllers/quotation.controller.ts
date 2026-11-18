@@ -55,6 +55,13 @@ import { GetQuotationHandler } from '../../application/get/get-quotation.handler
 import { SendQuotationHandler } from '../../application/send/send-quotation.handler.js';
 import { ListQuotationsHandler } from '../../application/list/list-quotations.handler.js';
 import { PreviewDocumentNumberHandler } from '../../application/preview-document-number/preview-document-number.handler.js';
+import { CheckQuotationCodeAvailabilityHandler } from '../../application/check-code-availability/check-quotation-code-availability.handler.js';
+import {
+  organizationCodeAvailabilityResponseSchema,
+  parseQuotationCodeAvailabilityQuery,
+  type OrganizationCodeAvailabilityResponse,
+} from '#validation';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../../common/filters/organization-code-duplicate.filter.js';
 import { UpdateQuotationHandler } from '../../application/update/update-quotation.handler.js';
 import {
   crmQuotationListResponseSchema,
@@ -82,12 +89,14 @@ import { toCrmQuotation, toCrmQuotationPrint } from '../mappers/quotation-respon
 @ApiBearerAuth()
 @Controller('crm/quotations')
 @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-@UseFilters(CrmExceptionFilter)
+@UseFilters(OrganizationCodeDuplicateExceptionFilter, CrmExceptionFilter)
 export class QuotationController {
   constructor(
     @Inject(ListQuotationsHandler) private readonly listQuotations: ListQuotationsHandler,
     @Inject(PreviewDocumentNumberHandler)
     private readonly previewDocumentNumber: PreviewDocumentNumberHandler,
+    @Inject(CheckQuotationCodeAvailabilityHandler)
+    private readonly checkQuotationCodeAvailability: CheckQuotationCodeAvailabilityHandler,
     @Inject(GetQuotationHandler) private readonly getQuotation: GetQuotationHandler,
     @Inject(CreateQuotationHandler) private readonly createQuotation: CreateQuotationHandler,
     @Inject(UpdateQuotationHandler) private readonly updateQuotation: UpdateQuotationHandler,
@@ -142,6 +151,23 @@ export class QuotationController {
       type,
     });
     return { documentNumber, type, isPreview: true };
+  }
+
+  @RequireAllPermissions(...QUOTATION_CREATE, ...QUOTATION_UPDATE)
+  @Get('code-availability')
+  @ApiOperation({ summary: 'Check whether a quotation document number is available' })
+  @ApiOkResponse({ schema: toOpenApiSchema(organizationCodeAvailabilityResponseSchema) })
+  async checkCodeAvailability(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: Request,
+  ): Promise<OrganizationCodeAvailabilityResponse> {
+    const parsed = parseQuotationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    return this.checkQuotationCodeAvailability.execute({
+      actor: toCrmActor(ctx),
+      code: parsed.code,
+      type: parsed.type,
+      excludeQuotationId: parsed.excludeId,
+    });
   }
 
   @RequireAllPermissions(CRM_QUOTATIONS_VIEW_KEY)

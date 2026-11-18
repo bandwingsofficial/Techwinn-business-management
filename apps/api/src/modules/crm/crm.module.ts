@@ -33,6 +33,7 @@ import {
   GetClientHandler,
   ListClientsHandler,
   PreviewClientReferenceHandler,
+  CheckClientReferenceAvailabilityHandler,
   PrismaClientRepository,
   UpdateClientHandler,
   CLIENT_REPOSITORY,
@@ -72,6 +73,7 @@ import {
   GetQuotationPdfHandler,
   ListQuotationsHandler,
   PreviewDocumentNumberHandler,
+  CheckQuotationCodeAvailabilityHandler,
   PrismaQuotationRepository,
   QUOTATION_REPOSITORY,
   QuotationController,
@@ -88,12 +90,14 @@ import {
   GetServicePackageHandler,
   ListServicePackagesHandler,
   PreviewServicePackageCodeHandler,
+  CheckServicePackageCodeAvailabilityHandler,
   PrismaServicePackageRepository,
   SERVICE_PACKAGE_REPOSITORY,
   ServicePackageController,
   UpdateServicePackageHandler,
 } from './modules/service-packages/index.js';
 import { CrmExceptionFilter } from './shared/presentation/http/filters/crm-exception.filter.js';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../common/filters/organization-code-duplicate.filter.js';
 
 export const crmPersistenceProviders: Provider[] = [
   { provide: CLIENT_REPOSITORY, useClass: PrismaClientRepository },
@@ -148,11 +152,14 @@ const crmUseCaseHandlers = [
   ListServicePackagesHandler,
   PipelineBulkActionRunner,
   PreviewClientReferenceHandler,
+  CheckClientReferenceAvailabilityHandler,
   PreviewDocumentNumberHandler,
+  CheckQuotationCodeAvailabilityHandler,
   QuotationExpiryReconciliation,
   QuotationPdfService,
   QuotationExpirationJobRunner,
   PreviewServicePackageCodeHandler,
+  CheckServicePackageCodeAvailabilityHandler,
   ReorderPipelineStagesHandler,
   UpdateClientHandler,
   UpdateLeadHandler,
@@ -181,6 +188,7 @@ const crmUseCaseHandlers = [
     ...crmPersistenceProviders,
     ...crmUseCaseHandlers,
     CrmExceptionFilter,
+    OrganizationCodeDuplicateExceptionFilter,
   ],
   exports: [CRM_REPOSITORY, CrmExceptionFilter],
 })

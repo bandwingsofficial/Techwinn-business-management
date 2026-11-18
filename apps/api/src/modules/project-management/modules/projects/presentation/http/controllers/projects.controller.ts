@@ -52,6 +52,13 @@ import { ListProjectClientOptionsHandler } from '../../../application/list-proje
 import { ListProjectManagersHandler } from '../../../application/list-project-managers/list-project-managers.handler.js';
 import { ListProjectsHandler } from '../../../application/list-projects/list-projects.handler.js';
 import { PreviewProjectNumberHandler } from '../../../application/preview-project-number/preview-project-number.handler.js';
+import { CheckProjectNumberAvailabilityHandler } from '../../../application/check-number-availability/check-project-number-availability.handler.js';
+import {
+  organizationCodeAvailabilityResponseSchema,
+  parseOrganizationCodeAvailabilityQuery,
+  type OrganizationCodeAvailabilityResponse,
+} from '#validation';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../../common/filters/organization-code-duplicate.filter.js';
 import { UpdateProjectHandler } from '../../../application/update-project/update-project.handler.js';
 import { CompleteProjectHandler } from '../../../application/complete-project/complete-project.handler.js';
 import { SaveProjectPlanHandler } from '../../../application/save-project-plan/save-project-plan.handler.js';
@@ -94,7 +101,7 @@ const projectClientOptionsResponseSchema = z.object({
 @ApiBearerAuth()
 @Controller('projects')
 @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-@UseFilters(ProjectExceptionFilter)
+@UseFilters(OrganizationCodeDuplicateExceptionFilter, ProjectExceptionFilter)
 export class ProjectsController {
   constructor(
     @Inject(ListProjectsHandler) private readonly listProjects: ListProjectsHandler,
@@ -106,6 +113,8 @@ export class ProjectsController {
     @Inject(DeleteProjectHandler) private readonly deleteProject: DeleteProjectHandler,
     @Inject(PreviewProjectNumberHandler)
     private readonly previewProjectNumber: PreviewProjectNumberHandler,
+    @Inject(CheckProjectNumberAvailabilityHandler)
+    private readonly checkProjectNumberAvailability: CheckProjectNumberAvailabilityHandler,
     @Inject(ListProjectManagersHandler)
     private readonly listProjectManagers: ListProjectManagersHandler,
     @Inject(ListProjectClientOptionsHandler)
@@ -144,6 +153,22 @@ export class ProjectsController {
   async previewNumber(@CrmContext() ctx: CrmRequestContext): Promise<ProjectNumberPreviewResponse> {
     const result = await this.previewProjectNumber.execute({ actor: toProjectActor(ctx) });
     return { projectNumber: result.projectNumber, isPreview: true };
+  }
+
+  @RequirePermissions('projects.create', 'projects.update')
+  @Get('number-availability')
+  @ApiOperation({ summary: 'Check whether a project number is available' })
+  @ApiOkResponse({ schema: toOpenApiSchema(organizationCodeAvailabilityResponseSchema) })
+  async checkNumberAvailability(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: Request,
+  ): Promise<OrganizationCodeAvailabilityResponse> {
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    return this.checkProjectNumberAvailability.execute({
+      actor: toProjectActor(ctx),
+      projectNumber: code,
+      excludeProjectId: excludeId,
+    });
   }
 
   @RequirePermissions('projects.read')

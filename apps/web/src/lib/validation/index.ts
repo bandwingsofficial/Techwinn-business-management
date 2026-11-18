@@ -21,6 +21,7 @@ export * from './project-task-phase-dates';
 export * from './project-phase-schedule';
 export * from './project-number';
 export * from './employee-code';
+export * from './organization-code-availability';
 export * from './employee.schemas';
 export * from './employee-salary';
 export * from './stored-object';

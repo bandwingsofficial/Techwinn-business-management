@@ -1,4 +1,5 @@
 import { Prisma } from '../../generated/prisma/client.js';
+import { OrganizationCodeDuplicateError } from '../organization-code/organization-code-duplicate.error.js';
 
 type SequenceClient = Pick<Prisma.TransactionClient, 'organizationSequence'>;
 
@@ -107,4 +108,20 @@ export function mapOrganizationCodeUniqueViolation(
     return { path: responsePath, message };
   }
   return null;
+}
+
+export function throwOrganizationCodeDuplicateFromPrisma(
+  error: unknown,
+  dbColumn: string,
+  fieldPath: string,
+): void {
+  const duplicate = mapOrganizationCodeUniqueViolation(
+    error,
+    dbColumn,
+    'duplicate',
+    fieldPath,
+  );
+  if (duplicate) {
+    throw new OrganizationCodeDuplicateError(fieldPath);
+  }
 }

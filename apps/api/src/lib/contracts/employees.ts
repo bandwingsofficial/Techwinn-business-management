@@ -6,6 +6,7 @@ export const EMPLOYEE_ROUTES = {
   employeeStatus: (id: string) => `${API_PREFIX}/employees/${id}/status`,
   employeeDeletionImpact: (id: string) => `${API_PREFIX}/employees/${id}/deletion-impact`,
   employeeCodePreview: `${API_PREFIX}/employees/code-preview`,
+  employeeCodeAvailability: `${API_PREFIX}/employees/code-availability`,
   assignableEmployees: `${API_PREFIX}/employees/assignable`,
   employeeProfileImageUpload: `${API_PREFIX}/employees/profile-image`,
   employeeStoredProfileImageContent: (storedObjectId: string) =>

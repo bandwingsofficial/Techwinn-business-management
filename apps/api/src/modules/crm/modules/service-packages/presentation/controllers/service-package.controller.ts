@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
@@ -47,6 +48,14 @@ import { DeleteServicePackageHandler } from '../../application/delete/delete-ser
 import { GetServicePackageHandler } from '../../application/get/get-service-package.handler.js';
 import { ListServicePackagesHandler } from '../../application/list/list-service-packages.handler.js';
 import { PreviewServicePackageCodeHandler } from '../../application/preview-code/preview-service-package-code.handler.js';
+import { CheckServicePackageCodeAvailabilityHandler } from '../../application/check-code-availability/check-service-package-code-availability.handler.js';
+import {
+  organizationCodeAvailabilityResponseSchema,
+  parseOrganizationCodeAvailabilityQuery,
+  type OrganizationCodeAvailabilityResponse,
+} from '#validation';
+import type { Request } from 'express';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../../common/filters/organization-code-duplicate.filter.js';
 import { UpdateServicePackageHandler } from '../../application/update/update-service-package.handler.js';
 import {
   crmServicePackageListResponseSchema,
@@ -74,12 +83,14 @@ import { toCrmServicePackage } from '../mappers/service-package-response.mapper.
 @ApiBearerAuth()
 @Controller('crm/service-packages')
 @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-@UseFilters(CrmExceptionFilter)
+@UseFilters(OrganizationCodeDuplicateExceptionFilter, CrmExceptionFilter)
 export class ServicePackageController {
   constructor(
     @Inject(ListServicePackagesHandler) private readonly listServicePackages: ListServicePackagesHandler,
     @Inject(PreviewServicePackageCodeHandler)
     private readonly previewServicePackageCode: PreviewServicePackageCodeHandler,
+    @Inject(CheckServicePackageCodeAvailabilityHandler)
+    private readonly checkServicePackageCodeAvailability: CheckServicePackageCodeAvailabilityHandler,
     @Inject(GetServicePackageHandler) private readonly getServicePackage: GetServicePackageHandler,
     @Inject(CreateServicePackageHandler) private readonly createServicePackage: CreateServicePackageHandler,
     @Inject(ChangeServicePackageStatusHandler)
@@ -104,6 +115,22 @@ export class ServicePackageController {
   async previewCode(@CrmContext() ctx: CrmRequestContext): Promise<ServicePackageCodePreviewResponse> {
     const result = await this.previewServicePackageCode.execute({ actor: toCrmActor(ctx) });
     return { code: result.code, isPreview: true };
+  }
+
+  @RequireAllPermissions(...SERVICE_PACKAGE_CREATE, ...SERVICE_PACKAGE_UPDATE)
+  @Get('code-availability')
+  @ApiOperation({ summary: 'Check whether a package code is available' })
+  @ApiOkResponse({ schema: toOpenApiSchema(organizationCodeAvailabilityResponseSchema) })
+  async checkCodeAvailability(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: Request,
+  ): Promise<OrganizationCodeAvailabilityResponse> {
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    return this.checkServicePackageCodeAvailability.execute({
+      actor: toCrmActor(ctx),
+      code,
+      excludePackageId: excludeId,
+    });
   }
 
   @RequireAllPermissions(...SERVICE_PACKAGE_DETAIL)

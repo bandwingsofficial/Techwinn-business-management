@@ -3,10 +3,15 @@
 import {
   clientNameFieldSchema,
   createClientRequestSchema,
+  isValidClientReferenceNumber,
   leadEmailSchema,
   leadPhoneSchema,
   updateClientRequestSchema,
 } from '@techwin/validation';
+import { CRM_ROUTES } from '@techwin/contracts';
+import { fetchOrganizationCodeAvailability } from '@/shared/api/organization-code-availability';
+import { applyOrganizationCodeDuplicateError } from '@/shared/form/organization-code-field-error';
+import { useOrganizationCodeAvailability } from '@/shared/form/use-organization-code-availability';
 import { focusFirstInvalidField, formControlStateClass } from '@/shared/form/form-control-state';
 import {
   formFieldClass,
@@ -141,6 +146,24 @@ export function ClientFormModal({
 
   const fieldError = (key: string) => mergeFieldErrors(liveFields.errors, formErrors, key);
 
+  const referenceAvailability = useOrganizationCodeAvailability({
+    enabled: open && !isEdit,
+    code: form.referencePreview,
+    fieldKey: 'referenceNumber',
+    isFormatValid: isValidClientReferenceNumber,
+    checkAvailable: (value, signal) =>
+      fetchOrganizationCodeAvailability(
+        CRM_ROUTES.clientReferenceAvailability,
+        value,
+        { excludeId: editingId },
+        signal,
+      ),
+    setFieldErrors: setFormErrors,
+  });
+
+  const referenceCodeError = fieldError('referenceNumber') ?? formErrors.referenceNumber;
+  const referenceCodeInvalid = Boolean(referenceCodeError);
+
   const pending = createPending || updatePending || (isEdit && loadingClient && !editingSeed);
 
   const nameLabel = form.type === 'COMPANY' ? 'Company name' : 'Client name';
@@ -186,6 +209,10 @@ export function ClientFormModal({
   const submit = async () => {
     liveFields.prepareSubmit();
     setFormErrors({});
+    if (!isEdit && !(await referenceAvailability.ensureBeforeSubmit())) {
+      focusFirstInvalidField();
+      return;
+    }
     if (isEdit && editingId) {
       const body = buildUpdateClientPayload(form);
       const parsed = updateClientRequestSchema.safeParse(body);
@@ -205,7 +232,7 @@ export function ClientFormModal({
           failure.code === API_ERROR_CODES.DUPLICATE_CLIENT_PHONE
         ) {
           toast.error('A client with this phone number already exists in your organization.');
-        } else {
+        } else if (!applyOrganizationCodeDuplicateError(failure, 'referenceNumber', setFormErrors)) {
           toast.error(describeCrmError(failure));
         }
       }
@@ -232,7 +259,7 @@ export function ClientFormModal({
         failure.code === API_ERROR_CODES.DUPLICATE_CLIENT_PHONE
       ) {
         toast.error('A client with this phone number already exists in your organization.');
-      } else {
+      } else if (!applyOrganizationCodeDuplicateError(failure, 'referenceNumber', setFormErrors)) {
         toast.error(describeCrmError(failure));
       }
     }
@@ -296,10 +323,13 @@ export function ClientFormModal({
                       CRM_PIPELINE_FORM_FIELD_CLASS,
                       isEdit ? 'bg-muted/50' : 'font-mono',
                       'text-sm',
+                      formControlStateClass(referenceCodeInvalid ? 'invalid' : 'neutral'),
                     )}
                     aria-describedby="client-code-hint"
-                    aria-invalid={Boolean(formErrors.referenceNumber)}
+                    aria-invalid={referenceCodeInvalid}
+                    onBlur={referenceAvailability.onBlur}
                     onChange={(event) => {
+                      referenceAvailability.onCodeChange();
                       setForm((current) => ({ ...current, referencePreview: event.target.value }));
                       clearFormFieldError(setFormErrors, 'referenceNumber');
                     }}
@@ -308,8 +338,8 @@ export function ClientFormModal({
                 <p id="client-code-hint" className="text-muted-foreground text-xs">
                   {referenceHint}
                 </p>
-                {formErrors.referenceNumber ? (
-                  <p className="text-destructive text-xs">{formErrors.referenceNumber}</p>
+                {referenceCodeError ? (
+                  <p className="text-destructive text-xs">{referenceCodeError}</p>
                 ) : null}
               </div>
 
@@ -480,7 +510,7 @@ export function ClientFormModal({
           <Button
             type="button"
             className={QUOTATION_FORM_PRIMARY_BTN}
-            disabled={pending}
+            disabled={pending || referenceAvailability.blocksSubmit}
             onClick={() => void submit()}
           >
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}

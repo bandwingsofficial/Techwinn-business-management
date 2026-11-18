@@ -55,6 +55,12 @@ import { ListAssignableEmployeesHandler } from '../../../application/list-assign
 import { ListEmployeesHandler } from '../../../application/list-employees/list-employees.handler.js';
 import { OpenStoredProfileImageHandler } from '../../../application/open-stored-profile-image/open-stored-profile-image.handler.js';
 import { PreviewEmployeeCodeHandler } from '../../../application/preview-employee-code/preview-employee-code.handler.js';
+import { CheckEmployeeCodeAvailabilityHandler } from '../../../application/check-employee-code-availability/check-employee-code-availability.handler.js';
+import {
+  organizationCodeAvailabilityResponseSchema,
+  parseOrganizationCodeAvailabilityQuery,
+  type OrganizationCodeAvailabilityResponse,
+} from '#validation';
 import { StreamLegacyProfileImageHandler } from '../../../application/stream-legacy-profile-image/stream-legacy-profile-image.handler.js';
 import { UpdateEmployeeHandler } from '../../../application/update-employee/update-employee.handler.js';
 import { UploadEmployeeProfileImageHandler } from '../../../application/upload-employee-profile-image/upload-employee-profile-image.handler.js';
@@ -68,6 +74,7 @@ import {
   toOpenApiSchema,
 } from '../dto/employee.schemas.js';
 import { EmployeeExceptionFilter } from '../filters/employee-exception.filter.js';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../common/filters/organization-code-duplicate.filter.js';
 import { toEmployeeActor } from '../mappers/employee-actor.mapper.js';
 import {
   toCreateEmployeeInput,
@@ -89,7 +96,7 @@ import {
 @ApiBearerAuth()
 @Controller('employees')
 @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-@UseFilters(EmployeeExceptionFilter, MediaExceptionFilter)
+@UseFilters(OrganizationCodeDuplicateExceptionFilter, EmployeeExceptionFilter, MediaExceptionFilter)
 export class EmployeesController {
   constructor(
     @Inject(ListEmployeesHandler) private readonly listEmployees: ListEmployeesHandler,
@@ -105,6 +112,8 @@ export class EmployeesController {
     @Inject(DeleteEmployeeHandler) private readonly deleteEmployee: DeleteEmployeeHandler,
     @Inject(PreviewEmployeeCodeHandler)
     private readonly previewEmployeeCode: PreviewEmployeeCodeHandler,
+    @Inject(CheckEmployeeCodeAvailabilityHandler)
+    private readonly checkEmployeeCodeAvailability: CheckEmployeeCodeAvailabilityHandler,
     @Inject(UploadEmployeeProfileImageHandler)
     private readonly uploadProfileImage: UploadEmployeeProfileImageHandler,
     @Inject(OpenStoredProfileImageHandler)
@@ -169,6 +178,22 @@ export class EmployeesController {
   async previewCode(@CrmContext() ctx: CrmRequestContext): Promise<EmployeeCodePreviewResponse> {
     const result = await this.previewEmployeeCode.execute({ actor: toEmployeeActor(ctx) });
     return { employeeCode: result.employeeCode, isPreview: true };
+  }
+
+  @Get('code-availability')
+  @RequirePermissions('employees.create', 'employees.edit', 'employees.update')
+  @ApiOperation({ summary: 'Check whether an employee code is available' })
+  @ApiOkResponse({ schema: toOpenApiSchema(organizationCodeAvailabilityResponseSchema) })
+  async checkCodeAvailability(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: Request,
+  ): Promise<OrganizationCodeAvailabilityResponse> {
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    return this.checkEmployeeCodeAvailability.execute({
+      actor: toEmployeeActor(ctx),
+      code,
+      excludeEmployeeId: excludeId,
+    });
   }
 
   @Post('profile-image')

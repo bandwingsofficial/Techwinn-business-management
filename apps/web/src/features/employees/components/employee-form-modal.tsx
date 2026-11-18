@@ -2,10 +2,15 @@
 
 import {
   createEmployeeRequestSchema,
+  isValidEmployeeCode,
   leadEmailSchema,
   leadPhoneSchema,
   updateEmployeeRequestSchema,
 } from '@techwin/validation';
+import { EMPLOYEE_ROUTES } from '@techwin/contracts';
+import { fetchOrganizationCodeAvailability } from '@/shared/api/organization-code-availability';
+import { applyOrganizationCodeDuplicateError } from '@/shared/form/organization-code-field-error';
+import { useOrganizationCodeAvailability } from '@/shared/form/use-organization-code-availability';
 import { focusFirstInvalidField, formControlStateClass } from '@/shared/form/form-control-state';
 import { useZodFormFields } from '@/shared/form/use-zod-form-fields';
 import { clearFormFieldError, mergeFieldErrors, zodErrorToFieldMap } from '@/shared/form/zod-field-error';
@@ -209,6 +214,16 @@ export function EmployeeFormDialog({
 
   const fieldError = (key: string) => mergeFieldErrors(liveFields.errors, formErrors, key);
 
+  const employeeCodeAvailability = useOrganizationCodeAvailability({
+    enabled: open && isCreate,
+    code: form.employeeCode,
+    fieldKey: 'employeeCode',
+    isFormatValid: isValidEmployeeCode,
+    checkAvailable: (value, signal) =>
+      fetchOrganizationCodeAvailability(EMPLOYEE_ROUTES.employeeCodeAvailability, value, undefined, signal),
+    setFieldErrors: setFormErrors,
+  });
+
   const liveControlClass = (
     name: 'firstName' | 'lastName' | 'workEmail' | 'phone' | 'jobTitle' | 'dateOfJoining',
   ) => cn(CRM_PIPELINE_FORM_FIELD_CLASS, formControlStateClass(liveFields.controlState(name)));
@@ -322,6 +337,11 @@ export function EmployeeFormDialog({
       setShowEmploymentInformation(true);
     }
 
+    if (!(await employeeCodeAvailability.ensureBeforeSubmit())) {
+      focusFirstInvalidField();
+      return;
+    }
+
     const parsed = createEmployeeRequestSchema.safeParse(createPayloadFor(undefined));
     if (!parsed.success) {
       const errors = zodErrorToFieldMap(parsed.error);
@@ -346,7 +366,10 @@ export function EmployeeFormDialog({
       closeDialog(false);
       await onSaved();
     } catch (failure) {
-      if (!applyEmployeeFieldErrors(failure, setFormErrors)) {
+      if (
+        !applyOrganizationCodeDuplicateError(failure, 'employeeCode', setFormErrors) &&
+        !applyEmployeeFieldErrors(failure, setFormErrors)
+      ) {
         toast.error(describeEmployeeError(failure));
       }
     }
@@ -473,8 +496,15 @@ export function EmployeeFormDialog({
                       value={form.employeeCode}
                       disabled={pending || !isCreate}
                       readOnly={!isCreate}
-                      className={cn(CRM_PIPELINE_FORM_FIELD_CLASS, 'font-mono')}
+                      className={cn(
+                        CRM_PIPELINE_FORM_FIELD_CLASS,
+                        'font-mono',
+                        formControlStateClass(fieldError('employeeCode') ? 'invalid' : 'neutral'),
+                      )}
+                      aria-invalid={Boolean(fieldError('employeeCode'))}
+                      onBlur={employeeCodeAvailability.onBlur}
                       onChange={(event) => {
+                        employeeCodeAvailability.onCodeChange();
                         clearFormFieldError(setFormErrors, 'employeeCode');
                         setForm((f) => ({ ...f, employeeCode: event.target.value }));
                       }}
@@ -657,7 +687,7 @@ export function EmployeeFormDialog({
           <Button
             type="button"
             className={cn('h-11 px-5', CRM_PIPELINE_PRIMARY_BUTTON_CLASS)}
-            disabled={pending || loadingEmployee}
+            disabled={pending || loadingEmployee || employeeCodeAvailability.blocksSubmit}
             onClick={() => void onSubmit()}
           >
             {pending ? (

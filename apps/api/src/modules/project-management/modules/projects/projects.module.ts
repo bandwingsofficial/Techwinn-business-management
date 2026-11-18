@@ -18,6 +18,7 @@ import { ListProjectsHandler } from './application/list-projects/list-projects.h
 import { ListProjectTaskSummariesHandler } from './application/list-project-task-summaries/list-project-task-summaries.handler.js';
 import { MoveProjectTaskHandler } from './application/move-project-task/move-project-task.handler.js';
 import { PreviewProjectNumberHandler } from './application/preview-project-number/preview-project-number.handler.js';
+import { CheckProjectNumberAvailabilityHandler } from './application/check-number-availability/check-project-number-availability.handler.js';
 import { ReorderProjectPhasesHandler } from './application/reorder-project-phases/reorder-project-phases.handler.js';
 import { SaveProjectPlanHandler } from './application/save-project-plan/save-project-plan.handler.js';
 import { StartProjectProductionHandler } from './application/start-project-production/start-project-production.handler.js';
@@ -30,6 +31,7 @@ import { PrismaProjectTaskRepository } from './infrastructure/persistence/prisma
 import { ProjectTasksController } from './presentation/http/controllers/project-tasks.controller.js';
 import { ProjectsController } from './presentation/http/controllers/projects.controller.js';
 import { ProjectExceptionFilter } from './presentation/http/filters/project-exception.filter.js';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../common/filters/organization-code-duplicate.filter.js';
 
 export const projectPersistenceProviders: Provider[] = [
   { provide: PROJECT_REPOSITORY, useClass: PrismaProjectRepository },
@@ -52,6 +54,7 @@ const projectUseCaseHandlers = [
   ListProjectTaskSummariesHandler,
   MoveProjectTaskHandler,
   PreviewProjectNumberHandler,
+  CheckProjectNumberAvailabilityHandler,
   ReorderProjectPhasesHandler,
   SaveProjectPlanHandler,
   StartProjectProductionHandler,
@@ -66,6 +69,7 @@ const projectUseCaseHandlers = [
     ...projectPersistenceProviders,
     ...projectUseCaseHandlers,
     ProjectExceptionFilter,
+    OrganizationCodeDuplicateExceptionFilter,
   ],
   exports: [...projectPersistenceProviders],
 })

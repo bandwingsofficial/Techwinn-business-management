@@ -14,6 +14,7 @@ export { ListQuotationsHandler } from './application/list/list-quotations.handle
 export { DeleteQuotationHandler } from './application/delete/delete-quotation.handler.js';
 export { ChangeQuotationStatusHandler } from './application/change-status/change-quotation-status.handler.js';
 export { PreviewDocumentNumberHandler } from './application/preview-document-number/preview-document-number.handler.js';
+export { CheckQuotationCodeAvailabilityHandler } from './application/check-code-availability/check-quotation-code-availability.handler.js';
 export { GetPrintDataHandler } from './application/get-print-data/get-print-data.handler.js';
 export { GetQuotationPdfHandler } from './application/get-pdf/get-quotation-pdf.handler.js';
 export { SendQuotationHandler } from './application/send/send-quotation.handler.js';

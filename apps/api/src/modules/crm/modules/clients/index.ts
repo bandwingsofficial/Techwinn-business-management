@@ -10,6 +10,7 @@ export { ListClientsHandler } from './application/list/list-clients.handler.js';
 export { DeleteClientHandler } from './application/delete/delete-client.handler.js';
 export { ChangeClientStatusHandler } from './application/change-status/change-client-status.handler.js';
 export { PreviewClientReferenceHandler } from './application/preview-reference/preview-client-reference.handler.js';
+export { CheckClientReferenceAvailabilityHandler } from './application/check-reference-availability/check-client-reference-availability.handler.js';
 
 export { ClientController } from './presentation/controllers/client.controller.js';
 export { PrismaClientRepository } from './infrastructure/persistence/prisma/repositories/prisma-client.repository.js';

@@ -20,6 +20,7 @@ export { ListServicePackagesHandler } from './application/list/list-service-pack
 export { DeleteServicePackageHandler } from './application/delete/delete-service-package.handler.js';
 export { ChangeServicePackageStatusHandler } from './application/change-status/change-service-package-status.handler.js';
 export { PreviewServicePackageCodeHandler } from './application/preview-code/preview-service-package-code.handler.js';
+export { CheckServicePackageCodeAvailabilityHandler } from './application/check-code-availability/check-service-package-code-availability.handler.js';
 
 export { ServicePackageController } from './presentation/controllers/service-package.controller.js';
 export { PrismaServicePackageRepository } from './infrastructure/persistence/prisma/repositories/prisma-service-package.repository.js';

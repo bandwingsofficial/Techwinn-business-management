@@ -10,7 +10,7 @@ import {
 } from '#validation';
 import {
   isOrganizationCodeFormatError,
-  mapOrganizationCodeUniqueViolation,
+  throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../lib/persistence/organization-code-allocation.js';
 import { EMPLOYEE_SEQUENCE_KEY } from '../../../../domain/constants/employee-sequence.js';
@@ -494,15 +494,7 @@ export class EmployeePrismaStore {
           { path: 'employeeCode', message: error.message },
         ]);
       }
-      const duplicateCode = mapOrganizationCodeUniqueViolation(
-        error,
-        'employee_code',
-        'An employee with this code already exists.',
-        'employeeCode',
-      );
-      if (duplicateCode) {
-        throw new EmployeeValidationError(duplicateCode.message, [duplicateCode]);
-      }
+      throwOrganizationCodeDuplicateFromPrisma(error, 'employee_code', 'employeeCode');
       rethrowEmployeeUniqueViolation(error);
       throw error;
     }

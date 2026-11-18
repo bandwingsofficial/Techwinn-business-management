@@ -4,7 +4,12 @@ import { DELIVERY_SERVICES_OPTIONS } from '@techwin/catalog';
 import {
   computeQuotationLinePricing,
   createQuotationRequestSchema,
+  isValidQuotationDocumentNumber,
 } from '@techwin/validation';
+import { CRM_ROUTES } from '@techwin/contracts';
+import { fetchOrganizationCodeAvailability } from '@/shared/api/organization-code-availability';
+import { applyOrganizationCodeDuplicateError } from '@/shared/form/organization-code-field-error';
+import { useOrganizationCodeAvailability } from '@/shared/form/use-organization-code-availability';
 import { focusFirstInvalidField, formControlStateClass } from '@/shared/form/form-control-state';
 import { useZodFormFields } from '@/shared/form/use-zod-form-fields';
 import {
@@ -200,6 +205,21 @@ export function QuotationFormModal({
 
   const fieldError = (key: string) => mergeFieldErrors(liveFields.errors, fieldErrors, key);
 
+  const documentNumberAvailability = useOrganizationCodeAvailability({
+    enabled: open && isCreate,
+    code: form.documentNumber,
+    fieldKey: 'documentNumber',
+    isFormatValid: (value) => isValidQuotationDocumentNumber(value, 'QUOTATION'),
+    checkAvailable: (value, signal) =>
+      fetchOrganizationCodeAvailability(
+        CRM_ROUTES.quotationCodeAvailability,
+        value,
+        { extra: { type: 'QUOTATION' } },
+        signal,
+      ),
+    setFieldErrors: setFieldErrors,
+  });
+
   useEffect(() => {
     if (!open) return;
     void listClients({ page: 1, pageSize: 500 })
@@ -382,6 +402,10 @@ export function QuotationFormModal({
       toast.error('Fix the highlighted fields before saving.');
       return;
     }
+    if (isCreate && !(await documentNumberAvailability.ensureBeforeSubmit())) {
+      focusFirstInvalidField();
+      return;
+    }
     setFieldErrors({});
     try {
       if (editingId) {
@@ -396,7 +420,9 @@ export function QuotationFormModal({
       onOpenChange(false);
       await onSaved();
     } catch (failure) {
-      toast.error(describeCrmError(failure));
+      if (!applyOrganizationCodeDuplicateError(failure, 'documentNumber', setFieldErrors)) {
+        toast.error(describeCrmError(failure));
+      }
     }
   };
 
@@ -435,9 +461,12 @@ export function QuotationFormModal({
                       CRM_PIPELINE_FORM_FIELD_CLASS,
                       isCreate ? 'font-mono' : 'bg-muted/50',
                       'text-sm',
+                      formControlStateClass(fieldError('documentNumber') ? 'invalid' : 'neutral'),
                     )}
                     aria-invalid={Boolean(fieldError('documentNumber'))}
+                    onBlur={documentNumberAvailability.onBlur}
                     onChange={(event) => {
+                      documentNumberAvailability.onCodeChange();
                       setForm((current) => ({ ...current, documentNumber: event.target.value }));
                       clearFormFieldError(setFieldErrors, 'documentNumber');
                     }}
@@ -930,7 +959,7 @@ export function QuotationFormModal({
           <Button
             type="button"
             className={cn('h-11 px-5', QUOTATION_FORM_PRIMARY_BTN)}
-            disabled={pending || loadingQuotation}
+            disabled={pending || loadingQuotation || documentNumberAvailability.blocksSubmit}
             onClick={() => void submit()}
           >
             {pending ? (

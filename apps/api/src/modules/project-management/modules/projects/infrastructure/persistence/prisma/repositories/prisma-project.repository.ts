@@ -6,7 +6,7 @@ import {
 } from '#validation';
 import {
   isOrganizationCodeFormatError,
-  mapOrganizationCodeUniqueViolation,
+  throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../../../lib/persistence/organization-code-allocation.js';
 import { Decimal } from '@prisma/client/runtime/client';
@@ -530,15 +530,7 @@ export class PrismaProjectRepository implements ProjectRepository {
       if (isOrganizationCodeFormatError(error)) {
         throw new ProjectValidationError(error.message);
       }
-      const duplicate = mapOrganizationCodeUniqueViolation(
-        error,
-        'project_number',
-        'A project with this number already exists.',
-        'projectNumber',
-      );
-      if (duplicate) {
-        throw new ProjectValidationError(duplicate.message);
-      }
+      throwOrganizationCodeDuplicateFromPrisma(error, 'project_number', 'projectNumber');
       throw error;
     }
 

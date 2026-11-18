@@ -2,9 +2,16 @@
 
 import {
   createProjectRequestSchema,
+  isValidProjectNumber,
   projectFormLiveFieldSchemas,
   updateProjectRequestSchema,
 } from '@techwin/validation';
+import { PROJECT_ROUTES } from '@techwin/contracts';
+import { fetchOrganizationCodeAvailability } from '@/shared/api/organization-code-availability';
+import {
+  applyOrganizationCodeDuplicateError,
+} from '@/shared/form/organization-code-field-error';
+import { useOrganizationCodeAvailability } from '@/shared/form/use-organization-code-availability';
 import { focusFirstInvalidField, formControlStateClass } from '@/shared/form/form-control-state';
 import { useZodFormFields } from '@/shared/form/use-zod-form-fields';
 import { isApiError } from '@/shared/api/api-error';
@@ -146,6 +153,16 @@ export function ProjectFormDialog({
 
   const liveFields = useZodFormFields(projectFormLiveFieldSchemas, liveFieldValues, {
     disabled: loadingProject,
+  });
+
+  const projectNumberAvailability = useOrganizationCodeAvailability({
+    enabled: open && isCreate,
+    code: form.projectNumber,
+    fieldKey: 'projectNumber',
+    isFormatValid: isValidProjectNumber,
+    checkAvailable: (value, signal) =>
+      fetchOrganizationCodeAvailability(PROJECT_ROUTES.projectNumberAvailability, value, undefined, signal),
+    setFieldErrors: setFieldErrors,
   });
 
   const fieldError = (key: string) => {
@@ -316,6 +333,10 @@ export function ProjectFormDialog({
       focusFirstInvalidField();
       return;
     }
+    if (isCreate && !(await projectNumberAvailability.ensureBeforeSubmit())) {
+      focusFirstInvalidField();
+      return;
+    }
     setFieldErrors({});
     try {
       if (editingId) {
@@ -328,7 +349,9 @@ export function ProjectFormDialog({
       onOpenChange(false);
       await onSaved();
     } catch (failure) {
-      if (isApiError(failure) && failure.details.length > 0) {
+      if (applyOrganizationCodeDuplicateError(failure, 'projectNumber', setFieldErrors)) {
+        focusFirstInvalidField();
+      } else if (isApiError(failure) && failure.details.length > 0) {
         setFieldErrors((current) => ({ ...current, ...apiDetailsToFieldMap(failure.details) }));
         focusFirstInvalidField();
       }
@@ -406,9 +429,12 @@ export function ProjectFormDialog({
                     className={cn(
                       PROJECT_FORM_FIELD_CLASS,
                       editingId ? 'text-muted-foreground' : 'font-mono',
+                      formControlStateClass(fieldError('projectNumber') ? 'invalid' : 'neutral'),
                     )}
                     aria-invalid={Boolean(fieldError('projectNumber'))}
+                    onBlur={projectNumberAvailability.onBlur}
                     onChange={(event) => {
+                      projectNumberAvailability.onCodeChange();
                       setForm((current) => ({ ...current, projectNumber: event.target.value }));
                       clearFormFieldError(setFieldErrors, 'projectNumber');
                     }}
@@ -705,7 +731,7 @@ export function ProjectFormDialog({
           <Button
             type="button"
             className={cn('h-11 px-5', PROJECT_FORM_PRIMARY_BTN)}
-            disabled={pending || loadingProject || projectFullyReadOnly}
+            disabled={pending || loadingProject || projectFullyReadOnly || projectNumberAvailability.blocksSubmit}
             onClick={() => void onSubmit()}
           >
             {pending ? (

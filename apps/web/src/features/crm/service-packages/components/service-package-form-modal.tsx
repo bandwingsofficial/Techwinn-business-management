@@ -12,9 +12,14 @@ import {
 import {
   computeServicePackagePricing,
   createServicePackageRequestSchema,
+  isValidServicePackageCode,
   packageGstRateInputSchema,
   servicePackageRequestObjectSchema,
 } from '@techwin/validation';
+import { CRM_ROUTES } from '@techwin/contracts';
+import { fetchOrganizationCodeAvailability } from '@/shared/api/organization-code-availability';
+import { applyOrganizationCodeDuplicateError } from '@/shared/form/organization-code-field-error';
+import { useOrganizationCodeAvailability } from '@/shared/form/use-organization-code-availability';
 import { focusFirstInvalidField, formControlStateClass } from '@/shared/form/form-control-state';
 import { useZodFormFields } from '@/shared/form/use-zod-form-fields';
 import {
@@ -159,6 +164,16 @@ export function ServicePackageFormModal({
   );
 
   const packageFieldError = (key: string) => mergeFieldErrors(packageLiveFields.errors, fieldErrors, key);
+  const packageCodeAvailability = useOrganizationCodeAvailability({
+    enabled: open && isCreate,
+    code: form.displayCode,
+    fieldKey: 'code',
+    isFormatValid: isValidServicePackageCode,
+    checkAvailable: (value, signal) =>
+      fetchOrganizationCodeAvailability(CRM_ROUTES.servicePackageCodeAvailability, value, undefined, signal),
+    setFieldErrors: setFieldErrors,
+  });
+  const packageCodeError = packageFieldError('code') ?? fieldErrors.code;
   const [codePreviewHint, setCodePreviewHint] = useState('');
 
   useEffect(() => {
@@ -253,6 +268,10 @@ export function ServicePackageFormModal({
 
   const save = async () => {
     if (!validateForm()) return;
+    if (isCreate && !(await packageCodeAvailability.ensureBeforeSubmit())) {
+      focusFirstInvalidField();
+      return;
+    }
     const payload = buildServicePackagePayload(form);
     try {
       if (editingId) {
@@ -267,7 +286,9 @@ export function ServicePackageFormModal({
       onOpenChange(false);
       await onSaved();
     } catch (failure) {
-      toast.error(describeCrmError(failure));
+      if (!applyOrganizationCodeDuplicateError(failure, 'code', setFieldErrors)) {
+        toast.error(describeCrmError(failure));
+      }
     }
   };
 
@@ -309,8 +330,12 @@ export function ServicePackageFormModal({
                       CRM_PIPELINE_FORM_FIELD_CLASS,
                       editingId ? 'bg-muted/50' : 'font-mono',
                       'text-sm',
+                      formControlStateClass(packageCodeError ? 'invalid' : 'neutral'),
                     )}
+                    aria-invalid={Boolean(packageCodeError)}
+                    onBlur={packageCodeAvailability.onBlur}
                     onChange={(event) => {
+                      packageCodeAvailability.onCodeChange();
                       setForm((current) => ({ ...current, displayCode: event.target.value }));
                       clearFormFieldError(setFieldErrors, 'code');
                     }}
@@ -319,6 +344,7 @@ export function ServicePackageFormModal({
                 {!editingId && codePreviewHint ? (
                   <p className="text-muted-foreground text-xs">{codePreviewHint}</p>
                 ) : null}
+                <CrmInlineFieldError message={packageCodeError} reserveSpace={false} />
               </div>
               <CrmFormField
                 id="pkg-name"
@@ -785,7 +811,7 @@ export function ServicePackageFormModal({
           <Button
             type="button"
             className={cn('h-11 px-5', PACKAGE_FORM_PRIMARY_BTN)}
-            disabled={pending || loadingPackage}
+            disabled={pending || loadingPackage || packageCodeAvailability.blocksSubmit}
             onClick={() => void save()}
           >
             {pending ? (

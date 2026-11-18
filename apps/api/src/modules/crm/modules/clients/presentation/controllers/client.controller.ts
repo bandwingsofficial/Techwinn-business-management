@@ -47,6 +47,13 @@ import { DeleteClientHandler } from '../../application/delete/delete-client.hand
 import { GetClientHandler } from '../../application/get/get-client.handler.js';
 import { ListClientsHandler } from '../../application/list/list-clients.handler.js';
 import { PreviewClientReferenceHandler } from '../../application/preview-reference/preview-client-reference.handler.js';
+import { CheckClientReferenceAvailabilityHandler } from '../../application/check-reference-availability/check-client-reference-availability.handler.js';
+import {
+  organizationCodeAvailabilityResponseSchema,
+  parseOrganizationCodeAvailabilityQuery,
+  type OrganizationCodeAvailabilityResponse,
+} from '#validation';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../../common/filters/organization-code-duplicate.filter.js';
 import { UpdateClientHandler } from '../../application/update/update-client.handler.js';
 import {
   changeClientStatusBodySchema,
@@ -67,13 +74,15 @@ import { toOpenApiSchema } from '../../../../shared/presentation/http/dto/crm.sc
 @ApiBearerAuth()
 @Controller('crm/clients')
 @UseGuards(PlatformAdminGuard, CrmOrganizationGuard, RequirePermissionsGuard)
-@UseFilters(CrmExceptionFilter)
+@UseFilters(OrganizationCodeDuplicateExceptionFilter, CrmExceptionFilter)
 export class ClientController {
   constructor(
     @Inject(ListClientsHandler) private readonly listClients: ListClientsHandler,
     @Inject(ConvertLeadHandler) private readonly convertLead: ConvertLeadHandler,
     @Inject(PreviewClientReferenceHandler)
     private readonly previewClientReference: PreviewClientReferenceHandler,
+    @Inject(CheckClientReferenceAvailabilityHandler)
+    private readonly checkClientReferenceAvailability: CheckClientReferenceAvailabilityHandler,
     @Inject(GetClientHandler) private readonly getClient: GetClientHandler,
     @Inject(CreateClientHandler) private readonly createClient: CreateClientHandler,
     @Inject(UpdateClientHandler) private readonly updateClient: UpdateClientHandler,
@@ -138,6 +147,22 @@ export class ClientController {
       actor: toCrmActor(ctx),
     });
     return { referenceNumber, isPreview: true as const };
+  }
+
+  @Get('reference-availability')
+  @RequireAllPermissions(...CLIENT_CREATE, ...CLIENT_UPDATE)
+  @ApiOperation({ summary: 'Check whether a client reference number is available' })
+  @ApiOkResponse({ schema: toOpenApiSchema(organizationCodeAvailabilityResponseSchema) })
+  async checkReferenceAvailability(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: Request,
+  ): Promise<OrganizationCodeAvailabilityResponse> {
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    return this.checkClientReferenceAvailability.execute({
+      actor: toCrmActor(ctx),
+      referenceNumber: code,
+      excludeClientId: excludeId,
+    });
   }
 
   @Get(':clientId')

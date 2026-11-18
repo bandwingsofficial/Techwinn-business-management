@@ -8,6 +8,7 @@ import {
 import {
   isOrganizationCodeFormatError,
   resolveOrganizationCodeOnCreate,
+  throwOrganizationCodeDuplicateFromPrisma,
 } from '../../../../../../../lib/persistence/organization-code-allocation.js';
 import { Prisma } from '../../../../../../../generated/prisma/client.js';
 import type { ServicePackageReadModel } from '../../../domain/types/service-package-read-model.js';
@@ -171,11 +172,9 @@ export async function createServicePackage(
     });
     return toRecord(row);
   } catch (error) {
+    throwOrganizationCodeDuplicateFromPrisma(error, 'code', 'code');
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new ServicePackageConflictError('A package with this code already exists.');
-    }
-    if (error instanceof Error && error.message.includes('Unique constraint')) {
-      throw new ServicePackageConflictError('A package with this code already exists.');
+      throw new ServicePackageConflictError('A package with this name already exists.');
     }
     throw error;
   }

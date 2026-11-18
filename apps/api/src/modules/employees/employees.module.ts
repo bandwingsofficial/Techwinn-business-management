@@ -13,6 +13,7 @@ import { ListAssignableEmployeesHandler } from './application/list-assignable-em
 import { ListEmployeesHandler } from './application/list-employees/list-employees.handler.js';
 import { OpenStoredProfileImageHandler } from './application/open-stored-profile-image/open-stored-profile-image.handler.js';
 import { PreviewEmployeeCodeHandler } from './application/preview-employee-code/preview-employee-code.handler.js';
+import { CheckEmployeeCodeAvailabilityHandler } from './application/check-employee-code-availability/check-employee-code-availability.handler.js';
 import { StreamLegacyProfileImageHandler } from './application/stream-legacy-profile-image/stream-legacy-profile-image.handler.js';
 import { UpdateEmployeeHandler } from './application/update-employee/update-employee.handler.js';
 import { UploadEmployeeProfileImageHandler } from './application/upload-employee-profile-image/upload-employee-profile-image.handler.js';
@@ -22,6 +23,7 @@ import { FilesystemLegacyEmployeeProfileImageStore } from './infrastructure/inte
 import { PrismaEmployeeRepository } from './infrastructure/persistence/prisma/repositories/prisma-employee.repository.js';
 import { EmployeesController } from './presentation/http/controllers/employees.controller.js';
 import { EmployeeExceptionFilter } from './presentation/http/filters/employee-exception.filter.js';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../common/filters/organization-code-duplicate.filter.js';
 
 export const employeePersistenceProviders: Provider[] = [
   { provide: EMPLOYEE_REPOSITORY, useClass: PrismaEmployeeRepository },
@@ -41,6 +43,7 @@ const employeeUseCaseHandlers = [
   ListEmployeesHandler,
   OpenStoredProfileImageHandler,
   PreviewEmployeeCodeHandler,
+  CheckEmployeeCodeAvailabilityHandler,
   StreamLegacyProfileImageHandler,
   UpdateEmployeeHandler,
   UploadEmployeeProfileImageHandler,
@@ -53,6 +56,7 @@ const employeeUseCaseHandlers = [
     ...employeePersistenceProviders,
     ...employeeUseCaseHandlers,
     EmployeeExceptionFilter,
+    OrganizationCodeDuplicateExceptionFilter,
   ],
   exports: [...employeePersistenceProviders],
 })

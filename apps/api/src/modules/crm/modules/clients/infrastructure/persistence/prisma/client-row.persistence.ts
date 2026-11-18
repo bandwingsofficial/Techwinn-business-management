@@ -14,7 +14,7 @@ import {
 import { CLIENT_SEQUENCE_KEY } from '../../../domain/types/client.types.js';
 import {
   isOrganizationCodeFormatError,
-  mapOrganizationCodeUniqueViolation,
+  throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../../lib/persistence/organization-code-allocation.js';
 import { clientRowToReadModel } from './mappers/client.mapper.js';
@@ -69,15 +69,7 @@ export async function insertClientRowInTransaction(
     },
     });
   } catch (error) {
-    const duplicate = mapOrganizationCodeUniqueViolation(
-      error,
-      'reference_number',
-      'A client with this code already exists.',
-      'referenceNumber',
-    );
-    if (duplicate) {
-      throw new ClientValidationError(duplicate.message, [duplicate]);
-    }
+    throwOrganizationCodeDuplicateFromPrisma(error, 'reference_number', 'referenceNumber');
     throw error;
   }
   if (audit) {
