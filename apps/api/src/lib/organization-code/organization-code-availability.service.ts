@@ -12,15 +12,25 @@ export class OrganizationCodeAvailabilityService {
     excludeEmployeeId?: string,
   ): Promise<boolean> {
     const normalizedCode = normalizeStoredOrganizationCode(code);
-    const existing = await this.prisma.employee.findFirst({
-      where: {
-        organizationId,
-        employeeCode: normalizedCode,
-        ...(excludeEmployeeId ? { id: { not: excludeEmployeeId } } : {}),
-      },
-      select: { id: true },
-    });
-    return !existing;
+    const [employeeMatch, identityMatch] = await Promise.all([
+      this.prisma.employee.findFirst({
+        where: {
+          organizationId,
+          employeeCode: normalizedCode,
+          ...(excludeEmployeeId ? { id: { not: excludeEmployeeId } } : {}),
+        },
+        select: { id: true },
+      }),
+      this.prisma.employeeHistoricalIdentity.findFirst({
+        where: {
+          organizationId,
+          employeeCode: normalizedCode,
+          ...(excludeEmployeeId ? { id: { not: excludeEmployeeId } } : {}),
+        },
+        select: { id: true },
+      }),
+    ]);
+    return !employeeMatch && !identityMatch;
   }
 
   async isClientReferenceAvailable(

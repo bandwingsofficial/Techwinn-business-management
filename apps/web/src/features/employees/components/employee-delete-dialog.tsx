@@ -13,10 +13,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CRM_PIPELINE_DESTRUCTIVE_ACTION_CLASS } from '@/features/admin/crm/constants';
 
+const DELETE_DESCRIPTION =
+  "Are you sure you want to permanently delete this employee?\n\nThe employee's master profile and login access will be permanently removed. Historical attendance, leave, tasks, projects, salary records and related business history will remain preserved and accessible throughout the system.\n\nThis action cannot be undone.";
+
 export function EmployeeDeleteDialog({
   open,
   employeeName,
-  completedTaskCount,
+  completedTaskCount: _completedTaskCount,
   pending,
   onCancel,
   onConfirm,
@@ -28,17 +31,12 @@ export function EmployeeDeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const preservesHistory = completedTaskCount > 0;
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && !pending && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Employee?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {preservesHistory
-              ? 'All assigned Daily Tasks are completed. Deleting this employee will preserve their completed task history.'
-              : `Delete ${employeeName}? This permanently removes the employee record and any login account created with it.`}
-          </AlertDialogDescription>
+          <AlertDialogTitle>Delete {employeeName}?</AlertDialogTitle>
+          <AlertDialogDescription className="whitespace-pre-line">{DELETE_DESCRIPTION}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>

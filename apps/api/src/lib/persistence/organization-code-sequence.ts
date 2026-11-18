@@ -42,14 +42,24 @@ export async function maxClientReferenceSequence(
 }
 
 export async function maxEmployeeCodeSequence(
-  db: Pick<Prisma.TransactionClient, 'employee'>,
+  db: Pick<Prisma.TransactionClient, 'employee' | 'employeeHistoricalIdentity'>,
   organizationId: string,
 ): Promise<number> {
-  const rows = await db.employee.findMany({
-    where: { organizationId },
-    select: { employeeCode: true },
-  });
-  return maxSequenceFromCodeStrings(rows.map((row) => row.employeeCode), parseEmployeeCodeSequence);
+  const [employeeRows, identityRows] = await Promise.all([
+    db.employee.findMany({
+      where: { organizationId },
+      select: { employeeCode: true },
+    }),
+    db.employeeHistoricalIdentity.findMany({
+      where: { organizationId },
+      select: { employeeCode: true },
+    }),
+  ]);
+  const codes = [
+    ...employeeRows.map((row) => row.employeeCode),
+    ...identityRows.map((row) => row.employeeCode),
+  ];
+  return maxSequenceFromCodeStrings(codes, parseEmployeeCodeSequence);
 }
 
 export async function maxProjectNumberSequence(

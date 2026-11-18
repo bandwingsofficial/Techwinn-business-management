@@ -17,6 +17,10 @@ import {
   maxEmployeeCodeSequence,
   nextEmployeeCodePreview,
 } from '../../../../../../lib/persistence/organization-code-sequence.js';
+import {
+  finalizeEmployeeHistoricalIdentity,
+  syncEmployeeHistoricalIdentity,
+} from '../../../../../../lib/persistence/employee-historical-identity.persistence.js';
 import { EMPLOYEE_SEQUENCE_KEY } from '../../../../domain/constants/employee-sequence.js';
 import {
   EmployeeNotFoundError,
@@ -140,7 +144,42 @@ function loginAccessInclude(organizationId: string) {
 }
 
 function detailInclude(organizationId: string) {
-  return { ...loginAccessInclude(organizationId), salaryStructure: true } as const;
+  return {
+    ...loginAccessInclude(organizationId),
+    historicalIdentity: { include: { salaryStructure: true } },
+  } as const;
+}
+
+function identitySnapshotFromRow(row: {
+  id: string;
+  organizationId: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  workEmail: string;
+  phone: string;
+  jobTitle: string;
+  department: string | null;
+  employmentType: Prisma.EmployeeHistoricalIdentityCreateInput['employmentType'];
+  profileImageUrl: string | null;
+  profileImageStoredObjectId: string | null;
+}) {
+  return {
+    organizationId: row.organizationId,
+    id: row.id,
+    employeeCode: row.employeeCode,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    displayName: row.displayName,
+    workEmail: row.workEmail,
+    phone: row.phone,
+    jobTitle: row.jobTitle,
+    department: row.department,
+    employmentType: row.employmentType,
+    profileImageUrl: row.profileImageStoredObjectId ? null : row.profileImageUrl,
+    profileImageStoredObjectId: row.profileImageStoredObjectId,
+  };
 }
 
 type EmployeeRow = Prisma.EmployeeGetPayload<{ include: ReturnType<typeof detailInclude> }>;
@@ -175,7 +214,7 @@ export class EmployeePrismaStore {
 
   private toRecord(row: EmployeeListRow | EmployeeRow): EmployeeRecord {
     const salaryRow =
-      'salaryStructure' in row ? row.salaryStructure : null;
+      'historicalIdentity' in row ? (row.historicalIdentity?.salaryStructure ?? null) : null;
     return {
       id: row.id,
       employeeCode: row.employeeCode,
@@ -411,6 +450,24 @@ export class EmployeePrismaStore {
             throw error;
           }
         }
+        const identityDraft = {
+          organizationId,
+          id: employeeId,
+          employeeCode,
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          displayName,
+          workEmail: input.workEmail,
+          phone: input.phone,
+          jobTitle: input.jobTitle.trim(),
+          department: input.department?.trim() || null,
+          employmentType: input.employmentType,
+          profileImageUrl: input.profileImageStoredObjectId
+            ? null
+            : (input.profileImageUrl ?? null),
+          profileImageStoredObjectId: input.profileImageStoredObjectId ?? null,
+        };
+        await syncEmployeeHistoricalIdentity(tx, identityDraft);
         const created = await tx.employee.create({
           data: {
             id: employeeId,
@@ -558,6 +615,10 @@ export class EmployeePrismaStore {
             updatedByAdminId: adminId,
           },
         });
+        const afterUpdate = await tx.employee.findFirstOrThrow({
+          where: { id: employeeId, organizationId },
+        });
+        await syncEmployeeHistoricalIdentity(tx, identitySnapshotFromRow(afterUpdate));
         if (input.salaryStructure !== undefined) {
           if (input.salaryStructure === null) {
             await tx.employeeSalaryStructure.deleteMany({
@@ -688,12 +749,21 @@ export class EmployeePrismaStore {
       const existing = await tx.employee.findFirst({
         where: { id: employeeId, organizationId },
         select: {
+          id: true,
+          organizationId: true,
           employeeCode: true,
+          firstName: true,
+          lastName: true,
           displayName: true,
           workEmail: true,
+          phone: true,
+          jobTitle: true,
+          department: true,
+          employmentType: true,
+          profileImageUrl: true,
+          profileImageStoredObjectId: true,
           platformAdminId: true,
           ownsLoginAccount: true,
-          profileImageStoredObjectId: true,
           _count: { select: { whatsappConversations: true } },
         },
       });
@@ -724,20 +794,19 @@ export class EmployeePrismaStore {
           })
         : 'NONE';
 
-      const deletedAt = new Date();
-      const tombstoneSuffix = employeeId.replace(/-/g, '').slice(0, 12);
-      await tx.employee.update({
-        where: { id: employeeId },
-        data: {
-          deletedAt,
-          deactivatedAt: deletedAt,
-          employmentStatus: 'TERMINATED',
-          platformAdminId: null,
-          ownsLoginAccount: false,
-          workEmail: `deleted-${tombstoneSuffix}@archived.invalid`,
-          phone: `+deleted-${tombstoneSuffix}`.slice(0, 32),
-        },
+      await tx.whatsAppConversation.updateMany({
+        where: { organizationId, assignedEmployeeId: employeeId },
+        data: { assignedEmployeeId: null },
       });
+
+      await finalizeEmployeeHistoricalIdentity(
+        tx,
+        employeeId,
+        adminId,
+        identitySnapshotFromRow(existing),
+      );
+
+      await tx.employee.delete({ where: { id: employeeId } });
       await tx.crmAuditEvent.create({
         data: {
           organizationId,

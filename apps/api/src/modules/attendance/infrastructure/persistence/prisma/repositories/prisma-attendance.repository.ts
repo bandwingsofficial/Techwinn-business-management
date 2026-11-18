@@ -302,7 +302,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           attendanceDate: parseDateOnly(attendanceDate),
         },
       },
-      include: { employee: true },
+      include: { historicalIdentity: true },
     });
     const record = recordRow ? toRecordItem(recordRow) : null;
     const activeDevice = await this.prisma.attendanceDevice.count({
@@ -364,7 +364,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           employeeId: ctx.employeeId,
           punchInIdempotencyKey: ctx.idempotencyKey,
         },
-        include: { employee: true },
+        include: { historicalIdentity: true },
       });
       if (existing?.punchInAt) return toRecordItem(existing);
     }
@@ -429,7 +429,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           attendanceDate: attendanceDateValue,
         },
       },
-      include: { employee: true },
+      include: { historicalIdentity: true },
     });
     if (existing?.punchOutAt) {
       throw new AttendanceConflictError('You have already completed attendance for today.');
@@ -452,7 +452,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
       const updated = await this.prisma.attendanceRecord.update({
         where: { id: existing.id },
         data: punchInData,
-        include: { employee: true },
+        include: { historicalIdentity: true },
       });
       await persistRow(updated);
       return toRecordItem(updated);
@@ -467,7 +467,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           attendanceDate: attendanceDateValue,
           ...punchInData,
         },
-        include: { employee: true },
+        include: { historicalIdentity: true },
       });
       await persistRow(created);
       return toRecordItem(created);
@@ -481,7 +481,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
               attendanceDate: attendanceDateValue,
             },
           },
-          include: { employee: true },
+          include: { historicalIdentity: true },
         });
         if (raced?.punchInAt) {
           if (raced.punchOutAt) {
@@ -493,7 +493,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           const updated = await this.prisma.attendanceRecord.update({
             where: { id: raced.id },
             data: punchInData,
-            include: { employee: true },
+            include: { historicalIdentity: true },
           });
           await persistRow(updated);
           return toRecordItem(updated);
@@ -512,7 +512,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           employeeId: ctx.employeeId,
           punchOutIdempotencyKey: ctx.idempotencyKey,
         },
-        include: { employee: true },
+        include: { historicalIdentity: true },
       });
       if (existing?.punchOutAt) return toRecordItem(existing);
     }
@@ -534,7 +534,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           attendanceDate: parseDateOnly(attendanceDate),
         },
       },
-      include: { employee: true },
+      include: { historicalIdentity: true },
     });
     if (!record?.punchInAt) {
       throw new AttendancePolicyError('Punch out requires an active punch-in for today.');
@@ -569,7 +569,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
         punchOutIdempotencyKey: ctx.idempotencyKey ?? null,
         finalizedAt: ctx.now,
       },
-      include: { employee: true },
+      include: { historicalIdentity: true },
     });
     if (device) {
       await this.prisma.attendanceDevice.update({
@@ -593,25 +593,25 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
     if (query.status) where.status = query.status;
     if (query.lateOnly) where.status = 'LATE';
     if (query.absentOnly) where.status = 'ABSENT';
-    const employeeFilter: Prisma.EmployeeWhereInput = {};
-    if (query.department) employeeFilter.department = query.department;
+    const identityFilter: Prisma.EmployeeHistoricalIdentityWhereInput = {};
+    if (query.department) identityFilter.department = query.department;
     if (query.search?.trim()) {
       const term = query.search.trim();
-      employeeFilter.OR = [
+      identityFilter.OR = [
         { displayName: { contains: term, mode: 'insensitive' } },
-        { workEmail: { contains: term, mode: 'insensitive' } },
+        { workEmailSnapshot: { contains: term, mode: 'insensitive' } },
         { employeeCode: { contains: term, mode: 'insensitive' } },
       ];
     }
-    if (Object.keys(employeeFilter).length > 0) {
-      where.employee = employeeFilter;
+    if (Object.keys(identityFilter).length > 0) {
+      where.historicalIdentity = identityFilter;
     }
     const skip = (query.page - 1) * query.pageSize;
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.attendanceRecord.count({ where }),
       this.prisma.attendanceRecord.findMany({
         where,
-        include: { employee: true },
+        include: { historicalIdentity: true },
         orderBy: [{ attendanceDate: 'desc' }, { punchInAt: 'desc' }],
         skip,
         take: query.pageSize,
@@ -637,17 +637,17 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
       },
     };
     if (query.status) where.status = query.status;
-    const employeeFilter: Prisma.EmployeeWhereInput = {};
+    const identityFilter: Prisma.EmployeeHistoricalIdentityWhereInput = {};
     if (query.search?.trim()) {
       const term = query.search.trim();
-      employeeFilter.OR = [
+      identityFilter.OR = [
         { displayName: { contains: term, mode: 'insensitive' } },
-        { workEmail: { contains: term, mode: 'insensitive' } },
+        { workEmailSnapshot: { contains: term, mode: 'insensitive' } },
         { employeeCode: { contains: term, mode: 'insensitive' } },
       ];
     }
-    if (Object.keys(employeeFilter).length > 0) {
-      where.employee = employeeFilter;
+    if (Object.keys(identityFilter).length > 0) {
+      where.historicalIdentity = identityFilter;
     }
     const rows = await this.prisma.attendanceRecord.findMany({
       where,
@@ -807,7 +807,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           workingMinutes: corrected.workingMinutes,
           finalizedAt: new Date(),
         },
-        include: { employee: true, corrections: { orderBy: { createdAt: 'desc' } } },
+        include: { historicalIdentity: true, corrections: { orderBy: { createdAt: 'desc' } } },
       });
       await tx.attendanceCorrection.create({
         data: {
@@ -830,7 +830,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
       });
       return tx.attendanceRecord.findFirstOrThrow({
         where: { id: record.id },
-        include: { employee: true, corrections: { orderBy: { createdAt: 'desc' } } },
+        include: { historicalIdentity: true, corrections: { orderBy: { createdAt: 'desc' } } },
       });
     });
     return toRecordDetail(created);
@@ -839,7 +839,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
   async getRecordDetail(organizationId: string, recordId: string): Promise<AttendanceRecordDetail> {
     const row = await this.prisma.attendanceRecord.findFirst({
       where: { id: recordId, organizationId },
-      include: { employee: true, corrections: { orderBy: { createdAt: 'desc' } } },
+      include: { historicalIdentity: true, corrections: { orderBy: { createdAt: 'desc' } } },
     });
     if (!row) throw new AttendanceNotFoundError();
     return toRecordDetail(row);
@@ -873,7 +873,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
       this.prisma.attendanceRecord.count({ where }),
       this.prisma.attendanceRecord.findMany({
         where,
-        include: { employee: true },
+        include: { historicalIdentity: true },
         orderBy: [{ attendanceDate: 'desc' }, { punchOutAt: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -924,7 +924,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
   ): Promise<AttendanceRecordDetail> {
     const row = await this.prisma.attendanceRecord.findFirst({
       where: { id: recordId, organizationId },
-      include: { employee: true, corrections: true },
+      include: { historicalIdentity: true, corrections: true },
     });
     if (!row) throw new AttendanceNotFoundError();
     const attendanceDateKey = calendarDateKey(row.attendanceDate);
@@ -982,7 +982,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
           lateMinutes: corrected.lateMinutes,
           finalizedAt: new Date(),
         },
-        include: { employee: true, corrections: { orderBy: { createdAt: 'desc' } } },
+        include: { historicalIdentity: true, corrections: { orderBy: { createdAt: 'desc' } } },
       });
       await tx.attendanceCorrection.create({
         data: {

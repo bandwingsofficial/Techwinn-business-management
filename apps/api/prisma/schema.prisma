@@ -195,8 +195,9 @@ model Organization {
   projectTasks               ProjectTask[]
   projectTaskStatusEvents    ProjectTaskStatusEvent[]
   projectPhaseProductionEvents ProjectPhaseProductionEvent[]
-  employees       Employee[]
-  employeeSalaryStructures EmployeeSalaryStructure[]
+  employees                    Employee[]
+  employeeHistoricalIdentities EmployeeHistoricalIdentity[]
+  employeeSalaryStructures     EmployeeSalaryStructure[]
   dailyTaskWorkflowStages DailyTaskWorkflowStage[]
   dailyTasks              DailyTask[]
   dailyTaskAssignees      DailyTaskAssignee[]
@@ -1063,16 +1064,11 @@ model Employee {
   platformAdmin    PlatformAdmin? @relation(fields: [platformAdminId], references: [id], onDelete: SetNull)
   createdBy        PlatformAdmin  @relation("EmployeeCreatedBy", fields: [createdByAdminId], references: [id], onDelete: Restrict)
   updatedBy        PlatformAdmin? @relation("EmployeeUpdatedBy", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
-  salaryStructure  EmployeeSalaryStructure?
+  historicalIdentity EmployeeHistoricalIdentity @relation(fields: [id], references: [id], onDelete: Restrict)
   profileImageStoredObject StoredObject? @relation("EmployeeProfileImage", fields: [profileImageStoredObjectId], references: [id], onDelete: SetNull)
   dailyTaskAssignments     DailyTaskAssignee[]
   dailyTaskNotes           DailyTaskNote[]
   whatsappConversations    WhatsAppConversation[]
-  attendanceRecords        AttendanceRecord[]
-  attendanceDevices        AttendanceDevice[]
-  employeeLeaveBalances    EmployeeLeaveBalance[]
-  leaveBalanceTransactions LeaveBalanceTransaction[]
-  leaveRequests            LeaveRequest[]
 
   @@unique([organizationId, employeeCode])
   @@unique([organizationId, workEmail])
@@ -1082,6 +1078,41 @@ model Employee {
   @@index([organizationId, updatedAt])
   @@index([organizationId, deletedAt])
   @@map("employees")
+}
+
+/// Immutable historical identity for attendance, leave, salary and related records.
+/// Shares the active employee id while employed; survives permanent employee master deletion.
+model EmployeeHistoricalIdentity {
+  id                               String                   @id @db.Uuid
+  organizationId                   String                   @map("organization_id") @db.Uuid
+  employeeCode                     String                   @map("employee_code") @db.VarChar(32)
+  firstName                        String                   @map("first_name") @db.VarChar(80)
+  lastName                         String                   @map("last_name") @db.VarChar(80)
+  displayName                      String                   @map("display_name") @db.VarChar(160)
+  workEmailSnapshot                String                   @map("work_email_snapshot") @db.VarChar(254)
+  phoneSnapshot                    String                   @default("") @map("phone_snapshot") @db.VarChar(32)
+  jobTitle                         String                   @map("job_title") @db.VarChar(120)
+  department                       String?                  @db.VarChar(120)
+  employmentType                   EmployeeEmploymentType   @map("employment_type")
+  profileImageUrlSnapshot          String?                  @map("profile_image_url_snapshot") @db.VarChar(512)
+  profileImageStoredObjectIdSnapshot String?              @map("profile_image_stored_object_id_snapshot") @db.Uuid
+  permanentlyDeletedAt             DateTime?                @map("permanently_deleted_at") @db.Timestamptz(3)
+  deletedByAdminId                 String?                  @map("deleted_by_admin_id") @db.Uuid
+  createdAt                        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization             Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activeEmployee           Employee?
+  salaryStructure          EmployeeSalaryStructure?
+  attendanceRecords        AttendanceRecord[]
+  attendanceDevices        AttendanceDevice[]
+  employeeLeaveBalances    EmployeeLeaveBalance[]
+  leaveBalanceTransactions LeaveBalanceTransaction[]
+  leaveRequests            LeaveRequest[]
+
+  @@unique([organizationId, employeeCode])
+  @@index([organizationId, permanentlyDeletedAt])
+  @@map("employee_historical_identities")
 }
 
 model EmployeeSalaryStructure {
@@ -1101,8 +1132,8 @@ model EmployeeSalaryStructure {
   createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  historicalIdentity   EmployeeHistoricalIdentity @relation(fields: [employeeId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, employeeId])
   @@map("employee_salary_structures")
@@ -1897,8 +1928,8 @@ model AttendanceRecord {
   createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employee     Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  historicalIdentity   EmployeeHistoricalIdentity @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   schedule     AttendanceSchedule   @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
   punchInDevice  AttendanceDevice?  @relation("AttendancePunchInDevice", fields: [punchInDeviceId], references: [id], onDelete: SetNull)
   punchOutDevice AttendanceDevice?  @relation("AttendancePunchOutDevice", fields: [punchOutDeviceId], references: [id], onDelete: SetNull)
@@ -1924,8 +1955,8 @@ model AttendanceDevice {
   revokedAt        DateTime?              @map("revoked_at") @db.Timestamptz(3)
   lastUsedAt       DateTime?              @map("last_used_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  historicalIdentity   EmployeeHistoricalIdentity @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   punchInRecords  AttendanceRecord[] @relation("AttendancePunchInDevice")
   punchOutRecords AttendanceRecord[] @relation("AttendancePunchOutDevice")
 
@@ -2167,8 +2198,8 @@ model EmployeeLeaveBalance {
   generatedAt              DateTime @default(now()) @map("generated_at") @db.Timestamptz(3)
   updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization           Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employee               Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  historicalIdentity     EmployeeHistoricalIdentity @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   leaveType              LeaveType              @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
   leaveYearConfiguration LeaveYearConfiguration @relation(fields: [leaveYearConfigurationId], references: [id], onDelete: Restrict)
   transactions           LeaveBalanceTransaction[]
@@ -2195,8 +2226,8 @@ model LeaveBalanceTransaction {
   performedByAdminId      String                      @map("performed_by_admin_id") @db.Uuid
   createdAt               DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employee             Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  historicalIdentity   EmployeeHistoricalIdentity @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   employeeLeaveBalance EmployeeLeaveBalance   @relation(fields: [employeeLeaveBalanceId], references: [id], onDelete: Cascade)
   leaveRequest         LeaveRequest?          @relation(fields: [leaveRequestId], references: [id], onDelete: SetNull)
 
@@ -2230,8 +2261,8 @@ model LeaveRequest {
   createdAt                DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization           Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  employee               Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  historicalIdentity     EmployeeHistoricalIdentity  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   leaveType              LeaveType                 @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
   leaveYearConfiguration LeaveYearConfiguration    @relation(fields: [leaveYearConfigurationId], references: [id], onDelete: Restrict)
   statusEvents           LeaveRequestStatusEvent[]

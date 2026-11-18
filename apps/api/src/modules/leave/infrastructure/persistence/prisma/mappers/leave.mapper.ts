@@ -121,14 +121,14 @@ export function toEmployeeLeaveBalanceItem(
   row: EmployeeLeaveBalance & {
     leaveType: LeaveType;
     leaveYearConfiguration: LeaveYearConfiguration;
-    employee?: { displayName: string; employeeCode: string };
+    historicalIdentity?: { displayName: string; employeeCode: string };
   },
 ): EmployeeLeaveBalanceItem {
   return {
     id: row.id,
     employeeId: row.employeeId,
-    employeeDisplayName: row.employee?.displayName ?? '',
-    employeeCode: row.employee?.employeeCode ?? '',
+    employeeDisplayName: row.historicalIdentity?.displayName ?? '',
+    employeeCode: row.historicalIdentity?.employeeCode ?? '',
     leaveTypeId: row.leaveTypeId,
     leaveTypeName: row.leaveType.name,
     leaveTypeCode: row.leaveType.code,
@@ -148,7 +148,7 @@ export function toLeaveRequestItem(
   row: LeaveRequest & {
     leaveType: LeaveType;
     leaveYearConfiguration: LeaveYearConfiguration;
-    employee: { displayName: string; employeeCode: string };
+    historicalIdentity: { displayName: string; employeeCode: string };
     selectedDates?: readonly LeaveRequestDate[];
   },
 ): LeaveRequestItem {
@@ -162,8 +162,8 @@ export function toLeaveRequestItem(
   return {
     id: row.id,
     employeeId: row.employeeId,
-    employeeDisplayName: row.employee.displayName,
-    employeeCode: row.employee.employeeCode,
+    employeeDisplayName: row.historicalIdentity.displayName,
+    employeeCode: row.historicalIdentity.employeeCode,
     leaveTypeId: row.leaveTypeId,
     leaveTypeName: row.leaveType.name,
     leaveTypeCode: row.leaveType.code,

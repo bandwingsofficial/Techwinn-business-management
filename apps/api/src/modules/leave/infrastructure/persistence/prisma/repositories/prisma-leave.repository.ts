@@ -607,8 +607,8 @@ export class PrismaLeaveRepository implements LeaveRepository {
     if (query.search) {
       const q = query.search.trim();
       where.OR = [
-        { employee: { displayName: { contains: q, mode: 'insensitive' } } },
-        { employee: { employeeCode: { contains: q, mode: 'insensitive' } } },
+        { historicalIdentity: { displayName: { contains: q, mode: 'insensitive' } } },
+        { historicalIdentity: { employeeCode: { contains: q, mode: 'insensitive' } } },
         { leaveType: { name: { contains: q, mode: 'insensitive' } } },
       ];
     }
@@ -619,7 +619,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
         include: {
           leaveType: true,
           leaveYearConfiguration: true,
-          employee: { select: { displayName: true, employeeCode: true } },
+          historicalIdentity: { select: { displayName: true, employeeCode: true } },
         },
         orderBy: [{ leaveYearConfiguration: { calendarYear: 'desc' } }, { leaveType: { name: 'asc' } }],
         skip,
@@ -648,7 +648,9 @@ export class PrismaLeaveRepository implements LeaveRepository {
 
     const employeeWhere: Prisma.EmployeeWhereInput = {
       organizationId,
-      employeeLeaveBalances: { some: { leaveYearConfigurationId } },
+      historicalIdentity: {
+        employeeLeaveBalances: { some: { leaveYearConfigurationId } },
+      },
     };
     if (query.search?.trim()) {
       const term = query.search.trim();
@@ -667,17 +669,26 @@ export class PrismaLeaveRepository implements LeaveRepository {
         skip,
         take: query.pageSize,
         include: {
-          employeeLeaveBalances: {
-            where: { organizationId, leaveYearConfigurationId },
-            include: { leaveType: true },
+          historicalIdentity: {
+            include: {
+              employeeLeaveBalances: {
+                where: { organizationId, leaveYearConfigurationId },
+                include: { leaveType: true },
+              },
+            },
           },
         },
       }),
     ]);
 
+    const employeesWithBalances = employees.map((row) => ({
+      ...row,
+      employeeLeaveBalances: row.historicalIdentity.employeeLeaveBalances,
+    }));
+
     return buildEmployeeLeaveRecordsResponse({
       configuration,
-      employees,
+      employees: employeesWithBalances,
       total,
       page: query.page,
       pageSize: query.pageSize,
@@ -775,7 +786,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
         include: {
           leaveType: true,
           leaveYearConfiguration: true,
-          employee: { select: { displayName: true, employeeCode: true } },
+          historicalIdentity: { select: { displayName: true, employeeCode: true } },
         },
         orderBy: { leaveType: { name: 'asc' } },
         skip,
@@ -818,7 +829,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
       include: {
         leaveType: true,
         leaveYearConfiguration: true,
-        employee: { select: { displayName: true, employeeCode: true } },
+        historicalIdentity: { select: { displayName: true, employeeCode: true } },
       },
     });
     if (!row) throw new LeaveNotFoundError('Employee leave balance');
@@ -904,7 +915,7 @@ export class PrismaLeaveRepository implements LeaveRepository {
     return {
       leaveType: true,
       leaveYearConfiguration: true,
-      employee: { select: { displayName: true, employeeCode: true } },
+      historicalIdentity: { select: { displayName: true, employeeCode: true } },
       selectedDates: { orderBy: { sortOrder: 'asc' as const } },
     } as const;
   }
@@ -941,8 +952,8 @@ export class PrismaLeaveRepository implements LeaveRepository {
       const q = query.search.trim();
       where.OR = [
         { reason: { contains: q, mode: 'insensitive' } },
-        { employee: { displayName: { contains: q, mode: 'insensitive' } } },
-        { employee: { employeeCode: { contains: q, mode: 'insensitive' } } },
+        { historicalIdentity: { displayName: { contains: q, mode: 'insensitive' } } },
+        { historicalIdentity: { employeeCode: { contains: q, mode: 'insensitive' } } },
       ];
     }
     const skip = (query.page - 1) * query.pageSize;

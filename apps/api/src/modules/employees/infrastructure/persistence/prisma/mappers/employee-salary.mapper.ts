@@ -34,7 +34,7 @@ export function salaryCreateData(
   return {
     id: salaryId,
     organization: { connect: { id: organizationId } },
-    employee: { connect: { id: employeeId } },
+    historicalIdentity: { connect: { id: employeeId } },
     currency: input.currency,
     frequency: input.frequency,
     basicSalary: input.basicSalary,

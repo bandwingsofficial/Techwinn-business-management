@@ -833,13 +833,13 @@ export class DashboardDataService {
           status: { in: ['PRESENT', 'LATE'] },
         },
         select: {
-          employee: { select: { department: true } },
+          historicalIdentity: { select: { department: true } },
         },
         take: 500,
       });
       const tallies = new Map<string, number>();
       for (const record of records) {
-        const dept = record.employee?.department?.trim() || 'Unassigned';
+        const dept = record.historicalIdentity?.department?.trim() || 'Unassigned';
         tallies.set(dept, (tallies.get(dept) ?? 0) + 1);
       }
       const series = [...tallies.entries()]

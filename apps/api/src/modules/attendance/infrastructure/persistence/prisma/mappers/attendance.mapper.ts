@@ -12,7 +12,7 @@ import type {
   AttendanceDevice,
   AttendanceRecord,
   AttendanceSchedule,
-  Employee,
+  EmployeeHistoricalIdentity,
 } from '../../../../../../generated/prisma/client.js';
 import { Prisma } from '../../../../../../generated/prisma/client.js';
 import { evaluateAttendance } from '../../../../domain/policies/attendance-status.policy.js';
@@ -161,14 +161,14 @@ export function snapshotToJson(snapshot: AttendanceScheduleSnapshot): Prisma.Inp
   return JSON.parse(JSON.stringify(snapshot)) as Prisma.InputJsonValue;
 }
 
-function employeeProfileImageUrl(employee: Employee): string | null {
-  return employee.profileImageStoredObjectId
-    ? EMPLOYEE_ROUTES.employeeStoredProfileImageContent(employee.profileImageStoredObjectId)
-    : employee.profileImageUrl;
+function employeeProfileImageUrl(identity: EmployeeHistoricalIdentity): string | null {
+  return identity.profileImageStoredObjectIdSnapshot
+    ? EMPLOYEE_ROUTES.employeeStoredProfileImageContent(identity.profileImageStoredObjectIdSnapshot)
+    : identity.profileImageUrlSnapshot;
 }
 
 export function toRecordItem(
-  row: AttendanceRecord & { employee: Employee },
+  row: AttendanceRecord & { historicalIdentity: EmployeeHistoricalIdentity },
 ): AttendanceRecordItem {
   const snapshot = snapshotFromJson(row.scheduleSnapshot);
   const attendanceDate = calendarDateKey(row.attendanceDate);
@@ -176,9 +176,9 @@ export function toRecordItem(
   return {
     id: row.id,
     employeeId: row.employeeId,
-    employeeDisplayName: row.employee.displayName,
-    employeeCode: row.employee.employeeCode,
-    profileImageUrl: employeeProfileImageUrl(row.employee),
+    employeeDisplayName: row.historicalIdentity.displayName,
+    employeeCode: row.historicalIdentity.employeeCode,
+    profileImageUrl: employeeProfileImageUrl(row.historicalIdentity),
     attendanceDate,
     status: row.status satisfies AttendanceStatus,
     punchInAt: row.punchInAt?.toISOString() ?? null,
@@ -213,7 +213,7 @@ function recordTiming(
 }
 
 export function toRecordDetail(
-  row: AttendanceRecord & { employee: Employee; corrections: AttendanceCorrection[] },
+  row: AttendanceRecord & { historicalIdentity: EmployeeHistoricalIdentity; corrections: AttendanceCorrection[] },
 ): AttendanceRecordDetail {
   return {
     ...toRecordItem(row),
