@@ -58,7 +58,7 @@ import {
   parseOrganizationCodeAvailabilityQuery,
   type OrganizationCodeAvailabilityResponse,
 } from '#validation';
-import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../../common/filters/organization-code-duplicate.filter.js';
+import { OrganizationCodeDuplicateExceptionFilter } from '../../../../../../../common/filters/organization-code-duplicate.filter.js';
 import { UpdateProjectHandler } from '../../../application/update-project/update-project.handler.js';
 import { CompleteProjectHandler } from '../../../application/complete-project/complete-project.handler.js';
 import { SaveProjectPlanHandler } from '../../../application/save-project-plan/save-project-plan.handler.js';
