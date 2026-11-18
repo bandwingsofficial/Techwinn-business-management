@@ -4,10 +4,12 @@ import type { CrmAuditInput } from '../../../../../shared/domain/repositories/cr
 import { writeAudit } from '../../../../../shared/infrastructure/persistence/prisma/repositories/crm-persistence.shared.js';
 import { ClientDeletionPolicy } from '../../../domain/policies/client-deletion.policy.js';
 import { ClientNotFoundError } from '../../../domain/errors/client.errors.js';
-import { CLIENT_SEQUENCE_KEY } from '../../../domain/types/client.types.js';
 import type { ClientListFilters, CreateClientData, UpdateClientData } from '../../../domain/types/client.types.js';
 import type { ClientAuditEntry } from '../../../domain/types/client.types.js';
-import { previewClientReferenceFromLastValue } from './client-reference-allocation.js';
+import {
+  maxClientReferenceSequence,
+  nextClientReferencePreview,
+} from '../../../../../../../lib/persistence/organization-code-sequence.js';
 import { insertClientRowInTransaction } from './client-row.persistence.js';
 import { clientRowToReadModel } from './mappers/client.mapper.js';
 
@@ -111,13 +113,12 @@ export async function findClientByNormalizedPhone(
   return row ? clientRowToReadModel(row) : null;
 }
 
-export function previewClientReference(prisma: PrismaService, organizationId: string): Promise<string> {
-  return prisma.organizationSequence
-    .findUnique({
-      where: { organizationId_key: { organizationId, key: CLIENT_SEQUENCE_KEY } },
-      select: { lastValue: true },
-    })
-    .then((row) => previewClientReferenceFromLastValue(row?.lastValue));
+export async function previewClientReference(
+  prisma: PrismaService,
+  organizationId: string,
+): Promise<string> {
+  const maxAssigned = await maxClientReferenceSequence(prisma, organizationId);
+  return nextClientReferencePreview(maxAssigned);
 }
 
 export async function createClientRow(

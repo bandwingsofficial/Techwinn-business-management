@@ -14,11 +14,19 @@ const excludeIdSchema = z
   .uuid()
   .optional();
 
-export function parseOrganizationCodeAvailabilityQuery(query: Record<string, unknown>) {
-  const code = typeof query.code === 'string' ? query.code : '';
+function toQueryRecord(query: unknown): Record<string, unknown> {
+  if (typeof query !== 'object' || query === null || Array.isArray(query)) {
+    return {};
+  }
+  return query as Record<string, unknown>;
+}
+
+export function parseOrganizationCodeAvailabilityQuery(query: unknown) {
+  const record = toQueryRecord(query);
+  const code = typeof record.code === 'string' ? record.code : '';
   const excludeId =
-    typeof query.excludeId === 'string' && query.excludeId.trim()
-      ? query.excludeId.trim()
+    typeof record.excludeId === 'string' && record.excludeId.trim()
+      ? record.excludeId.trim()
       : undefined;
   return organizationCodeAvailabilityQuerySchema.parse({ code, excludeId });
 }
@@ -28,13 +36,14 @@ export const organizationCodeAvailabilityQuerySchema = z.object({
   excludeId: excludeIdSchema,
 });
 
-export function parseQuotationCodeAvailabilityQuery(query: Record<string, unknown>) {
-  const code = typeof query.code === 'string' ? query.code : '';
+export function parseQuotationCodeAvailabilityQuery(query: unknown) {
+  const record = toQueryRecord(query);
+  const code = typeof record.code === 'string' ? record.code : '';
   const excludeId =
-    typeof query.excludeId === 'string' && query.excludeId.trim()
-      ? query.excludeId.trim()
+    typeof record.excludeId === 'string' && record.excludeId.trim()
+      ? record.excludeId.trim()
       : undefined;
-  const typeRaw = typeof query.type === 'string' ? query.type.trim().toUpperCase() : 'QUOTATION';
+  const typeRaw = typeof record.type === 'string' ? record.type.trim().toUpperCase() : 'QUOTATION';
   const type = typeRaw === 'PROPOSAL' ? 'PROPOSAL' : 'QUOTATION';
   return quotationCodeAvailabilityQuerySchema.parse({ code, excludeId, type });
 }

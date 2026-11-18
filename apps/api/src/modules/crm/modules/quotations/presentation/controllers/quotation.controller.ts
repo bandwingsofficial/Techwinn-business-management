@@ -161,7 +161,7 @@ export class QuotationController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: Request,
   ): Promise<OrganizationCodeAvailabilityResponse> {
-    const parsed = parseQuotationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    const parsed = parseQuotationCodeAvailabilityQuery(request.query);
     return this.checkQuotationCodeAvailability.execute({
       actor: toCrmActor(ctx),
       code: parsed.code,

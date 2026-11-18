@@ -9,6 +9,10 @@ import {
   throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../../../lib/persistence/organization-code-allocation.js';
+import {
+  maxProjectNumberSequence,
+  nextProjectNumberPreview,
+} from '../../../../../../../../lib/persistence/organization-code-sequence.js';
 import { Decimal } from '@prisma/client/runtime/client';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import { PrismaService } from '../../../../../../../../infrastructure/database/prisma.service.js';
@@ -392,11 +396,8 @@ export class PrismaProjectRepository implements ProjectRepository {
   }
 
   async previewProjectNumber(organizationId: string): Promise<string> {
-    const row = await this.prisma.organizationSequence.findUnique({
-      where: { organizationId_key: { organizationId, key: PROJECT_NUMBER_SEQUENCE_KEY } },
-      select: { lastValue: true },
-    });
-    return formatProjectNumber((row?.lastValue ?? 0) + 1);
+    const maxAssigned = await maxProjectNumberSequence(this.prisma, organizationId);
+    return nextProjectNumberPreview(maxAssigned);
   }
 
   async listProjectManagers(organizationId: string): Promise<readonly ProjectManagerRecord[]> {
@@ -488,6 +489,7 @@ export class PrismaProjectRepository implements ProjectRepository {
         parseSequence: parseProjectNumberSequence,
         normalize: (value) => value.toUpperCase(),
         invalidFormatMessage: 'Project number is invalid.',
+        resolveMaxAssignedSequence: maxProjectNumberSequence,
       });
       await tx.project.create({
         data: {

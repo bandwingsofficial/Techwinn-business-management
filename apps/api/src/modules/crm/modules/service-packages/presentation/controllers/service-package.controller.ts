@@ -125,7 +125,7 @@ export class ServicePackageController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: Request,
   ): Promise<OrganizationCodeAvailabilityResponse> {
-    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query);
     return this.checkServicePackageCodeAvailability.execute({
       actor: toCrmActor(ctx),
       code,

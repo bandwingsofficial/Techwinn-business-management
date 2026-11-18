@@ -12,13 +12,16 @@ import {
   throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../../../lib/persistence/organization-code-allocation.js';
+import {
+  maxQuotationDocumentSequence,
+  nextQuotationDocumentPreview,
+} from '../../../../../../../../lib/persistence/organization-code-sequence.js';
 import { CrmValidationError } from '../../../../../../shared/domain/errors/crm.errors.js';
 import { SEQUENCE_KEYS } from '../../../../../../shared/domain/repositories/crm.repository.js';
 import {
   writeAudit,
   type CrmPersistenceHost,
 } from '../../../../../../shared/infrastructure/persistence/prisma/repositories/crm-persistence.shared.js';
-import { QuotationNumberService } from '../../../../domain/services/quotation-number.service.js';
 import type { QuotationRepository } from '../../../../domain/repositories/quotation.repository.js';
 import type {
   PaginatedQuotations,
@@ -85,18 +88,12 @@ export class PrismaQuotationRepository implements QuotationRepository {
     };
   }
 
-  previewDocumentNumber(
+  async previewDocumentNumber(
     organizationId: string,
     type: QuotationReadModel['type'],
   ): Promise<string> {
-    const seqKey = type === 'QUOTATION' ? SEQUENCE_KEYS.quotation : SEQUENCE_KEYS.proposal;
-    return this.prisma.organizationSequence
-      .findUnique({
-        where: { organizationId_key: { organizationId, key: seqKey } },
-      })
-      .then((row) =>
-        QuotationNumberService.previewDocumentNumber(type, row?.lastValue ?? 0),
-      );
+    const maxAssigned = await maxQuotationDocumentSequence(this.prisma, organizationId, type);
+    return nextQuotationDocumentPreview(maxAssigned, type);
   }
 
   async findById(
@@ -144,6 +141,8 @@ export class PrismaQuotationRepository implements QuotationRepository {
         parseSequence: (code) => parseQuotationDocumentSequence(code, input.type),
         normalize: (value) => value.toUpperCase(),
         invalidFormatMessage: 'Quotation number is invalid.',
+        resolveMaxAssignedSequence: (client, orgId) =>
+          maxQuotationDocumentSequence(client, orgId, input.type),
       });
 
       const quotation = await tx.quotationDocument.create({

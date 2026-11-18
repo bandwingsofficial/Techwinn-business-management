@@ -17,6 +17,7 @@ import {
   throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../../lib/persistence/organization-code-allocation.js';
+import { maxClientReferenceSequence } from '../../../../../../../lib/persistence/organization-code-sequence.js';
 import { clientRowToReadModel } from './mappers/client.mapper.js';
 
 export async function insertClientRowInTransaction(
@@ -37,6 +38,7 @@ export async function insertClientRowInTransaction(
       parseSequence: parseClientReferenceSequence,
       normalize: (value) => value.toUpperCase(),
       invalidFormatMessage: 'Client reference number is invalid.',
+      resolveMaxAssignedSequence: maxClientReferenceSequence,
     });
   } catch (error) {
     if (isOrganizationCodeFormatError(error)) {

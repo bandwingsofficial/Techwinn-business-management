@@ -13,13 +13,16 @@ import {
   throwOrganizationCodeDuplicateFromPrisma,
   resolveOrganizationCodeOnCreate,
 } from '../../../../../../lib/persistence/organization-code-allocation.js';
+import {
+  maxEmployeeCodeSequence,
+  nextEmployeeCodePreview,
+} from '../../../../../../lib/persistence/organization-code-sequence.js';
 import { EMPLOYEE_SEQUENCE_KEY } from '../../../../domain/constants/employee-sequence.js';
 import {
   EmployeeNotFoundError,
   EmployeeValidationError,
 } from '../../../../domain/errors/employee.errors.js';
 import { EmployeeStatusPolicy } from '../../../../domain/policies/employee-status.policy.js';
-import { EmployeeNumberService } from '../../../../domain/services/employee-number.service.js';
 import { EmployeeName } from '../../../../domain/value-objects/employee-name.vo.js';
 import type {
   AssignableEmployeeRecord,
@@ -203,25 +206,9 @@ export class EmployeePrismaStore {
     };
   }
 
-  private async nextSequence(
-    tx: Pick<PrismaService, 'organizationSequence'>,
-    organizationId: string,
-  ): Promise<number> {
-    const row = await tx.organizationSequence.upsert({
-      where: { organizationId_key: { organizationId, key: EMPLOYEE_SEQUENCE_KEY } },
-      create: { organizationId, key: EMPLOYEE_SEQUENCE_KEY, lastValue: 1 },
-      update: { lastValue: { increment: 1 } },
-      select: { lastValue: true },
-    });
-    return row.lastValue;
-  }
-
   async previewEmployeeCode(organizationId: string): Promise<string> {
-    const row = await this.prisma.organizationSequence.findUnique({
-      where: { organizationId_key: { organizationId, key: EMPLOYEE_SEQUENCE_KEY } },
-      select: { lastValue: true },
-    });
-    return EmployeeNumberService.previewFromLastValue(row?.lastValue ?? null);
+    const maxAssigned = await maxEmployeeCodeSequence(this.prisma, organizationId);
+    return nextEmployeeCodePreview(maxAssigned);
   }
 
   async findEmployeeIdByWorkEmail(
@@ -395,6 +382,7 @@ export class EmployeePrismaStore {
           parseSequence: parseEmployeeCodeSequence,
           normalize: (value) => value.toUpperCase(),
           invalidFormatMessage: 'Employee code is invalid.',
+          resolveMaxAssignedSequence: maxEmployeeCodeSequence,
         });
         let platformAdminId = input.platformAdminId ?? null;
         if (loginAccount) {

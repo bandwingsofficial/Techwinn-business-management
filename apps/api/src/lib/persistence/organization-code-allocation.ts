@@ -46,6 +46,10 @@ export type ResolveOrganizationCodeOptions = {
   readonly parseSequence?: (code: string) => number | null;
   readonly normalize?: (code: string) => string;
   readonly invalidFormatMessage: string;
+  readonly resolveMaxAssignedSequence: (
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+  ) => Promise<number>;
 };
 
 export async function resolveOrganizationCodeOnCreate(
@@ -69,12 +73,18 @@ export async function resolveOrganizationCodeOnCreate(
     }
     return normalized;
   }
-  const sequence = await incrementOrganizationSequence(
+  const maxAssigned = await options.resolveMaxAssignedSequence(
+    tx as Prisma.TransactionClient,
+    options.organizationId,
+  );
+  const nextSequence = maxAssigned + 1;
+  await bumpOrganizationSequenceFloor(
     tx,
     options.organizationId,
     options.sequenceKey,
+    nextSequence,
   );
-  return options.formatFromSequence(sequence);
+  return options.formatFromSequence(nextSequence);
 }
 
 export class OrganizationCodeFormatError extends Error {

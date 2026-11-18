@@ -163,7 +163,7 @@ export class ProjectsController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: Request,
   ): Promise<OrganizationCodeAvailabilityResponse> {
-    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query);
     return this.checkProjectNumberAvailability.execute({
       actor: toProjectActor(ctx),
       projectNumber: code,

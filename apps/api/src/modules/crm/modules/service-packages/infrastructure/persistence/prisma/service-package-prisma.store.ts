@@ -10,6 +10,10 @@ import {
   resolveOrganizationCodeOnCreate,
   throwOrganizationCodeDuplicateFromPrisma,
 } from '../../../../../../../lib/persistence/organization-code-allocation.js';
+import {
+  maxServicePackageCodeSequence,
+  nextServicePackageCodePreview,
+} from '../../../../../../../lib/persistence/organization-code-sequence.js';
 import { Prisma } from '../../../../../../../generated/prisma/client.js';
 import type { ServicePackageReadModel } from '../../../domain/types/service-package-read-model.js';
 import type { ServicePackageWriteInput } from '../../../domain/types/service-package.types.js';
@@ -54,17 +58,11 @@ export async function assertUniqueServicePackageName(
 
 /** Predicts the next code without incrementing the sequence (not reserved). */
 export async function previewServicePackageCode(
-  db: { organizationSequence: Prisma.OrganizationSequenceDelegate },
+  db: Pick<Prisma.TransactionClient, 'servicePackage'>,
   organizationId: string,
 ): Promise<string> {
-  const row = await db.organizationSequence.findUnique({
-    where: {
-      organizationId_key: { organizationId, key: SERVICE_PACKAGE_CODE_SEQUENCE_KEY },
-    },
-    select: { lastValue: true },
-  });
-  const next = (row?.lastValue ?? 0) + 1;
-  return formatServicePackageCode(next);
+  const maxAssigned = await maxServicePackageCodeSequence(db, organizationId);
+  return nextServicePackageCodePreview(maxAssigned);
 }
 
 /** Atomically increments the org sequence and returns the assigned code. */
@@ -90,6 +88,7 @@ export async function resolveServicePackageCode(
       parseSequence: parseServicePackageCodeSequence,
       normalize: (value) => value.toUpperCase(),
       invalidFormatMessage: 'Invalid service package code.',
+      resolveMaxAssignedSequence: maxServicePackageCodeSequence,
     });
   } catch (error) {
     if (isOrganizationCodeFormatError(error)) {

@@ -188,7 +188,7 @@ export class EmployeesController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: Request,
   ): Promise<OrganizationCodeAvailabilityResponse> {
-    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query as Record<string, unknown>);
+    const { code, excludeId } = parseOrganizationCodeAvailabilityQuery(request.query);
     return this.checkEmployeeCodeAvailability.execute({
       actor: toEmployeeActor(ctx),
       code,
