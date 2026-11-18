@@ -33,7 +33,8 @@ export function PlatformLoginForm() {
 }
 
 function PlatformLoginFormInner() {
-  const notice = parseLoginNotice(useSearchParams().get('reason'));
+  const noticeRaw = parseLoginNotice(useSearchParams().get('reason'));
+  const notice = noticeRaw && noticeRaw !== 'signed_out' ? noticeRaw : null;
   const { form, formError, onSubmit, isSubmitting } = useAdminLogin();
   const [showPassword, setShowPassword] = useState(false);
   const { errors } = form.formState;

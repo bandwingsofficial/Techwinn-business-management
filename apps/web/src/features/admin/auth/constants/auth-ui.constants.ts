@@ -22,7 +22,7 @@ export const AUTH_PANEL_LEFT_CLASS = cn(
 export const AUTH_PANEL_RIGHT_CLASS = cn(
   'flex min-h-0 min-w-0 w-full flex-col justify-center',
   'px-6 py-7 sm:px-8',
-  'md:max-h-[calc(100dvh-80px)] md:overflow-x-hidden md:overflow-y-auto md:p-8',
+  'md:overflow-x-hidden md:px-8 md:py-6',
 );
 
 export const AUTH_HEADING_CLASS =
@@ -67,7 +67,7 @@ export const AUTH_FORM_INTRO_CLASS = 'grid gap-2';
 
 export const AUTH_ALERT_COMPACT_CLASS = 'py-2 text-[13px] [&_svg]:size-4';
 
-export const AUTH_HELP_SECTION_CLASS = 'mt-5';
+export const AUTH_HELP_SECTION_CLASS = 'mt-4';
 
 export const AUTH_LINK_MUTED_CLASS = 'text-[13px] font-normal text-[#667085]';
 

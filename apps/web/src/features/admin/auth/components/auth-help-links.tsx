@@ -11,7 +11,7 @@ export function AuthHelpLinks() {
         </span>
       </div>
       <ul
-        className={`${AUTH_LINK_MUTED_CLASS} flex flex-wrap items-center justify-center gap-x-12 gap-y-3 pt-5`}
+        className={`${AUTH_LINK_MUTED_CLASS} flex flex-wrap items-center justify-center gap-x-12 gap-y-3 pt-3`}
       >
         <li className="flex items-center gap-2">
           <BookOpen className="size-4 shrink-0 text-[#667085]" aria-hidden="true" />
