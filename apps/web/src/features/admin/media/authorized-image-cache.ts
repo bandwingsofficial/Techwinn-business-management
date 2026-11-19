@@ -28,6 +28,15 @@ export function peekAuthorizedImageBlobUrl(resolved: string): string | null {
   return blobUrlCache.get(resolved) ?? null;
 }
 
+/** Clears cached blobs when switching accounts — prevents showing another user's loaded images. */
+export function clearAuthorizedImageCache(): void {
+  for (const url of blobUrlCache.values()) {
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+  }
+  blobUrlCache.clear();
+  inflight.clear();
+}
+
 function trimCache(): void {
   while (blobUrlCache.size > MAX_CACHE_ENTRIES) {
     const oldestKey = blobUrlCache.keys().next().value;

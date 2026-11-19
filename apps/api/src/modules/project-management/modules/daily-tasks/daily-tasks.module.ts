@@ -22,6 +22,9 @@ import { MoveDailyTaskStageHandler } from './application/move-daily-task-stage/m
 import { RescheduleDailyTaskHandler } from './application/reschedule-daily-task/reschedule-daily-task.handler.js';
 import { UpdateDailyTaskHandler } from './application/update-daily-task/update-daily-task.handler.js';
 import { UpdateWorkflowStagesHandler } from './application/update-workflow-stages/update-workflow-stages.handler.js';
+import { PollDailyTaskRealtimeEventsHandler } from './application/poll-daily-task-realtime-events/poll-daily-task-realtime-events.handler.js';
+import { DailyTaskRealtimePublisher } from './application/services/daily-task-realtime.publisher.js';
+import { DailyTaskRealtimeService } from './application/services/daily-task-realtime.service.js';
 import { DAILY_TASK_REPOSITORY } from './domain/repositories/daily-task.repository.js';
 import { PrismaDailyTaskRepository } from './infrastructure/persistence/prisma/repositories/prisma-daily-task.repository.js';
 import { DailyTasksController } from './presentation/http/controllers/daily-tasks.controller.js';
@@ -50,6 +53,9 @@ const dailyTaskUseCaseHandlers = [
   RescheduleDailyTaskHandler,
   UpdateDailyTaskHandler,
   UpdateWorkflowStagesHandler,
+  PollDailyTaskRealtimeEventsHandler,
+  DailyTaskRealtimeService,
+  DailyTaskRealtimePublisher,
 ] as const;
 
 @Module({

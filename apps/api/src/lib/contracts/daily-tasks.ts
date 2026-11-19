@@ -3,6 +3,7 @@ import type { ProjectPhaseStatus } from './projects.js';
 
 export const DAILY_TASK_ROUTES = {
   workflowStages: `${API_PREFIX}/daily-tasks/workflow-stages`,
+  realtimeEvents: `${API_PREFIX}/daily-tasks/realtime/events`,
   board: `${API_PREFIX}/daily-tasks/board`,
   tasks: `${API_PREFIX}/daily-tasks`,
   task: (id: string) => `${API_PREFIX}/daily-tasks/${id}`,
@@ -221,6 +222,28 @@ export interface DailyTaskListResponse {
   readonly total: number;
   readonly page: number;
   readonly pageSize: number;
+}
+
+export type DailyTaskRealtimeEventType =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'ASSIGNEES_CHANGED'
+  | 'STAGE_MOVED'
+  | 'TASK_DELETED';
+
+export interface DailyTaskRealtimeEventItem {
+  readonly id: string;
+  readonly type: DailyTaskRealtimeEventType;
+  readonly taskId: string | null;
+  readonly notifyOrganizationManagers: boolean;
+  readonly metadata: Record<string, unknown> | null;
+  readonly occurredAt: string;
+}
+
+export interface DailyTaskRealtimeResponse {
+  readonly events: readonly DailyTaskRealtimeEventItem[];
+  readonly cursor: string;
+  readonly resync: boolean;
 }
 
 export interface DailyTaskWorkflowStagesResponse {

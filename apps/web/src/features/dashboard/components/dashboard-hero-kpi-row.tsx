@@ -1,7 +1,7 @@
 'use client';
 
 import type { DashboardKpiMetric } from '@techwin/contracts';
-import { MoreHorizontal, TrendingDown, TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { getDashboardWidget, type DashboardQueryRange } from '../api/dashboard';
 import {
@@ -10,6 +10,9 @@ import {
 } from '../constants/dashboard-theme';
 import { describeKpiComparison } from '../utils/kpi-trend';
 import { DashboardKpiSparkline } from './dashboard-kpi-sparkline';
+
+/** Shared min height so all four hero cards align; content stays inside the card. */
+const HERO_KPI_CARD_MIN_HEIGHT_CLASS = 'min-h-[126px]';
 
 /** What each card's sparkline plots (one point per day of the selected period). */
 const TREND_TITLES: Record<string, string> = {
@@ -83,7 +86,6 @@ export function DashboardHeroKpiRow({
           );
           return { metric: pickPrimaryMetric(payload.kpis), slotIndex };
         } catch {
-          // One failing card must not blank the others.
           return { metric: null, slotIndex };
         }
       }),
@@ -117,60 +119,65 @@ export function DashboardHeroKpiRow({
         const Icon = slot.icon;
         const gradientId = `${sparklineScope}-spark-${slotIndex}`;
         const comparison = metric ? describeKpiComparison(metric) : null;
+        const comparisonTitle =
+          comparison?.deltaText && comparison.label
+            ? `${comparison.deltaText} ${comparison.label}`
+            : comparison?.label ?? undefined;
 
         return (
           <article
             key={slot.widgetKey}
-            className={`${DASHBOARD_GRID_CARD_CLASS} relative grid h-[118px] min-w-0 grid-cols-[46px_minmax(0,1fr)] items-center gap-x-2.5 rounded-[10px] px-3 py-3 sm:grid-cols-[46px_minmax(0,1fr)_70px]`}
+            className={`${DASHBOARD_GRID_CARD_CLASS} ${HERO_KPI_CARD_MIN_HEIGHT_CLASS} grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-x-2 overflow-hidden rounded-[10px] px-3 py-2.5 sm:grid-cols-[42px_minmax(0,1fr)_66px]`}
             style={{
               backgroundColor: slot.cardBg,
             }}
           >
-            <MoreHorizontal
-              className="absolute top-2.5 right-2.5 z-[1] size-4 text-[#94A3B8] opacity-45"
-              aria-hidden="true"
-            />
-
             <div
-              className="flex size-[46px] shrink-0 items-center justify-center rounded-[10px]"
+              className="flex size-[42px] shrink-0 items-center justify-center self-center rounded-[10px]"
               style={{ backgroundColor: slot.iconBg, color: slot.accent }}
             >
-              <Icon className="size-[22px]" strokeWidth={2.25} aria-hidden="true" />
+              <Icon className="size-[20px]" strokeWidth={2.25} aria-hidden="true" />
             </div>
 
-            <div className="min-w-0 justify-self-stretch overflow-visible pr-5">
-              <p className="text-xs font-semibold leading-snug text-[#243656]">
+            <div className="min-w-0 justify-self-stretch overflow-hidden">
+              <p className="truncate text-xs font-semibold leading-tight text-[#243656]">
                 {slot.displayLabel}
               </p>
               {metric?.caption ? (
-                <p className="mt-0.5 whitespace-nowrap text-[10px] leading-none text-[#71819D]">
+                <p className="mt-0.5 truncate text-[10px] leading-tight text-[#71819D]">
                   {metric.caption}
                 </p>
               ) : null}
-              <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-[#172B50] tabular-nums">
+              <p className="mt-0.5 text-[24px] font-bold leading-none tracking-tight text-[#172B50] tabular-nums">
                 {metric
                   ? typeof metric.value === 'number'
                     ? metric.value.toLocaleString()
                     : metric.value
                   : '—'}
               </p>
-              <div className="mt-1.5 flex flex-col items-start gap-0.5">
+              <div className="mt-1 min-w-0">
                 {!metric ? (
-                  <p className="whitespace-nowrap text-[10px] leading-none text-[#71819D]">
+                  <p className="truncate text-[10px] leading-tight text-[#71819D]">
                     Couldn&apos;t load
                   </p>
                 ) : metric.secondary ? (
-                  <p className="whitespace-nowrap text-[11px] font-semibold tabular-nums text-[#243656]">
+                  <p
+                    className="truncate text-[10px] font-semibold leading-tight tabular-nums text-[#243656]"
+                    title={`${metric.secondary.label}: ${metric.secondary.value}`}
+                  >
                     {metric.secondary.label}:{' '}
                     {typeof metric.secondary.value === 'number'
                       ? metric.secondary.value.toLocaleString()
                       : metric.secondary.value}
                   </p>
                 ) : (
-                  <>
+                  <div
+                    className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0 leading-tight"
+                    title={comparisonTitle}
+                  >
                     {comparison?.deltaText ? (
-                      <p
-                        className={`flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold tabular-nums ${
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold tabular-nums ${
                           comparison.tone === 'up'
                             ? 'text-emerald-600'
                             : comparison.tone === 'down'
@@ -179,30 +186,30 @@ export function DashboardHeroKpiRow({
                         }`}
                       >
                         {comparison.tone === 'up' ? (
-                          <TrendingUp className="size-3 shrink-0" aria-hidden="true" />
+                          <TrendingUp className="size-2.5 shrink-0" aria-hidden="true" />
                         ) : comparison.tone === 'down' ? (
-                          <TrendingDown className="size-3 shrink-0" aria-hidden="true" />
+                          <TrendingDown className="size-2.5 shrink-0" aria-hidden="true" />
                         ) : null}
                         {comparison.deltaText}
-                      </p>
+                      </span>
                     ) : null}
                     {comparison?.label ? (
-                      <p className="whitespace-nowrap text-[10px] leading-none text-[#71819D]">
+                      <span className="min-w-0 truncate text-[10px] text-[#71819D]">
                         {comparison.label}
-                      </p>
+                      </span>
                     ) : null}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="hidden justify-self-end sm:flex sm:items-center">
+            <div className="hidden min-w-0 justify-self-end overflow-hidden sm:flex sm:items-center">
               <DashboardKpiSparkline
                 color={slot.accent}
                 gradientId={gradientId}
                 trend={metric?.trend}
                 title={TREND_TITLES[slot.widgetKey]}
-                className="h-8 w-[70px] shrink-0"
+                className="h-8 w-[66px] shrink-0"
               />
             </div>
           </article>
@@ -222,7 +229,7 @@ export function DashboardHeroKpiRowSkeleton() {
       {Array.from({ length: 4 }).map((_, index) => (
         <div
           key={index}
-          className={`${DASHBOARD_GRID_CARD_CLASS} h-[118px] animate-pulse rounded-[10px] bg-[#F1F6FF]`}
+          className={`${DASHBOARD_GRID_CARD_CLASS} ${HERO_KPI_CARD_MIN_HEIGHT_CLASS} animate-pulse rounded-[10px] bg-[#F1F6FF]`}
         />
       ))}
     </div>

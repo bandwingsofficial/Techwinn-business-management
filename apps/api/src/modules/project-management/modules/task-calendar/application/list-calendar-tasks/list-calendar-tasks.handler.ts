@@ -9,6 +9,7 @@ import {
   type TaskCalendarTaskDto,
 } from '#contracts';
 import { projectTaskStatusSchema } from '#validation';
+import { employeeLinkedToAdminWhere } from '../../../../../../lib/persistence/employee-platform-admin-link.js';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service.js';
 import { DailyTaskAuthorizationService } from '../../../daily-tasks/application/services/daily-task-authorization.service.js';
 import {
@@ -112,7 +113,7 @@ export class ListCalendarTasksHandler {
       includeProject && canViewOrganizationProjectTasksOnCalendar(effective, isSuper);
 
     const employee = await this.prisma.employee.findFirst({
-      where: { organizationId, platformAdminId: accessActor.adminId },
+      where: employeeLinkedToAdminWhere(organizationId, accessActor.adminId),
       select: { id: true },
     });
 

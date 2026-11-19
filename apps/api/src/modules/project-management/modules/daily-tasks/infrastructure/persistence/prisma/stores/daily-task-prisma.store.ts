@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { EMPLOYEE_ROUTES } from '#contracts';
+import {
+  dailyTaskAssignedToEmployeeIdWhere,
+  dailyTaskAssignedToEmployeeIdsWhere,
+  employeeLinkedToAdminWhere,
+} from '../../../../../../../../lib/persistence/employee-platform-admin-link.js';
 import { normalizeWorkflowStageColorToken } from '#validation';
 import type {
   DailyTaskListItem,
@@ -295,12 +300,10 @@ export class DailyTaskPrismaStore {
       });
     }
     if (filters.employeeId) {
-      clauses.push({ assignees: { some: { employeeId: filters.employeeId } } });
+      clauses.push(dailyTaskAssignedToEmployeeIdWhere(filters.employeeId));
     }
     if (filters.employeeIdsForMyTasks?.length) {
-      clauses.push({
-        assignees: { some: { employeeId: { in: [...filters.employeeIdsForMyTasks] } } },
-      });
+      clauses.push(dailyTaskAssignedToEmployeeIdsWhere(filters.employeeIdsForMyTasks));
     }
     if (filters.overdueOnly && filters.clientToday) {
       clauses.push({ completedAt: null });
@@ -970,7 +973,7 @@ export class DailyTaskPrismaStore {
 
   async findEmployeeIdsForAdmin(organizationId: string, adminId: string): Promise<string[]> {
     const rows = await this.prisma.employee.findMany({
-      where: { organizationId, platformAdminId: adminId },
+      where: employeeLinkedToAdminWhere(organizationId, adminId),
       select: { id: true },
     });
     return rows.map((row) => row.id);

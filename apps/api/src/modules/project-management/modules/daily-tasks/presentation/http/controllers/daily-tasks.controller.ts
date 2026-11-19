@@ -10,15 +10,17 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type {
   DailyTaskBoardResponse,
   DailyTaskDetail,
   DailyTaskListResponse,
+  DailyTaskRealtimeResponse,
   DailyTaskNotesResponse,
   DailyTaskNoteInboxResponse,
   DailyTaskNoteItem,
@@ -79,6 +81,7 @@ import { ListDailyTaskNotesHandler } from '../../../application/list-daily-task-
 import { ListDailyTaskNotesInboxHandler } from '../../../application/list-daily-task-notes-inbox/list-daily-task-notes-inbox.handler.js';
 import type { DailyTaskNoteInboxStatus } from '../../../application/list-daily-task-notes-inbox/list-daily-task-notes-inbox.query.js';
 import { DailyTaskAuthorizationService } from '../../../application/services/daily-task-authorization.service.js';
+import { PollDailyTaskRealtimeEventsHandler } from '../../../application/poll-daily-task-realtime-events/poll-daily-task-realtime-events.handler.js';
 import { toDailyTaskListQuery } from '../../../application/shared/daily-task-list-query.js';
 import { DailyTaskExceptionFilter } from '../filters/daily-task-exception.filter.js';
 import { toDailyTaskActor } from '../mappers/daily-task-actor.mapper.js';
@@ -119,6 +122,8 @@ export class DailyTasksController {
     @Inject(AcknowledgeDailyTaskNoteHandler)
     private readonly acknowledgeTaskNote: AcknowledgeDailyTaskNoteHandler,
     @Inject(DailyTaskAuthorizationService) private readonly dailyTaskAuthz: DailyTaskAuthorizationService,
+    @Inject(PollDailyTaskRealtimeEventsHandler)
+    private readonly pollRealtimeEvents: PollDailyTaskRealtimeEventsHandler,
   ) {}
 
   private accessActor(
@@ -126,6 +131,36 @@ export class DailyTasksController {
     request: PlatformAuthenticatedRequest,
   ) {
     return toOrgAccessActor(ctx, request.platformAuth?.admin.role === 'SUPER_ADMIN');
+  }
+
+  @Get('realtime/events')
+  @RequirePermissions('tasks.read')
+  @ApiOperation({ summary: 'Long-poll daily task assignment changes (tenant- and recipient-scoped)' })
+  async realtimeEvents(
+    @CrmContext() ctx: CrmRequestContext,
+    @Req() request: PlatformAuthenticatedRequest & Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<DailyTaskRealtimeResponse> {
+    const after =
+      typeof request.query.after === 'string' && request.query.after.trim()
+        ? request.query.after.trim()
+        : undefined;
+    const waitRaw =
+      typeof request.query.waitMs === 'string' ? Number.parseInt(request.query.waitMs, 10) : 10_000;
+    const waitMs = Number.isFinite(waitRaw) ? Math.min(Math.max(waitRaw, 0), 30_000) : 10_000;
+    const abort = new AbortController();
+    const onClose = () => abort.abort();
+    response.on('close', onClose);
+    try {
+      return await this.pollRealtimeEvents.execute({
+        actor: this.accessActor(ctx, request),
+        after,
+        waitMs,
+        signal: abort.signal,
+      });
+    } finally {
+      response.off('close', onClose);
+    }
   }
 
   @Get('workflow-stages')

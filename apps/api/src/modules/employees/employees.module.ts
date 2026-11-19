@@ -17,6 +17,7 @@ import { CheckEmployeeCodeAvailabilityHandler } from './application/check-employ
 import { StreamLegacyProfileImageHandler } from './application/stream-legacy-profile-image/stream-legacy-profile-image.handler.js';
 import { UpdateEmployeeHandler } from './application/update-employee/update-employee.handler.js';
 import { UploadEmployeeProfileImageHandler } from './application/upload-employee-profile-image/upload-employee-profile-image.handler.js';
+import { EmployeeProfileImageAccessService } from './application/services/employee-profile-image-access.service.js';
 import { EMPLOYEE_REPOSITORY } from './domain/repositories/employee.repository.js';
 import { LEGACY_EMPLOYEE_PROFILE_IMAGE_READER } from './domain/repositories/legacy-employee-profile-image.reader.js';
 import { FilesystemLegacyEmployeeProfileImageStore } from './infrastructure/integrations/filesystem-legacy-employee-profile-image.store.js';
@@ -47,6 +48,7 @@ const employeeUseCaseHandlers = [
   StreamLegacyProfileImageHandler,
   UpdateEmployeeHandler,
   UploadEmployeeProfileImageHandler,
+  EmployeeProfileImageAccessService,
 ] as const;
 
 @Module({

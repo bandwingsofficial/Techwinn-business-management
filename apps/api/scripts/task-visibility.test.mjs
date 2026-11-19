@@ -13,6 +13,7 @@ import { ForbiddenException } from '@nestjs/common';
 import {
   EMPLOYEE_PORTAL_PERMISSIONS,
   canViewOrganizationDailyTasks,
+  canViewOrganizationDailyTasksInEmployeePortal,
   canViewOrganizationProjectTasks,
   canViewOwnDailyTasks,
 } from '../dist/lib/contracts/index.js';
@@ -245,6 +246,12 @@ function createDailyServices() {
 }
 
 // ── Permission rules ────────────────────────────────────────────────────────
+
+test('employees.view alone does not open the employee portal organization board', () => {
+  const collaborator = new Set(['tasks.read', 'employees.view']);
+  assert.equal(canViewOrganizationDailyTasks(collaborator), true);
+  assert.equal(canViewOrganizationDailyTasksInEmployeePortal(collaborator), false);
+});
 
 test('Employee role runtime permissions do not grant organization task visibility', () => {
   const effective = new Set(EMPLOYEE_EFFECTIVE);

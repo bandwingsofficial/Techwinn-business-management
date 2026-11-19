@@ -68,6 +68,17 @@ export function canViewOwnDailyTasks(permissions: PermissionLookup): boolean {
   return has('tasks.read') || has(PM_DAILY_TASKS_VIEW_KEY);
 }
 
+/** Employee portal organization board — stricter than `canViewOrganizationDailyTasks`. */
+export function canViewOrganizationDailyTasksInEmployeePortal(
+  permissions: PermissionLookup,
+  isPlatformSuperAdmin = false,
+): boolean {
+  if (isPlatformSuperAdmin) return true;
+  const has = toHas(permissions);
+  if (canManageOrganizationDailyTasks(has)) return true;
+  return has(PM_DAILY_TASKS_VIEW_KEY);
+}
+
 /** Every task on a project board / project calendar rows, not only the caller's assignments. */
 export function canViewOrganizationProjectTasks(
   permissions: ReadonlySet<PermissionKey>,

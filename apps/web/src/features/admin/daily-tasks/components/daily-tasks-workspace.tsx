@@ -35,6 +35,7 @@ import type {
   DailyTaskWorkflowStage,
 } from '../types';
 import { useDailyTasksPolling } from '../hooks/use-daily-tasks-polling';
+import { useDailyTasksRealtime } from '../hooks/use-daily-tasks-realtime';
 import { useDailyTaskPagePermissions } from '../hooks/use-daily-task-page-permissions';
 import { buildMyTaskBoard } from '../utils/build-my-task-board';
 import {
@@ -637,6 +638,7 @@ export function DailyTasksWorkspace({
   }, [loadBoard, loadCalendarMonth, loadList, view]);
 
   useDailyTasksPolling(refreshAll, true);
+  useDailyTasksRealtime(refreshAll, true);
 
   const canAssignTasks = dataScope === 'team' && canAssign;
 

@@ -4,6 +4,10 @@ import type {
   DashboardDataScopeKind,
   DashboardWidgetData,
 } from '#contracts';
+import {
+  dailyTaskAssignedToEmployeeIdWhere,
+  employeeLinkedToAdminWhere,
+} from '../../../../lib/persistence/employee-platform-admin-link.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 import type { OrgAccessActor } from '../../../org-access/application/shared/org-access-actor.js';
 import type { Prisma } from '../../../../generated/prisma/client.js';
@@ -100,11 +104,7 @@ export class DashboardDataService {
 
   private async sessionEmployeeId(actor: OrgAccessActor): Promise<string | null> {
     const row = await this.prisma.employee.findFirst({
-      where: {
-        organizationId: actor.organizationId,
-        platformAdminId: actor.adminId,
-        deactivatedAt: null,
-      },
+      where: employeeLinkedToAdminWhere(actor.organizationId, actor.adminId),
       select: { id: true },
     });
     return row?.id ?? null;
@@ -117,10 +117,18 @@ export class DashboardDataService {
   ): Prisma.DailyTaskWhereInput {
     const base: Prisma.DailyTaskWhereInput = { organizationId: actor.organizationId };
     if (scope === 'assigned' && employeeId) {
-      return { ...base, assignees: { some: { employeeId } } };
+      return { ...base, ...dailyTaskAssignedToEmployeeIdWhere(employeeId) };
     }
     if (scope === 'assigned') {
-      return { ...base, assignees: { some: { employee: { platformAdminId: actor.adminId } } } };
+      return {
+        ...base,
+        assignees: {
+          some: {
+            employeeId: { not: null },
+            employee: employeeLinkedToAdminWhere(actor.organizationId, actor.adminId),
+          },
+        },
+      };
     }
     return base;
   }

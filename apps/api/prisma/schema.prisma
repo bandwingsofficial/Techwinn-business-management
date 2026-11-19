@@ -204,6 +204,7 @@ model Organization {
   dailyTaskActivities     DailyTaskActivity[]
   dailyTaskReschedules    DailyTaskReschedule[]
   dailyTaskNotes          DailyTaskNote[]
+  dailyTaskRealtimeEvents      DailyTaskRealtimeEvent[]
   attendanceSchedules          AttendanceSchedule[]
   attendanceRecords            AttendanceRecord[]
   attendanceDevices            AttendanceDevice[]
@@ -1404,6 +1405,31 @@ model DailyTaskNote {
   @@index([organizationId, dailyTaskId, acknowledgementStatus], map: "daily_task_notes_organization_id_daily_task_id_acknowledgem_idx")
   @@index([organizationId, employeeId, createdAt])
   @@map("daily_task_notes")
+}
+
+enum DailyTaskRealtimeEventType {
+  TASK_CREATED
+  TASK_UPDATED
+  ASSIGNEES_CHANGED
+  STAGE_MOVED
+  TASK_DELETED
+}
+
+/// Per-organization ordered log for authenticated long-poll assignment/task sync.
+model DailyTaskRealtimeEvent {
+  id                         BigInt                     @id @default(autoincrement())
+  organizationId             String                     @map("organization_id") @db.Uuid
+  dailyTaskId                String?                    @map("daily_task_id") @db.Uuid
+  type                       DailyTaskRealtimeEventType
+  recipientAdminIds          String[]                   @map("recipient_admin_ids") @db.Uuid
+  notifyOrganizationManagers Boolean                    @default(false) @map("notify_organization_managers")
+  metadata                   Json?
+  createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, id])
+  @@map("daily_task_realtime_events")
 }
 
 model DailyTaskAssignee {

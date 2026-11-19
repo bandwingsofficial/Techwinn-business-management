@@ -64,6 +64,7 @@ import {
 import { StreamLegacyProfileImageHandler } from '../../../application/stream-legacy-profile-image/stream-legacy-profile-image.handler.js';
 import { UpdateEmployeeHandler } from '../../../application/update-employee/update-employee.handler.js';
 import { UploadEmployeeProfileImageHandler } from '../../../application/upload-employee-profile-image/upload-employee-profile-image.handler.js';
+import { EmployeeProfileImageAccessService } from '../../../application/services/employee-profile-image-access.service.js';
 import { canReadEmployeeCompensation } from '../../../application/access/employee-compensation-access.js';
 import { MediaExceptionFilter } from '../../../../media/index.js';
 import {
@@ -121,6 +122,8 @@ export class EmployeesController {
     @Inject(StreamLegacyProfileImageHandler)
     private readonly streamLegacyProfileImage: StreamLegacyProfileImageHandler,
     @Inject(PermissionCheckerService) private readonly permissionChecker: PermissionCheckerService,
+    @Inject(EmployeeProfileImageAccessService)
+    private readonly profileImageAccess: EmployeeProfileImageAccessService,
   ) {}
 
   private accessActor(request: PlatformAuthenticatedRequest, ctx: CrmRequestContext) {
@@ -216,13 +219,23 @@ export class EmployeesController {
   }
 
   @Get('profile-stored-objects/:storedObjectId/content')
-  @RequirePermissions('employees.view', 'employees.view_details', 'employees.read')
+  @RequirePermissions('tasks.read', 'employees.view', 'employees.view_details', 'employees.read')
   @ApiOperation({ summary: 'Stream employee profile image (stored object)' })
   async streamStoredProfileImage(
     @CrmContext() ctx: CrmRequestContext,
+    @Req() request: PlatformAuthenticatedRequest,
     @Param('storedObjectId') storedObjectId: string,
     @Res() response: Response,
   ): Promise<void> {
+    const accessActor = this.accessActor(request, ctx);
+    const effective = new Set(await this.permissionChecker.resolveEffectivePermissions(accessActor));
+    await this.profileImageAccess.assertCanOpenStoredProfileImage({
+      organizationId: ctx.organizationId,
+      adminId: ctx.adminId,
+      isPlatformSuperAdmin: accessActor.isPlatformSuperAdmin,
+      effective,
+      storedObjectId,
+    });
     const opened = await this.openStoredProfileImage.execute({
       organizationId: ctx.organizationId,
       storedObjectId,

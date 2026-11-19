@@ -5,6 +5,7 @@ import {
   type DailyTaskRepository,
 } from '../../domain/repositories/daily-task.repository.js';
 import { DailyTaskAuthorizationService } from '../services/daily-task-authorization.service.js';
+import { DailyTaskRealtimePublisher } from '../services/daily-task-realtime.publisher.js';
 import type { MoveDailyTaskStageCommand } from './move-daily-task-stage.command.js';
 
 @Injectable()
@@ -12,15 +13,23 @@ export class MoveDailyTaskStageHandler {
   constructor(
     @Inject(DAILY_TASK_REPOSITORY) private readonly repository: DailyTaskRepository,
     @Inject(DailyTaskAuthorizationService) private readonly authz: DailyTaskAuthorizationService,
+    @Inject(DailyTaskRealtimePublisher) private readonly realtime: DailyTaskRealtimePublisher,
   ) {}
 
   async execute(command: MoveDailyTaskStageCommand): Promise<DailyTaskDetail> {
     await this.authz.assertCanUpdateTaskProgress(command.accessActor, command.taskId);
-    return this.repository.moveTaskStage(
+    const detail = await this.repository.moveTaskStage(
       command.actor.organizationId,
       command.actor.adminId,
       command.taskId,
       command.input,
     );
+    await this.realtime.publishTaskChange({
+      organizationId: command.actor.organizationId,
+      taskId: command.taskId,
+      type: 'STAGE_MOVED',
+      assigneeEmployeeIds: detail.assignees.map((row) => row.employeeId),
+    });
+    return detail;
   }
 }

@@ -24,6 +24,7 @@ import type {
   DailyTaskNoteInboxStatus,
   DailyTaskNoteItem,
   DailyTaskNotesResponse,
+  DailyTaskRealtimeResponse,
 } from '@techwin/contracts';
 import type { DailyTaskActivitiesResponse } from '@techwin/contracts';
 
@@ -163,6 +164,21 @@ export function fetchDailyTaskNotesInbox(
 ): Promise<DailyTaskNoteInboxResponse> {
   const query = status === 'ALL' ? '' : `?status=${encodeURIComponent(status)}`;
   return apiRequest<DailyTaskNoteInboxResponse>(`${DAILY_TASK_ROUTES.notesInbox}${query}`, {
+    auth: true,
+    signal,
+  });
+}
+
+export function pollDailyTaskRealtimeEvents(
+  after: string | null,
+  waitMs: number,
+  signal?: AbortSignal,
+): Promise<DailyTaskRealtimeResponse> {
+  const params = new URLSearchParams();
+  if (after) params.set('after', after);
+  if (waitMs > 0) params.set('waitMs', String(waitMs));
+  const qs = params.size > 0 ? `?${params.toString()}` : '';
+  return apiRequest<DailyTaskRealtimeResponse>(`${DAILY_TASK_ROUTES.realtimeEvents}${qs}`, {
     auth: true,
     signal,
   });
