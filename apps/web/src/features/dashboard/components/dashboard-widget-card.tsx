@@ -195,7 +195,7 @@ function WidgetHeading({
       <div className="min-w-0">
         <h3
           className={cn(
-            'truncate font-semibold tracking-tight text-[#0F172A]',
+            'font-semibold tracking-tight text-[#0F172A]',
             compact ? 'text-sm' : 'text-base',
           )}
         >

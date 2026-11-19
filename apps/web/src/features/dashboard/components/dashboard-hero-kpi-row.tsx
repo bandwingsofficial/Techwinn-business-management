@@ -112,7 +112,7 @@ export function DashboardHeroKpiRow({
   const ordered = [...items].sort((a, b) => a.slotIndex - b.slotIndex);
 
   return (
-    <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {ordered.map(({ metric, slotIndex }) => {
         const slot = DASHBOARD_HERO_KPI_SLOTS[slotIndex];
         if (!slot) return null;
@@ -127,24 +127,24 @@ export function DashboardHeroKpiRow({
         return (
           <article
             key={slot.widgetKey}
-            className={`${DASHBOARD_GRID_CARD_CLASS} ${HERO_KPI_CARD_MIN_HEIGHT_CLASS} grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-x-2 overflow-hidden rounded-[10px] px-3 py-2.5 sm:grid-cols-[42px_minmax(0,1fr)_66px]`}
+            className={`${DASHBOARD_GRID_CARD_CLASS} ${HERO_KPI_CARD_MIN_HEIGHT_CLASS} grid min-w-0 grid-cols-[40px_minmax(0,1fr)] items-center gap-x-2.5 rounded-[10px] px-3 py-2.5 sm:grid-cols-[40px_minmax(0,1fr)_44px]`}
             style={{
               backgroundColor: slot.cardBg,
             }}
           >
             <div
-              className="flex size-[42px] shrink-0 items-center justify-center self-center rounded-[10px]"
+              className="flex size-10 shrink-0 items-center justify-center self-center rounded-[10px]"
               style={{ backgroundColor: slot.iconBg, color: slot.accent }}
             >
               <Icon className="size-[20px]" strokeWidth={2.25} aria-hidden="true" />
             </div>
 
-            <div className="min-w-0 justify-self-stretch overflow-hidden">
-              <p className="truncate text-xs font-semibold leading-tight text-[#243656]">
+            <div className="min-w-0 justify-self-stretch">
+              <p className="text-xs font-semibold leading-tight text-balance text-[#243656]">
                 {slot.displayLabel}
               </p>
               {metric?.caption ? (
-                <p className="mt-0.5 truncate text-[10px] leading-tight text-[#71819D]">
+                <p className="mt-0.5 text-[10px] leading-tight text-[#71819D]">
                   {metric.caption}
                 </p>
               ) : null}
@@ -157,12 +157,12 @@ export function DashboardHeroKpiRow({
               </p>
               <div className="mt-1 min-w-0">
                 {!metric ? (
-                  <p className="truncate text-[10px] leading-tight text-[#71819D]">
+                  <p className="text-[10px] leading-tight text-[#71819D]">
                     Couldn&apos;t load
                   </p>
                 ) : metric.secondary ? (
                   <p
-                    className="truncate text-[10px] font-semibold leading-tight tabular-nums text-[#243656]"
+                    className="text-[10px] font-semibold leading-tight tabular-nums text-[#243656]"
                     title={`${metric.secondary.label}: ${metric.secondary.value}`}
                   >
                     {metric.secondary.label}:{' '}
@@ -194,7 +194,7 @@ export function DashboardHeroKpiRow({
                       </span>
                     ) : null}
                     {comparison?.label ? (
-                      <span className="min-w-0 truncate text-[10px] text-[#71819D]">
+                      <span className="min-w-0 text-[10px] text-[#71819D]">
                         {comparison.label}
                       </span>
                     ) : null}
@@ -203,13 +203,13 @@ export function DashboardHeroKpiRow({
               </div>
             </div>
 
-            <div className="hidden min-w-0 justify-self-end overflow-hidden sm:flex sm:items-center">
+            <div className="hidden min-w-0 justify-self-end sm:flex sm:items-center">
               <DashboardKpiSparkline
                 color={slot.accent}
                 gradientId={gradientId}
                 trend={metric?.trend}
                 title={TREND_TITLES[slot.widgetKey]}
-                className="h-8 w-[66px] shrink-0"
+                className="h-8 w-[44px] shrink-0"
               />
             </div>
           </article>
@@ -222,7 +222,7 @@ export function DashboardHeroKpiRow({
 export function DashboardHeroKpiRowSkeleton() {
   return (
     <div
-      className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
       aria-busy="true"
       aria-label="Loading metrics"
     >

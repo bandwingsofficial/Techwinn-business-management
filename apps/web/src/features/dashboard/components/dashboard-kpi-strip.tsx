@@ -46,7 +46,7 @@ export function DashboardKpiStrip({
             />
 
             <div className="min-w-0 flex-1 pr-6">
-              <p className="truncate text-xs font-semibold text-[#243656]">
+              <p className="text-xs font-semibold leading-tight text-balance text-[#243656]">
                 {metric.label}
               </p>
               <p className="mt-0.5 text-[26px] font-bold leading-none tracking-tight text-[#172B50] tabular-nums">
