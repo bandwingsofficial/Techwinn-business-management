@@ -1,13 +1,17 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type { PermissionKey } from '#contracts';
-import { hasEmployeesViewDetailsPermission, hasEmployeesViewPermission } from '#contracts';
+import {
+  canViewOrganizationDailyTasks,
+  hasEmployeesViewDetailsPermission,
+  hasEmployeesViewPermission,
+} from '#contracts';
 import { employeeLinkedToAdminWhere } from '../../../../lib/persistence/employee-platform-admin-link.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 
 /**
- * Who may stream a stored employee profile photo: Super Admin and employee-directory viewers
- * (any photo in their organization), otherwise only the employee linked to the signed-in
- * account, and only that employee's current photo.
+ * A stored employee photo may be opened by whoever may already see that employee next to a
+ * task: Super Admin, employee-directory viewers and organization daily-task viewers (any photo
+ * in their organization), otherwise the employee themself and co-assignees on a shared task.
  */
 @Injectable()
 export class EmployeeProfileImageAccessService {
@@ -24,22 +28,41 @@ export class EmployeeProfileImageAccessService {
     if (
       hasEmployeesViewPermission(input.effective) ||
       hasEmployeesViewDetailsPermission(input.effective) ||
-      input.effective.has('employees.read')
+      input.effective.has('employees.read') ||
+      canViewOrganizationDailyTasks(input.effective)
     ) {
       return;
     }
 
-    const own = await this.prisma.employee.findFirst({
-      where: employeeLinkedToAdminWhere(input.organizationId, input.adminId),
-      select: { profileImageStoredObjectId: true },
+    const [viewer, owner] = await Promise.all([
+      this.prisma.employee.findFirst({
+        where: employeeLinkedToAdminWhere(input.organizationId, input.adminId),
+        select: { id: true },
+      }),
+      this.prisma.employee.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          profileImageStoredObjectId: input.storedObjectId,
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (!viewer || !owner) throw this.forbidden();
+    if (viewer.id === owner.id) return;
+
+    const sharedTasks = await this.prisma.dailyTaskAssignee.count({
+      where: {
+        organizationId: input.organizationId,
+        employeeId: owner.id,
+        dailyTask: { assignees: { some: { employeeId: viewer.id } } },
+      },
     });
-    if (
-      !own?.profileImageStoredObjectId ||
-      own.profileImageStoredObjectId !== input.storedObjectId
-    ) {
-      throw new ForbiddenException(
-        'You do not have permission to view this employee profile image.',
-      );
-    }
+    if (sharedTasks === 0) throw this.forbidden();
+  }
+
+  private forbidden(): ForbiddenException {
+    return new ForbiddenException(
+      'You do not have permission to view this employee profile image.',
+    );
   }
 }

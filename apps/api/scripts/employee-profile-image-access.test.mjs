@@ -1,6 +1,6 @@
 /**
- * Stored employee profile photo access — the photo shown for a session always comes from the
- * employee linked to that session (`Employee.platformAdminId`), never from a name match.
+ * Stored employee profile photo access — a photo is visible to whoever may already see that
+ * employee on a task, resolved from the session (`Employee.platformAdminId`), never by name.
  * Run after `pnpm run build`: `node --test scripts/employee-profile-image-access.test.mjs`
  */
 import 'reflect-metadata';
@@ -13,37 +13,56 @@ import { EmployeeProfileImageAccessService } from '../dist/modules/employees/app
 const ORG = 'org-1';
 
 function createService() {
+  const live = { employmentStatus: 'ACTIVE', deactivatedAt: null, deletedAt: null };
   const employees = [
     {
       id: 'emp-akshay',
       organizationId: ORG,
       platformAdminId: 'admin-akshay',
       profileImageStoredObjectId: 'obj-akshay',
-      employmentStatus: 'ACTIVE',
-      deactivatedAt: null,
-      deletedAt: null,
+      ...live,
     },
     {
       id: 'emp-sachin',
       organizationId: ORG,
       platformAdminId: 'admin-sachin',
       profileImageStoredObjectId: 'obj-sachin',
-      employmentStatus: 'ACTIVE',
-      deactivatedAt: null,
-      deletedAt: null,
+      ...live,
+    },
+    {
+      id: 'emp-rahul',
+      organizationId: ORG,
+      platformAdminId: 'admin-rahul',
+      profileImageStoredObjectId: 'obj-rahul',
+      ...live,
     },
   ];
+  /** task-shared: Akshay + Sachin; task-rahul: Rahul only. */
+  const assignees = [
+    { dailyTaskId: 'task-shared', organizationId: ORG, employeeId: 'emp-akshay' },
+    { dailyTaskId: 'task-shared', organizationId: ORG, employeeId: 'emp-sachin' },
+    { dailyTaskId: 'task-rahul', organizationId: ORG, employeeId: 'emp-rahul' },
+  ];
+  const matchesEmployee = (e, where) =>
+    Object.entries(where).every(([key, cond]) =>
+      cond && typeof cond === 'object' && 'in' in cond ? cond.in.includes(e[key]) : e[key] === cond,
+    );
   const prisma = {
     employee: {
-      findFirst: async ({ where }) =>
-        employees.find(
-          (e) =>
-            e.organizationId === where.organizationId &&
-            e.platformAdminId === where.platformAdminId &&
-            e.deactivatedAt === where.deactivatedAt &&
-            e.deletedAt === where.deletedAt &&
-            where.employmentStatus.in.includes(e.employmentStatus),
-        ) ?? null,
+      findFirst: async ({ where }) => employees.find((e) => matchesEmployee(e, where)) ?? null,
+    },
+    dailyTaskAssignee: {
+      count: async ({ where }) =>
+        assignees.filter(
+          (a) =>
+            a.organizationId === where.organizationId &&
+            a.employeeId === where.employeeId &&
+            assignees.some(
+              (other) =>
+                other.dailyTaskId === a.dailyTaskId &&
+                other.employeeId === where.dailyTask.assignees.some.employeeId,
+            ),
+        ).length,
     },
   };
   return { service: new EmployeeProfileImageAccessService(prisma), employees };
@@ -63,9 +82,23 @@ test('an employee with no HR permissions can open their own photo', async () => 
   await open(service, 'admin-akshay', 'obj-akshay');
 });
 
-test("an employee cannot open another employee's photo", async () => {
+test("co-assignees on a shared task see each other's photos", async () => {
   const { service } = createService();
-  await assert.rejects(open(service, 'admin-akshay', 'obj-sachin'), ForbiddenException);
+  await open(service, 'admin-akshay', 'obj-sachin');
+  await open(service, 'admin-sachin', 'obj-akshay');
+});
+
+test('an employee cannot open the photo of someone they share no task with', async () => {
+  const { service } = createService();
+  await assert.rejects(open(service, 'admin-akshay', 'obj-rahul'), ForbiddenException);
+  await assert.rejects(
+    open(service, 'admin-akshay', 'obj-rahul', [
+      'tasks.read',
+      'project_management.daily_tasks.view',
+      'project_management.daily_tasks.edit',
+    ]),
+    ForbiddenException,
+  );
 });
 
 test('an unlinked account sharing a display name gets no photo', async () => {
@@ -78,23 +111,27 @@ test('a soft-deleted or deactivated employee link no longer opens the photo', as
     const { service, employees } = createService();
     Object.assign(employees[0], patch);
     await assert.rejects(open(service, 'admin-akshay', 'obj-akshay'), ForbiddenException);
+    await assert.rejects(open(service, 'admin-akshay', 'obj-sachin'), ForbiddenException);
   }
 });
 
-test('employee directory viewers and Super Admin can open any photo in the organization', async () => {
+test('organization task viewers, directory viewers and Super Admin see any photo in the org', async () => {
   const { service } = createService();
-  await open(service, 'admin-hr', 'obj-sachin', ['employees.view']);
-  await open(service, 'admin-hr', 'obj-sachin', ['employees.read']);
-  await open(service, 'admin-root', 'obj-sachin', [], true);
+  await open(service, 'admin-lead', 'obj-rahul', ['project_management.daily_tasks.view_all']);
+  await open(service, 'admin-hr', 'obj-rahul', ['employees.view']);
+  await open(service, 'admin-hr', 'obj-rahul', ['employees.read']);
+  await open(service, 'admin-root', 'obj-rahul', [], true);
 });
 
-test("task-only permissions do not unlock other employees' photos", async () => {
+test("task edit/assign alone does not unlock other employees' photos", async () => {
   const { service } = createService();
   await assert.rejects(
-    open(service, 'admin-akshay', 'obj-sachin', [
-      'tasks.read',
-      'project_management.daily_tasks.view',
-    ]),
+    open(service, 'admin-lead', 'obj-rahul', ['project_management.daily_tasks.edit']),
     ForbiddenException,
   );
+});
+
+test('an unknown stored object is refused for non-viewers', async () => {
+  const { service } = createService();
+  await assert.rejects(open(service, 'admin-akshay', 'obj-missing'), ForbiddenException);
 });

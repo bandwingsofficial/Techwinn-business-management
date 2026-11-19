@@ -74,6 +74,8 @@ const ADMINS = {
   manager: 'admin-manager',
   /** Custom "Employee" role that only holds Daily Tasks → View Page (as found in the audited DB). */
   viewPageOnly: 'admin-view-page-only',
+  /** Employee role with View Page + Edit/Assign but no View All Tasks (the reported leak). */
+  editorNoViewAll: 'admin-editor-no-view-all',
   superAdmin: 'admin-super',
 };
 
@@ -85,6 +87,7 @@ const EMPLOYEES = [
   { id: 'emp-john', organizationId: ORG, platformAdminId: ADMINS.john, displayName: 'John', employeeCode: 'E003', ...LIVE },
   { id: 'emp-manager', organizationId: ORG, platformAdminId: ADMINS.manager, displayName: 'Manager', employeeCode: 'M001', ...LIVE },
   { id: 'emp-view-page', organizationId: ORG, platformAdminId: ADMINS.viewPageOnly, displayName: 'Akshay', employeeCode: 'E004', ...LIVE },
+  { id: 'emp-editor', organizationId: ORG, platformAdminId: ADMINS.editorNoViewAll, displayName: 'Sachin', employeeCode: 'E005', ...LIVE },
 ];
 
 /** Employee role exactly as resolved at runtime (stored keys → legacy expansion → prerequisites). */
@@ -107,6 +110,7 @@ const MANAGER_EFFECTIVE = uniquePermissionKeys([
   'tasks.update',
   'projects.read',
   'project_management.daily_tasks.view',
+  'project_management.daily_tasks.view_all',
   'project_management.daily_tasks.view_details',
   'project_management.task_calendar.view',
   'dashboard.view',
@@ -119,6 +123,16 @@ const MANAGER_EFFECTIVE = uniquePermissionKeys([
 
 const VIEW_PAGE_ONLY_EFFECTIVE = uniquePermissionKeys(['project_management.daily_tasks.view']);
 
+/**
+ * The exact leaking role from production screenshots: an Employee-portal role with View Page and
+ * a management key (Edit) but WITHOUT View All Tasks. It must stay scoped to own assignments.
+ */
+const EDITOR_WITHOUT_VIEW_ALL_EFFECTIVE = uniquePermissionKeys([
+  'project_management.daily_tasks.view',
+  'project_management.daily_tasks.edit',
+  'project_management.daily_tasks.assign',
+]);
+
 const PERMISSIONS_BY_ADMIN = {
   [ADMINS.akshay]: EMPLOYEE_EFFECTIVE,
   [ADMINS.akshayNamesake]: EMPLOYEE_EFFECTIVE,
@@ -126,6 +140,7 @@ const PERMISSIONS_BY_ADMIN = {
   [ADMINS.john]: EMPLOYEE_EFFECTIVE,
   [ADMINS.manager]: MANAGER_EFFECTIVE,
   [ADMINS.viewPageOnly]: VIEW_PAGE_ONLY_EFFECTIVE,
+  [ADMINS.editorNoViewAll]: EDITOR_WITHOUT_VIEW_ALL_EFFECTIVE,
   [ADMINS.superAdmin]: [],
 };
 
@@ -302,6 +317,27 @@ test('organization board needs the explicit View All Tasks key', () => {
   assert.equal(canViewOrganizationDailyTasks(viewAll), true);
 });
 
+test('task edit / assign / delete are independent of organization visibility', () => {
+  for (const manageKey of [
+    'project_management.daily_tasks.edit',
+    'project_management.daily_tasks.assign',
+    'project_management.daily_tasks.delete',
+    'tasks.update',
+    'tasks.create',
+    'tasks.delete',
+  ]) {
+    const effective = new Set(
+      uniquePermissionKeys(['project_management.daily_tasks.view', manageKey]),
+    );
+    assert.equal(
+      canViewOrganizationDailyTasks(effective),
+      false,
+      `${manageKey} must not grant organization-wide task visibility`,
+    );
+    assert.equal(canViewOwnDailyTasks(effective), true);
+  }
+});
+
 // ── Identity: trusted session → Employee.platformAdminId only ──────────────
 
 test('identity: View Page-only employee sees only own tasks and cannot open the org board', async () => {
@@ -314,6 +350,26 @@ test('identity: View Page-only employee sees only own tasks and cannot open the 
     authz.assertOrganizationTaskAccess(actor(ADMINS.viewPageOnly)),
     DailyTaskForbiddenError,
   );
+});
+
+test('reported leak: Edit/Assign without View All Tasks sees only own tasks', async () => {
+  const { db, authz, visibleDailyTaskIds, canRead } = createDailyServices();
+  // Sachin (editor role) is assigned task-c; Akshay (plain employee) is assigned task-a.
+  db.assignees.push(makeAssignee('task-c', 'emp-editor'));
+
+  // The editor role holds View Page + Edit + Assign but NOT View All Tasks.
+  await assert.rejects(
+    authz.assertOrganizationTaskAccess(actor(ADMINS.editorNoViewAll)),
+    DailyTaskForbiddenError,
+    'Edit/Assign must not unlock the organization board',
+  );
+  assert.deepEqual(await visibleDailyTaskIds(ADMINS.editorNoViewAll), ['task-c']);
+  assert.equal(await canRead(ADMINS.editorNoViewAll, 'task-c'), true);
+  assert.equal(await canRead(ADMINS.editorNoViewAll, 'task-a'), false, 'cannot read Akshay\'s task');
+
+  // And Akshay (plain employee) never sees the editor's task.
+  assert.equal((await visibleDailyTaskIds(ADMINS.akshay)).includes('task-c'), false);
+  assert.equal(await canRead(ADMINS.akshay, 'task-c'), false);
 });
 
 test('identity: an account sharing a display name is never matched to that employee', async () => {

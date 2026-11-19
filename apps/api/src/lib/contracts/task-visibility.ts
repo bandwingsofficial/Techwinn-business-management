@@ -7,10 +7,12 @@ import { PM_DAILY_TASKS_VIEW_ALL_KEY, PM_DAILY_TASKS_VIEW_KEY } from './pm-daily
  * task calendar, dashboard). Accounts that do not pass the organization checks below only
  * ever see tasks assigned to their own employee profile.
  *
- * `projects.read`, `tasks.read`, Daily Tasks → View Page and collaborator keys such as
- * `employees.view` are deliberately not organization signals: roles hold them to open pages
- * and work on their own assignments. Organization-wide daily task visibility must be granted
- * explicitly (`project_management.daily_tasks.view_all`) or implied by task management keys.
+ * `projects.read`, `tasks.read`, Daily Tasks → View Page, collaborator keys such as
+ * `employees.view`, and task management keys (edit / assign / delete) are deliberately NOT
+ * organization visibility signals: roles hold them to open pages and act on their own
+ * assignments. Seeing every employee's task requires the explicit, independent
+ * `project_management.daily_tasks.view_all` key (or platform Super Admin). An employee who may
+ * edit or be assigned tasks still only sees tasks assigned to their own employee profile.
  */
 
 export const ORGANIZATION_DAILY_TASK_MANAGE_KEYS = [
@@ -50,14 +52,16 @@ export function canManageOrganizationDailyTasks(
   return ORGANIZATION_DAILY_TASK_MANAGE_KEYS.some((key) => has(key));
 }
 
-/** Organization-wide daily task list, board, calendar rows and dashboard counts. */
+/**
+ * Organization-wide daily task list, board, calendar rows and dashboard counts.
+ * Independent of edit / assign / delete: only `view_all` (or platform Super Admin) grants it.
+ */
 export function canViewOrganizationDailyTasks(
   permissions: PermissionLookup,
   isPlatformSuperAdmin = false,
 ): boolean {
   if (isPlatformSuperAdmin) return true;
   const has = toHas(permissions);
-  if (canManageOrganizationDailyTasks(has)) return true;
   return has(PM_DAILY_TASKS_VIEW_ALL_KEY);
 }
 
