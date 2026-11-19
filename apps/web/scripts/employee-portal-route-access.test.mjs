@@ -37,15 +37,8 @@ function canonicalPermissionPath(pathname) {
   return `/admin/${parts.slice(1).join('/')}`;
 }
 
-const ORG_DAILY_TASK_MANAGE = [
-  'tasks.create',
-  'tasks.assign',
-  'project_management.daily_tasks.assign',
-];
-
 /** Mirror of `canViewOrganizationDailyTasks` in `src/lib/contracts/task-visibility.ts`. */
 function canViewOrganizationDailyTasks(permissions) {
-  if (ORG_DAILY_TASK_MANAGE.some((k) => permissions.has(k))) return true;
   return permissions.has('project_management.daily_tasks.view_all');
 }
 
@@ -89,6 +82,15 @@ test('org daily tasks workspace only with View All Tasks', () => {
 
 test('tasks.read + employees.view uses self-service daily tasks', () => {
   assert.equal(pickDailyTasksWorkspace(new Set(['tasks.read', 'employees.view'])), 'self-service');
+});
+
+test('View Page + Edit/Assign without View All Tasks uses self-service (reported leak)', () => {
+  const perms = new Set([
+    'project_management.daily_tasks.view',
+    'project_management.daily_tasks.edit',
+    'project_management.daily_tasks.assign',
+  ]);
+  assert.equal(pickDailyTasksWorkspace(perms), 'self-service');
 });
 
 test('self-service daily tasks when only tasks.read without org signals', () => {

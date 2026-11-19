@@ -9,17 +9,7 @@ const PM_DAILY_TASKS_VIEW_KEY = 'project_management.daily_tasks.view';
 const PM_DAILY_TASKS_VIEW_ALL_KEY = 'project_management.daily_tasks.view_all';
 
 /** Mirror of `canViewOrganizationDailyTasks` in `src/lib/contracts/task-visibility.ts`. */
-function canViewOrganizationDailyTasks(has, hasAny) {
-  const manage = [
-    'tasks.create',
-    'tasks.assign',
-    'tasks.update',
-    'tasks.delete',
-    'project_management.daily_tasks.assign',
-    'project_management.daily_tasks.edit',
-    'project_management.daily_tasks.delete',
-  ];
-  if (hasAny(...manage)) return true;
+function canViewOrganizationDailyTasks(has) {
   return has(PM_DAILY_TASKS_VIEW_ALL_KEY);
 }
 
@@ -49,8 +39,7 @@ function resolveDailyTasksDataScope(input) {
 function scopeFor(keys, portal, workspaceParam = null) {
   const permissions = new Set(keys);
   const has = (key) => permissions.has(key);
-  const hasAny = (...list) => list.some((k) => permissions.has(k));
-  const canOrg = canViewOrganizationDailyTasks(has, hasAny);
+  const canOrg = canViewOrganizationDailyTasks(has);
   return {
     canOrg,
     canOwn: canViewOwnDailyTasks(has),
@@ -88,6 +77,15 @@ test('employee with only tasks.read stays on own scope', () => {
 
 test('tasks.read + employees.view no longer unlocks org scope', () => {
   const result = scopeFor(['tasks.read', 'employees.view'], 'admin');
+  assert.equal(result.canOrg, false);
+  assert.equal(result.scope, 'own');
+});
+
+test('Edit / Assign without View All Tasks stays on own scope (reported leak)', () => {
+  const result = scopeFor(
+    [PM_DAILY_TASKS_VIEW_KEY, 'project_management.daily_tasks.edit', 'project_management.daily_tasks.assign'],
+    'employee',
+  );
   assert.equal(result.canOrg, false);
   assert.equal(result.scope, 'own');
 });

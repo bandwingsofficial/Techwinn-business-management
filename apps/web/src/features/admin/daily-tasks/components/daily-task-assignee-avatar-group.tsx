@@ -28,25 +28,13 @@ function dedupeAssignees(
   return out;
 }
 
-function sessionEmployeeToAssignee(session: MySessionEmployeeSummary): DailyTaskAssigneeSummary {
-  return {
-    id: session.id,
-    employeeId: session.id,
-    displayName: session.displayName,
-    jobTitle: session.jobTitle,
-    profileImageUrl: session.profileImageUrl,
-    startedAt: null,
-    completedAt: null,
-  };
-}
-
+/** Only an actual assignee row matching the session employee id — never a substituted identity. */
 function resolveSelfAssigneeForTask(
   assignees: readonly DailyTaskAssigneeSummary[],
   sessionEmployee: MySessionEmployeeSummary | null,
 ): DailyTaskAssigneeSummary | null {
   if (!sessionEmployee) return null;
-  const match = assignees.find((assignee) => assignee.employeeId === sessionEmployee.id);
-  return match ?? sessionEmployeeToAssignee(sessionEmployee);
+  return assignees.find((assignee) => assignee.employeeId === sessionEmployee.id) ?? null;
 }
 
 function AssigneeTooltipList({ assignees }: { assignees: readonly DailyTaskAssigneeSummary[] }) {

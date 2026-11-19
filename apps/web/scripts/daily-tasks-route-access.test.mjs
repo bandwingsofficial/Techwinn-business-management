@@ -31,11 +31,7 @@ function isOrganizationDailyTasksBoardPath(pathname) {
 
 /** Mirrors of `src/lib/contracts/task-visibility.ts`. */
 function canViewOrganizationDailyTasks(permissions) {
-  return (
-    ['tasks.create', 'tasks.assign', 'project_management.daily_tasks.assign'].some((k) =>
-      permissions.has(k),
-    ) || permissions.has('project_management.daily_tasks.view_all')
-  );
+  return permissions.has('project_management.daily_tasks.view_all');
 }
 
 function canViewOwnDailyTasks(permissions) {
