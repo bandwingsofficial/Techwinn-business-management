@@ -4,6 +4,7 @@ import {
   dailyTaskAssignedToEmployeeIdWhere,
   dailyTaskAssignedToEmployeeIdsWhere,
   employeeLinkedToAdminWhere,
+  LINKED_EMPLOYEE_WHERE,
 } from '../../../../../../../../lib/persistence/employee-platform-admin-link.js';
 import { normalizeWorkflowStageColorToken } from '#validation';
 import type {
@@ -436,7 +437,7 @@ export class DailyTaskPrismaStore {
       where: {
         organizationId,
         id: { in: [...employeeIds] },
-        employmentStatus: { in: ['ACTIVE', 'ON_LEAVE'] },
+        ...LINKED_EMPLOYEE_WHERE,
       },
       select: { id: true },
     });

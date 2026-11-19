@@ -1,11 +1,17 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 
-/** Active employee profiles that may sign in and receive assignment-scoped task visibility. */
+/**
+ * Employee master rows that may act as the signed-in account's identity and receive
+ * assignment-scoped task visibility. Deactivated or soft-deleted rows never qualify, so a
+ * removed employee can never be resolved for, or substituted into, another session.
+ */
 export const LINKED_EMPLOYEE_WHERE = {
   deactivatedAt: null,
+  deletedAt: null,
   employmentStatus: { in: ['ACTIVE', 'ON_LEAVE'] as const },
-} satisfies Pick<Prisma.EmployeeWhereInput, 'deactivatedAt' | 'employmentStatus'>;
+} satisfies Pick<Prisma.EmployeeWhereInput, 'deactivatedAt' | 'deletedAt' | 'employmentStatus'>;
 
+/** The only identity link: `Employee.platformAdminId` = authenticated admin id, same organization. */
 export function employeeLinkedToAdminWhere(
   organizationId: string,
   platformAdminId: string,
@@ -17,7 +23,7 @@ export function employeeLinkedToAdminWhere(
   };
 }
 
-/** Prisma filter: task has an active (non-historical) assignee in the given employee ids. */
+/** Prisma filter: task has a live (non-historical) assignee row for one of the employee ids. */
 export function dailyTaskAssignedToEmployeeIdsWhere(
   employeeIds: readonly string[],
 ): Prisma.DailyTaskWhereInput {

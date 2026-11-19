@@ -103,12 +103,15 @@ export class DailyTaskRealtimeService {
       }
       if (visible.length > 0 || signal.aborted) {
         return {
+          // Assignee recipients only learn that a task changed; employee ids stay with managers.
           events: visible.map((row) => ({
             id: row.id.toString(),
             type: row.type,
             taskId: row.dailyTaskId,
             notifyOrganizationManagers: row.notifyOrganizationManagers,
-            metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+            metadata: canReceiveOrgManagerEvents
+              ? ((row.metadata as Record<string, unknown> | null) ?? null)
+              : null,
             occurredAt: row.createdAt.toISOString(),
           })),
           cursor: cursor.toString(),

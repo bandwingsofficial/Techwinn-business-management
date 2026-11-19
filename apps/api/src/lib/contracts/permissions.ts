@@ -69,6 +69,7 @@ export const PERMISSION_KEYS = [
   'crm.clients.edit',
   'crm.clients.delete',
   'project_management.daily_tasks.view',
+  'project_management.daily_tasks.view_all',
   'project_management.daily_tasks.assign',
   'project_management.daily_tasks.view_details',
   'project_management.daily_tasks.edit',
@@ -558,7 +559,13 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     key: 'project_management.daily_tasks.view',
     module: 'Project Management',
     action: 'View Page',
-    description: 'View the Daily Tasks board and list.',
+    description: 'Open Daily Tasks and see tasks assigned to you.',
+  },
+  {
+    key: 'project_management.daily_tasks.view_all',
+    module: 'Project Management',
+    action: 'View All Tasks',
+    description: 'See every daily task in the organization, not only your own assignments.',
   },
   {
     key: 'project_management.daily_tasks.assign',

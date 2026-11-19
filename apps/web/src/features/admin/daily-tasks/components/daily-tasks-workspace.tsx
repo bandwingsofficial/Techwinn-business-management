@@ -27,7 +27,11 @@ import {
   listDailyTasks,
   listMyDailyTasks,
 } from '../api/daily-tasks';
-import { PM_DAILY_TASKS_VIEW_KEY, type OrgCalendarMonthDay } from '@techwin/contracts';
+import {
+  canViewOwnDailyTasks,
+  PM_DAILY_TASKS_VIEW_KEY,
+  type OrgCalendarMonthDay,
+} from '@techwin/contracts';
 import { useIsPlatformSuperAdmin } from '@/features/auth/hooks/use-is-platform-super-admin';
 import type {
   DailyTaskBoardResponse,
@@ -129,7 +133,7 @@ export function DailyTasksWorkspace({
       workspaceParam: searchParams.get('workspace'),
       explicitScope: defaultDataScope,
       canViewOrganizationTasks,
-      hasTasksRead: has('tasks.read'),
+      canViewOwnTasks: canViewOwnDailyTasks(has),
     });
   }, [canViewOrganizationTasks, defaultDataScope, has, portal, searchParams]);
   const resolvedTitle =

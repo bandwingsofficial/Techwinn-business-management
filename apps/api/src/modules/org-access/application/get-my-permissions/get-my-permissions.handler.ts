@@ -9,6 +9,7 @@ import type {
   MySessionEmployeeSummary,
   PermissionKey,
 } from '#contracts';
+import { employeeLinkedToAdminWhere } from '../../../../lib/persistence/employee-platform-admin-link.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 import {
   ORG_ACCESS_REPOSITORY,
@@ -71,12 +72,7 @@ export class GetMyPermissionsHandler {
     adminId: string,
   ): Promise<MySessionEmployeeSummary | null> {
     const row = await this.prisma.employee.findFirst({
-      where: {
-        organizationId,
-        platformAdminId: adminId,
-        employmentStatus: { in: ['ACTIVE', 'ON_LEAVE'] },
-        deactivatedAt: null,
-      },
+      where: employeeLinkedToAdminWhere(organizationId, adminId),
       select: {
         id: true,
         displayName: true,

@@ -20,7 +20,10 @@ import {
   shouldSuppressSessionEnded,
 } from '@/shared/api/session-ended';
 import { invalidateMyPermissionsCache } from '@/features/admin/org-access/my-permissions-cache';
-import { clearAuthorizedImageCache } from '@/features/admin/media/authorized-image-cache';
+import {
+  bindAuthorizedImageCacheToAccount,
+  clearAuthorizedImageCache,
+} from '@/features/admin/media/authorized-image-cache';
 import { getCurrentSession } from '../api/get-current-session';
 import { logout, logoutAllDevices } from '../api/logout';
 import { refreshSession } from '../api/refresh-session';
@@ -91,6 +94,9 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         const current = await getCurrentSession(controller.signal);
         if (controller.signal.aborted) return;
         clearPostAuthBootstrap();
+        if (bindAuthorizedImageCacheToAccount(current.admin.id)) {
+          invalidateMyPermissionsCache();
+        }
         setState({
           status: 'authenticated',
           admin: current.admin,

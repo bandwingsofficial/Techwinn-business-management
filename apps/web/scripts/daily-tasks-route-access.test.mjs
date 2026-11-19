@@ -1,5 +1,6 @@
 /**
- * Organization Daily Tasks route access must be portal-agnostic.
+ * Daily Tasks route access must be portal-agnostic: org viewers get the organization board,
+ * anyone who may view their own tasks gets the same page in personal scope.
  * Run: `node --experimental-strip-types --test scripts/daily-tasks-route-access.test.mjs`
  */
 import assert from 'node:assert/strict';
@@ -28,28 +29,39 @@ function isOrganizationDailyTasksBoardPath(pathname) {
   return module === 'daily-tasks' || module === 'my-tasks';
 }
 
+/** Mirrors of `src/lib/contracts/task-visibility.ts`. */
 function canViewOrganizationDailyTasks(permissions) {
-  return permissions.has('project_management.daily_tasks.view');
+  return (
+    ['tasks.create', 'tasks.assign', 'project_management.daily_tasks.assign'].some((k) =>
+      permissions.has(k),
+    ) || permissions.has('project_management.daily_tasks.view_all')
+  );
 }
 
+function canViewOwnDailyTasks(permissions) {
+  return permissions.has('tasks.read') || permissions.has('project_management.daily_tasks.view');
+}
+
+/** Mirror of the daily-task branch of `canAccessAppPath` in `app-route-permissions.ts`. */
 function canAccessAppPath(pathname, permissions, portalSegment) {
-  const path =
-    pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
   const pathPortal = path.split('/').filter(Boolean)[0] ?? null;
   if (portalSegment && pathPortal && pathPortal !== portalSegment) {
     return false;
   }
   if (isOrganizationDailyTasksBoardPath(path)) {
-    return canViewOrganizationDailyTasks(permissions);
-  }
-  const canonical = canonicalPermissionPath(path);
-  if (canonical === '/admin/daily-tasks') {
-    return canViewOrganizationDailyTasks(permissions);
+    if (canViewOrganizationDailyTasks(permissions)) return true;
+    if (!path.startsWith('/employee/')) return canViewOwnDailyTasks(permissions);
+    return ['tasks.read', 'project_management.daily_tasks.view'].some((k) => permissions.has(k));
   }
   return false;
 }
 
-const dailyTasksPerm = new Set(['project_management.daily_tasks.view']);
+const viewPage = new Set(['project_management.daily_tasks.view']);
+const viewAll = new Set([
+  'project_management.daily_tasks.view',
+  'project_management.daily_tasks.view_all',
+]);
 
 const paths = [
   ['/admin/daily-tasks', 'admin'],
@@ -62,11 +74,24 @@ const paths = [
 
 for (const [path, portal] of paths) {
   test(`daily tasks allowed for ${portal} at ${path}`, () => {
-    assert.equal(canAccessAppPath(path, dailyTasksPerm, portal), true);
+    assert.equal(canAccessAppPath(path, viewPage, portal), true);
+    assert.equal(canAccessAppPath(path, viewAll, portal), true);
     assert.equal(canonicalPermissionPath(path), '/admin/daily-tasks');
   });
 }
 
-test('without permission, org daily tasks denied', () => {
-  assert.equal(canAccessAppPath('/project-manager/daily-tasks', new Set(), 'project-manager'), false);
+test('employee portal daily tasks open with View Page alone (own scope)', () => {
+  assert.equal(canAccessAppPath('/employee/daily-tasks', viewPage, 'employee'), true);
+  assert.equal(
+    canAccessAppPath('/employee/daily-tasks', new Set(['tasks.read']), 'employee'),
+    true,
+  );
+});
+
+test('without permission, daily tasks denied', () => {
+  assert.equal(
+    canAccessAppPath('/project-manager/daily-tasks', new Set(), 'project-manager'),
+    false,
+  );
+  assert.equal(canAccessAppPath('/employee/daily-tasks', new Set(), 'employee'), false);
 });

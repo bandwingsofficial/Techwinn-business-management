@@ -59,24 +59,27 @@ export class DailyTaskAuthorizationService {
 
   async assertCanReadTask(actor: OrgAccessActor, taskId: string): Promise<void> {
     const effective = await this.resolveEffective(actor);
-    if (this.canViewOrganizationTasks(actor, effective)) {
-      if (
-        actor.isPlatformSuperAdmin ||
+    const organizationViewer = this.canViewOrganizationTasks(actor, effective);
+    if (
+      organizationViewer &&
+      (actor.isPlatformSuperAdmin ||
         hasUnrestrictedOrgPermissions(effective) ||
-        hasPmDailyTaskViewDetailsPermission(effective)
-      ) {
-        return;
-      }
-      throw new DailyTaskForbiddenError(
-        'You do not have permission to view daily task details. Enable Daily Tasks → View Card Details for your role.',
-      );
+        hasPmDailyTaskViewDetailsPermission(effective))
+    ) {
+      return;
     }
     const assigned = await this.tasks.isTaskAssignedToAdmin(
       actor.organizationId,
       actor.adminId,
       taskId,
     );
-    if (!assigned) throw new DailyTaskForbiddenError();
+    if (assigned) return;
+    if (organizationViewer) {
+      throw new DailyTaskForbiddenError(
+        'You do not have permission to view daily task details. Enable Daily Tasks → View Card Details for your role.',
+      );
+    }
+    throw new DailyTaskForbiddenError();
   }
 
   async assertCanUpdateTaskProgress(actor: OrgAccessActor, taskId: string): Promise<void> {

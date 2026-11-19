@@ -13,10 +13,10 @@ import { ForbiddenException } from '@nestjs/common';
 import {
   EMPLOYEE_PORTAL_PERMISSIONS,
   canViewOrganizationDailyTasks,
-  canViewOrganizationDailyTasksInEmployeePortal,
   canViewOrganizationProjectTasks,
   canViewOwnDailyTasks,
 } from '../dist/lib/contracts/index.js';
+import { DailyTaskValidationError } from '../dist/modules/project-management/modules/daily-tasks/domain/errors/daily-task.errors.js';
 import { uniquePermissionKeys } from '../dist/modules/org-access/infrastructure/persistence/prisma/repositories/org-access-persistence.shared.js';
 import { DailyTaskAuthorizationService } from '../dist/modules/project-management/modules/daily-tasks/application/services/daily-task-authorization.service.js';
 import { DailyTaskForbiddenError } from '../dist/modules/project-management/modules/daily-tasks/domain/errors/daily-task.errors.js';
@@ -67,17 +67,24 @@ function matches(row, where) {
 
 const ADMINS = {
   akshay: 'admin-akshay',
+  /** Second sign-in account with the same display name and no employee link. */
+  akshayNamesake: 'admin-akshay-namesake',
   rahul: 'admin-rahul',
   john: 'admin-john',
   manager: 'admin-manager',
+  /** Custom "Employee" role that only holds Daily Tasks → View Page (as found in the audited DB). */
+  viewPageOnly: 'admin-view-page-only',
   superAdmin: 'admin-super',
 };
 
+const LIVE = { employmentStatus: 'ACTIVE', deactivatedAt: null, deletedAt: null };
+
 const EMPLOYEES = [
-  { id: 'emp-akshay', organizationId: ORG, platformAdminId: ADMINS.akshay, displayName: 'Akshay', employeeCode: 'E001', employmentStatus: 'ACTIVE', deactivatedAt: null },
-  { id: 'emp-rahul', organizationId: ORG, platformAdminId: ADMINS.rahul, displayName: 'Rahul', employeeCode: 'E002', employmentStatus: 'ACTIVE', deactivatedAt: null },
-  { id: 'emp-john', organizationId: ORG, platformAdminId: ADMINS.john, displayName: 'John', employeeCode: 'E003', employmentStatus: 'ACTIVE', deactivatedAt: null },
-  { id: 'emp-manager', organizationId: ORG, platformAdminId: ADMINS.manager, displayName: 'Manager', employeeCode: 'M001', employmentStatus: 'ACTIVE', deactivatedAt: null },
+  { id: 'emp-akshay', organizationId: ORG, platformAdminId: ADMINS.akshay, displayName: 'Akshay', employeeCode: 'E001', ...LIVE },
+  { id: 'emp-rahul', organizationId: ORG, platformAdminId: ADMINS.rahul, displayName: 'Rahul', employeeCode: 'E002', ...LIVE },
+  { id: 'emp-john', organizationId: ORG, platformAdminId: ADMINS.john, displayName: 'John', employeeCode: 'E003', ...LIVE },
+  { id: 'emp-manager', organizationId: ORG, platformAdminId: ADMINS.manager, displayName: 'Manager', employeeCode: 'M001', ...LIVE },
+  { id: 'emp-view-page', organizationId: ORG, platformAdminId: ADMINS.viewPageOnly, displayName: 'Akshay', employeeCode: 'E004', ...LIVE },
 ];
 
 /** Employee role exactly as resolved at runtime (stored keys → legacy expansion → prerequisites). */
@@ -110,11 +117,15 @@ const MANAGER_EFFECTIVE = uniquePermissionKeys([
   'dashboard.projects.progress',
 ]);
 
+const VIEW_PAGE_ONLY_EFFECTIVE = uniquePermissionKeys(['project_management.daily_tasks.view']);
+
 const PERMISSIONS_BY_ADMIN = {
   [ADMINS.akshay]: EMPLOYEE_EFFECTIVE,
+  [ADMINS.akshayNamesake]: EMPLOYEE_EFFECTIVE,
   [ADMINS.rahul]: EMPLOYEE_EFFECTIVE,
   [ADMINS.john]: EMPLOYEE_EFFECTIVE,
   [ADMINS.manager]: MANAGER_EFFECTIVE,
+  [ADMINS.viewPageOnly]: VIEW_PAGE_ONLY_EFFECTIVE,
   [ADMINS.superAdmin]: [],
 };
 
@@ -247,10 +258,17 @@ function createDailyServices() {
 
 // ── Permission rules ────────────────────────────────────────────────────────
 
-test('employees.view alone does not open the employee portal organization board', () => {
+test('Daily Tasks → View Page alone only reveals own tasks (custom Employee role)', () => {
+  const effective = new Set(VIEW_PAGE_ONLY_EFFECTIVE);
+  assert.equal(effective.has('tasks.read'), false);
+  assert.equal(canViewOrganizationDailyTasks(effective), false);
+  assert.equal(canViewOwnDailyTasks(effective), true);
+});
+
+test('tasks.read + collaborator keys no longer imply organization daily tasks', () => {
   const collaborator = new Set(['tasks.read', 'employees.view']);
-  assert.equal(canViewOrganizationDailyTasks(collaborator), true);
-  assert.equal(canViewOrganizationDailyTasksInEmployeePortal(collaborator), false);
+  assert.equal(canViewOrganizationDailyTasks(collaborator), false);
+  assert.equal(canViewOwnDailyTasks(collaborator), true);
 });
 
 test('Employee role runtime permissions do not grant organization task visibility', () => {
@@ -274,9 +292,78 @@ test('Managers and platform Super Admin keep organization-wide visibility', () =
   assert.equal(canViewOrganizationProjectTasks(new Set(), true), true);
 });
 
-test('explicit Daily Tasks → View Page grant still opens the organization board', () => {
-  const custom = new Set(['tasks.read', 'project_management.daily_tasks.view']);
-  assert.equal(canViewOrganizationDailyTasks(custom), true);
+test('organization board needs the explicit View All Tasks key', () => {
+  assert.equal(
+    canViewOrganizationDailyTasks(new Set(['tasks.read', 'project_management.daily_tasks.view'])),
+    false,
+  );
+  const viewAll = new Set(uniquePermissionKeys(['project_management.daily_tasks.view_all']));
+  assert.ok(viewAll.has('project_management.daily_tasks.view'), 'View All implies the page');
+  assert.equal(canViewOrganizationDailyTasks(viewAll), true);
+});
+
+// ── Identity: trusted session → Employee.platformAdminId only ──────────────
+
+test('identity: View Page-only employee sees only own tasks and cannot open the org board', async () => {
+  const { db, authz, visibleDailyTaskIds, canRead } = createDailyServices();
+  db.assignees.push(makeAssignee('task-c', 'emp-view-page'));
+  assert.deepEqual(await visibleDailyTaskIds(ADMINS.viewPageOnly), ['task-c']);
+  assert.equal(await canRead(ADMINS.viewPageOnly, 'task-c'), true);
+  assert.equal(await canRead(ADMINS.viewPageOnly, 'task-a'), false);
+  await assert.rejects(
+    authz.assertOrganizationTaskAccess(actor(ADMINS.viewPageOnly)),
+    DailyTaskForbiddenError,
+  );
+});
+
+test('identity: an account sharing a display name is never matched to that employee', async () => {
+  const { store, visibleDailyTaskIds, canRead } = createDailyServices();
+  assert.deepEqual(await store.findEmployeeIdsForAdmin(ORG, ADMINS.akshayNamesake), []);
+  assert.deepEqual(await visibleDailyTaskIds(ADMINS.akshayNamesake), []);
+  assert.equal(await canRead(ADMINS.akshayNamesake, 'task-a'), false);
+  // Two employees named "Akshay" stay separate identities.
+  assert.deepEqual(await store.findEmployeeIdsForAdmin(ORG, ADMINS.akshay), ['emp-akshay']);
+  assert.deepEqual(await store.findEmployeeIdsForAdmin(ORG, ADMINS.viewPageOnly), ['emp-view-page']);
+});
+
+test('identity: soft-deleted or deactivated employees never resolve for the session', async () => {
+  for (const patch of [{ deletedAt: new Date() }, { deactivatedAt: new Date() }, { employmentStatus: 'TERMINATED' }]) {
+    const { db, store, visibleDailyTaskIds, canRead } = createDailyServices();
+    Object.assign(db.employees.find((e) => e.id === 'emp-akshay'), patch);
+    assert.deepEqual(await store.findEmployeeIdsForAdmin(ORG, ADMINS.akshay), [], JSON.stringify(patch));
+    assert.deepEqual(await visibleDailyTaskIds(ADMINS.akshay), []);
+    assert.equal(await canRead(ADMINS.akshay, 'task-a'), false);
+  }
+});
+
+test('identity: an employee link in another organization grants nothing here', async () => {
+  const { db, store } = createDailyServices();
+  db.employees.find((e) => e.id === 'emp-akshay').organizationId = 'org-2';
+  assert.deepEqual(await store.findEmployeeIdsForAdmin(ORG, ADMINS.akshay), []);
+});
+
+test('identity: soft-deleted, deactivated or foreign employees cannot be assigned', async () => {
+  const { db, store } = createDailyServices();
+  await store.assertEmployeesEligible(ORG, ['emp-akshay', 'emp-rahul']);
+  db.employees.find((e) => e.id === 'emp-rahul').deletedAt = new Date();
+  await assert.rejects(store.assertEmployeesEligible(ORG, ['emp-akshay', 'emp-rahul']), DailyTaskValidationError);
+  db.employees.find((e) => e.id === 'emp-john').deactivatedAt = new Date();
+  await assert.rejects(store.assertEmployeesEligible(ORG, ['emp-john']), DailyTaskValidationError);
+  await assert.rejects(store.assertEmployeesEligible(ORG, ['emp-unknown']), DailyTaskValidationError);
+});
+
+test('org viewers without View Card Details can still open tasks assigned to them', async () => {
+  const viewAllOnly = uniquePermissionKeys(['project_management.daily_tasks.view_all']);
+  const { authz } = createDailyServices();
+  const original = PERMISSIONS_BY_ADMIN[ADMINS.rahul];
+  PERMISSIONS_BY_ADMIN[ADMINS.rahul] = viewAllOnly;
+  try {
+    await authz.assertOrganizationTaskAccess(actor(ADMINS.rahul));
+    await authz.assertCanReadTask(actor(ADMINS.rahul), 'task-b');
+    await assert.rejects(authz.assertCanReadTask(actor(ADMINS.rahul), 'task-c'), /View Card Details/);
+  } finally {
+    PERMISSIONS_BY_ADMIN[ADMINS.rahul] = original;
+  }
 });
 
 // ── Scenario 1: single assignment ───────────────────────────────────────────

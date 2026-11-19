@@ -6,6 +6,20 @@ const MAX_CACHE_ENTRIES = 128;
 
 const blobUrlCache = new Map<string, string>();
 const inflight = new Map<string, Promise<string>>();
+/** Bumped on every clear so fetches started under a previous account never repopulate the cache. */
+let generation = 0;
+const generationListeners = new Set<() => void>();
+
+export function getAuthorizedImageCacheGeneration(): number {
+  return generation;
+}
+
+export function subscribeAuthorizedImageCache(listener: () => void): () => void {
+  generationListeners.add(listener);
+  return () => {
+    generationListeners.delete(listener);
+  };
+}
 
 /** API paths that require a bearer token (plain `<img src>` cannot load them). */
 export function requiresAuthorizedImageFetch(resolved: string): boolean {
@@ -35,6 +49,22 @@ export function clearAuthorizedImageCache(): void {
   }
   blobUrlCache.clear();
   inflight.clear();
+  generation += 1;
+  for (const listener of generationListeners) listener();
+}
+
+let boundAccountId: string | null = null;
+
+/**
+ * Ties cached images to one signed-in account. Returns true when the account changed (e.g. a
+ * different sign-in in another tab refreshed the shared cookie) and the cache was cleared.
+ */
+export function bindAuthorizedImageCacheToAccount(adminId: string): boolean {
+  if (boundAccountId === adminId) return false;
+  const changed = boundAccountId !== null;
+  boundAccountId = adminId;
+  if (changed) clearAuthorizedImageCache();
+  return changed;
 }
 
 function trimCache(): void {
@@ -47,6 +77,10 @@ function trimCache(): void {
   }
 }
 
+/**
+ * Responses are per-account (the API decides by session), so the HTTP cache must not serve one
+ * account's image to the next sign-in on the same browser. Signed redirect targets are unique URLs.
+ */
 async function fetchWithAuth(resolved: string, signal: AbortSignal): Promise<Blob> {
   if (!accessTokenStore.get()) {
     await refreshAccessToken();
@@ -61,7 +95,7 @@ async function fetchWithAuth(resolved: string, signal: AbortSignal): Promise<Blo
     headers,
     credentials: 'include',
     signal,
-    cache: 'default',
+    cache: 'no-store',
     redirect: 'manual',
   });
 
@@ -87,7 +121,7 @@ async function fetchWithAuth(resolved: string, signal: AbortSignal): Promise<Blo
         headers: retryHeaders,
         credentials: 'include',
         signal,
-        cache: 'default',
+        cache: 'no-store',
         redirect: 'manual',
       });
       if (
@@ -124,21 +158,24 @@ export function loadAuthorizedImageBlobUrl(
 
   let pending = inflight.get(resolved);
   if (!pending) {
-    pending = fetchWithAuth(resolved, new AbortController().signal)
+    const startedIn = generation;
+    const request: Promise<string> = fetchWithAuth(resolved, new AbortController().signal)
       .then((blob) => {
+        if (startedIn !== generation) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
         const existing = blobUrlCache.get(resolved);
         if (existing) return existing;
         const url = URL.createObjectURL(blob);
         blobUrlCache.delete(resolved);
         blobUrlCache.set(resolved, url);
         trimCache();
-        inflight.delete(resolved);
         return url;
       })
-      .catch((error) => {
-        inflight.delete(resolved);
-        throw error;
+      .finally(() => {
+        if (inflight.get(resolved) === request) inflight.delete(resolved);
       });
+    pending = request;
     inflight.set(resolved, pending);
   }
 

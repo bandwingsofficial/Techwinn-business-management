@@ -46,9 +46,7 @@ const ORG_DAILY_TASK_MANAGE = [
 /** Mirror of `canViewOrganizationDailyTasks` in `src/lib/contracts/task-visibility.ts`. */
 function canViewOrganizationDailyTasks(permissions) {
   if (ORG_DAILY_TASK_MANAGE.some((k) => permissions.has(k))) return true;
-  if (permissions.has('project_management.daily_tasks.view')) return true;
-  if (!permissions.has('tasks.read')) return false;
-  return ['employees.view', 'leads.read', 'clients.read'].some((k) => permissions.has(k));
+  return permissions.has('project_management.daily_tasks.view_all');
 }
 
 function canAccessLeaveManagementPage(permissions) {
@@ -76,9 +74,21 @@ test('employee self-service paths stay on /employee', () => {
   assert.equal(canonicalPermissionPath('/employee/leave'), '/employee/leave');
 });
 
-test('org daily tasks workspace when PM view granted', () => {
-  const perms = new Set(['project_management.daily_tasks.view', 'tasks.read']);
+test('Daily Tasks → View Page alone uses self-service daily tasks', () => {
+  const perms = new Set(['project_management.daily_tasks.view']);
+  assert.equal(pickDailyTasksWorkspace(perms), 'self-service');
+});
+
+test('org daily tasks workspace only with View All Tasks', () => {
+  const perms = new Set([
+    'project_management.daily_tasks.view',
+    'project_management.daily_tasks.view_all',
+  ]);
   assert.equal(pickDailyTasksWorkspace(perms), 'organization');
+});
+
+test('tasks.read + employees.view uses self-service daily tasks', () => {
+  assert.equal(pickDailyTasksWorkspace(new Set(['tasks.read', 'employees.view'])), 'self-service');
 });
 
 test('self-service daily tasks when only tasks.read without org signals', () => {

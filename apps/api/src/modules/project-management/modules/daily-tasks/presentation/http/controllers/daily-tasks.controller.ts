@@ -134,7 +134,7 @@ export class DailyTasksController {
   }
 
   @Get('realtime/events')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions('tasks.read', PM_DAILY_TASKS_VIEW_KEY)
   @ApiOperation({ summary: 'Long-poll daily task assignment changes (tenant- and recipient-scoped)' })
   async realtimeEvents(
     @CrmContext() ctx: CrmRequestContext,
@@ -206,7 +206,7 @@ export class DailyTasksController {
   }
 
   @Get('my')
-  @RequirePermissions('tasks.read')
+  @RequirePermissions('tasks.read', PM_DAILY_TASKS_VIEW_KEY)
   @ApiOperation({ summary: 'Tasks assigned to the signed-in employee profile' })
   async myTasks(
     @CrmContext() ctx: CrmRequestContext,

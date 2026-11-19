@@ -5,11 +5,12 @@ import {
   USERS_VIEW,
   DASHBOARD_VIEW,
   canAccessTaskCalendar,
+  canViewOrganizationDailyTasks,
+  canViewOwnDailyTasks,
   hasUnrestrictedOrgPermissions,
   SYSTEM_ROLE_KEYS,
   type PermissionKey,
 } from '@techwin/contracts';
-import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import {
   canAccessWorkspaceDashboard,
   canUseEmployeeSelfService,
@@ -22,8 +23,8 @@ import {
 } from '@/features/auth/portal/portal-segment';
 
 /**
- * Organization daily-task boards — require org-scope view, not merely `tasks.read`
- * (Employee self-service uses `/employee/daily-tasks`).
+ * Daily-task boards — organization scope needs explicit org visibility; everyone else who may
+ * view their own tasks opens the same page in personal (`/daily-tasks/my`) scope.
  * `/admin/project-tasks` is intentionally excluded: `projects.read` / `tasks.read` via
  * {@link APP_ROUTE_PERMISSIONS} controls Projects & Tasks View independently.
  */
@@ -66,7 +67,7 @@ export const APP_ROUTE_PERMISSIONS: Readonly<Record<string, readonly PermissionK
   '/admin/whatsapp/reports': ['whatsapp.view_all', 'whatsapp.channels.manage'],
   '/employee': [],
   '/employee/dashboard': [DASHBOARD_VIEW],
-  '/employee/daily-tasks': ['tasks.read'],
+  '/employee/daily-tasks': ['tasks.read', 'project_management.daily_tasks.view'],
   '/employee/task-calendar': ['project_management.task_calendar.view'],
   '/employee/attendance': ['attendance.records.view'],
   '/employee/attendance/punch': ['attendance.punch.view'],
@@ -216,9 +217,9 @@ export function canAccessAppPath(
     if (path.startsWith('/employee/') && access && !canUseEmployeeSelfService(access)) {
       return false;
     }
-    const orgDailyTasks = canViewOrganizationDailyTasks((key) => permissions.has(key));
-    if (orgDailyTasks) return true;
-    if (!path.startsWith('/employee/')) return false;
+    const has = (key: PermissionKey) => permissions.has(key);
+    if (canViewOrganizationDailyTasks(has)) return true;
+    if (!path.startsWith('/employee/')) return canViewOwnDailyTasks(has);
   }
 
   if (isOrganizationTaskCalendarPath(path)) {

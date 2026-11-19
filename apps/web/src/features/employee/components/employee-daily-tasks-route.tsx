@@ -1,7 +1,7 @@
 'use client';
 
 import { AdminDailyTasksWorkspace } from '@/features/admin/daily-tasks/components/admin-daily-tasks-workspace';
-import { canViewOrganizationDailyTasksInEmployeePortal } from '@techwin/contracts';
+import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 import { EmployeeDailyTasksWorkspace } from '@/features/employee/components/employee-daily-tasks-workspace';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 
@@ -11,7 +11,7 @@ import { usePermissions } from '@/features/auth/components/permissions-provider'
  */
 export function EmployeeDailyTasksRoute() {
   const { has } = usePermissions();
-  if (canViewOrganizationDailyTasksInEmployeePortal(has)) {
+  if (canViewOrganizationDailyTasks(has)) {
     return <AdminDailyTasksWorkspace />;
   }
   return <EmployeeDailyTasksWorkspace />;

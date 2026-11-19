@@ -9,11 +9,12 @@ import {
   hasPmDailyTaskManageWorkflowPermission,
 } from '../src/lib/contracts/pm-daily-tasks-permissions.ts';
 
-test('seven PM daily task permissions are exposed to the role editor', () => {
-  assert.equal(PM_DAILY_TASKS_PERMISSION_KEYS.length, 7);
+test('eight PM daily task permissions are exposed to the role editor', () => {
+  assert.equal(PM_DAILY_TASKS_PERMISSION_KEYS.length, 8);
   assert.ok(
     PM_DAILY_TASKS_PERMISSION_KEYS.includes('project_management.daily_tasks.manage_workflow'),
   );
+  assert.ok(PM_DAILY_TASKS_PERMISSION_KEYS.includes('project_management.daily_tasks.view_all'));
 });
 
 test('hasPmDailyTaskManageWorkflowPermission matches UI gate expectations', () => {

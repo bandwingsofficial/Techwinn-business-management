@@ -1,15 +1,16 @@
 import type { PermissionKey } from './permissions';
 import { hasUnrestrictedOrgPermissions } from './org-access-unrestricted';
-import { PM_DAILY_TASKS_VIEW_KEY } from './pm-daily-tasks-permissions';
+import { PM_DAILY_TASKS_VIEW_ALL_KEY, PM_DAILY_TASKS_VIEW_KEY } from './pm-daily-tasks-permissions';
 
 /**
  * Task visibility rules shared by every task surface (daily list/board, project task board,
  * task calendar, dashboard). Accounts that do not pass the organization checks below only
  * ever see tasks assigned to their own employee profile.
  *
- * `projects.read` and `tasks.read` are deliberately not organization signals: the Employee
- * portal role holds both for its own assignments, and project membership must not reveal
- * other employees' tasks.
+ * `projects.read`, `tasks.read`, Daily Tasks → View Page and collaborator keys such as
+ * `employees.view` are deliberately not organization signals: roles hold them to open pages
+ * and work on their own assignments. Organization-wide daily task visibility must be granted
+ * explicitly (`project_management.daily_tasks.view_all`) or implied by task management keys.
  */
 
 export const ORGANIZATION_DAILY_TASK_MANAGE_KEYS = [
@@ -57,26 +58,13 @@ export function canViewOrganizationDailyTasks(
   if (isPlatformSuperAdmin) return true;
   const has = toHas(permissions);
   if (canManageOrganizationDailyTasks(has)) return true;
-  if (has(PM_DAILY_TASKS_VIEW_KEY)) return true;
-  if (!has('tasks.read')) return false;
-  return ORGANIZATION_TASK_COLLABORATOR_KEYS.some((key) => has(key));
+  return has(PM_DAILY_TASKS_VIEW_ALL_KEY);
 }
 
 /** Own assigned daily tasks (`/daily-tasks/my`, own calendar rows, own dashboard counts). */
 export function canViewOwnDailyTasks(permissions: PermissionLookup): boolean {
   const has = toHas(permissions);
   return has('tasks.read') || has(PM_DAILY_TASKS_VIEW_KEY);
-}
-
-/** Employee portal organization board — stricter than `canViewOrganizationDailyTasks`. */
-export function canViewOrganizationDailyTasksInEmployeePortal(
-  permissions: PermissionLookup,
-  isPlatformSuperAdmin = false,
-): boolean {
-  if (isPlatformSuperAdmin) return true;
-  const has = toHas(permissions);
-  if (canManageOrganizationDailyTasks(has)) return true;
-  return has(PM_DAILY_TASKS_VIEW_KEY);
 }
 
 /** Every task on a project board / project calendar rows, not only the caller's assignments. */

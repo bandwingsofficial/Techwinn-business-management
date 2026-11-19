@@ -218,8 +218,8 @@ export class EmployeesController {
     });
   }
 
+  /** Authorization lives in `EmployeeProfileImageAccessService` (HR viewers or the photo's own employee). */
   @Get('profile-stored-objects/:storedObjectId/content')
-  @RequirePermissions('tasks.read', 'employees.view', 'employees.view_details', 'employees.read')
   @ApiOperation({ summary: 'Stream employee profile image (stored object)' })
   async streamStoredProfileImage(
     @CrmContext() ctx: CrmRequestContext,
@@ -241,7 +241,8 @@ export class EmployeesController {
       storedObjectId,
     });
     response.setHeader('Content-Type', opened.contentType);
-    response.setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800');
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('Vary', 'Authorization, Cookie');
     response.send(opened.body);
   }
 

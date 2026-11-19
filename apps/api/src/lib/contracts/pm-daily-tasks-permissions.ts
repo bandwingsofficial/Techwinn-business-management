@@ -2,6 +2,7 @@ import type { PermissionKey } from './permissions.js';
 
 export const PM_DAILY_TASKS_PERMISSION_KEYS = [
   'project_management.daily_tasks.view',
+  'project_management.daily_tasks.view_all',
   'project_management.daily_tasks.assign',
   'project_management.daily_tasks.view_details',
   'project_management.daily_tasks.edit',
@@ -12,8 +13,13 @@ export const PM_DAILY_TASKS_PERMISSION_KEYS = [
 
 export type PmDailyTasksPermissionKey = (typeof PM_DAILY_TASKS_PERMISSION_KEYS)[number];
 
+/** Opens the Daily Tasks page; on its own it only reveals the caller's assigned tasks. */
 export const PM_DAILY_TASKS_VIEW_KEY =
   'project_management.daily_tasks.view' as const satisfies PermissionKey;
+
+/** Explicit organization-wide daily task visibility (list, board, calendar, dashboard). */
+export const PM_DAILY_TASKS_VIEW_ALL_KEY =
+  'project_management.daily_tasks.view_all' as const satisfies PermissionKey;
 
 const PM_DAILY_TASKS_KEY_SET = new Set<string>(PM_DAILY_TASKS_PERMISSION_KEYS);
 
