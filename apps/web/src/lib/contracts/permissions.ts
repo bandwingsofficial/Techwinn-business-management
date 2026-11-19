@@ -74,6 +74,7 @@ export const PERMISSION_KEYS = [
   'project_management.daily_tasks.edit',
   'project_management.daily_tasks.delete',
   'project_management.daily_tasks.move',
+  'project_management.daily_tasks.manage_workflow',
   'project_management.task_calendar.view',
   'clients.read',
   'clients.create',
@@ -588,6 +589,13 @@ export const PERMISSION_DEFINITIONS: readonly PermissionDefinition[] = [
     module: 'Project Management',
     action: 'Move / Drag & Drop',
     description: 'Move tasks between workflow columns.',
+  },
+  {
+    key: 'project_management.daily_tasks.manage_workflow',
+    module: 'Project Management',
+    action: 'Manage Workflow Stages',
+    description:
+      'Create, edit, delete, reorder and configure daily task workflow stages.',
   },
   {
     key: 'project_management.task_calendar.view',

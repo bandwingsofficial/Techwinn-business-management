@@ -16,6 +16,7 @@ export class ListProjectTaskSummariesHandler {
       ...filters,
       page: filters.page ?? 1,
       pageSize: filters.pageSize ?? 12,
+      ...(query.organizationWide ? {} : { assigneeAdminId: query.actor.adminId }),
     });
   }
 }

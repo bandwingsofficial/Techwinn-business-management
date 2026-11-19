@@ -216,10 +216,7 @@ export function canAccessAppPath(
     if (path.startsWith('/employee/') && access && !canUseEmployeeSelfService(access)) {
       return false;
     }
-    const orgDailyTasks = canViewOrganizationDailyTasks(
-      (key) => permissions.has(key),
-      (...keys) => keys.some((key) => permissions.has(key)),
-    );
+    const orgDailyTasks = canViewOrganizationDailyTasks((key) => permissions.has(key));
     if (orgDailyTasks) return true;
     if (!path.startsWith('/employee/')) return false;
   }

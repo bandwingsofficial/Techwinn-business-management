@@ -49,7 +49,11 @@ export function DailyTaskCalendarWorkload({
               )}
             >
               <div className="flex items-center gap-2">
-                <EmployeeAvatar displayName={row.displayName} size="sm" />
+                <EmployeeAvatar
+                  displayName={row.displayName}
+                  profileImageUrl={row.profileImageUrl}
+                  size="sm"
+                />
                 <div className="min-w-0">
                   <p className="max-w-[8rem] truncate text-xs font-semibold">{row.displayName}</p>
                   <p className="text-muted-foreground text-[10px]">{row.total} tasks</p>

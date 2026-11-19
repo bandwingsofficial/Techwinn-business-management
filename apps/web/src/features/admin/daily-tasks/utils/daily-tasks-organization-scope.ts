@@ -1,38 +1,14 @@
 import {
-  PM_DAILY_TASKS_VIEW_KEY,
+  canViewOrganizationDailyTasks as canViewOrganizationDailyTasksRule,
   type PermissionKey,
 } from '@techwin/contracts';
 
-/** Matches backend manage keys for assign/create/update/delete. */
-const ORGANIZATION_DAILY_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
-  'tasks.create',
-  'tasks.assign',
-  'tasks.update',
-  'tasks.delete',
-  'project_management.daily_tasks.assign',
-  'project_management.daily_tasks.edit',
-  'project_management.daily_tasks.delete',
-];
-
 /**
- * Org-wide task board/calendar view.
- * Must stay aligned with `DailyTaskAuthorizationService.canViewOrganizationTasks`.
- * Employee self-service keys keep the account on own-task scope even with `projects.read`.
+ * Org-wide task board/calendar view (UI routing only — the API enforces the same shared rule).
+ * `projects.read` + `tasks.read` alone stays on own-task scope.
  */
-export function canViewOrganizationDailyTasks(
-  has: (key: PermissionKey) => boolean,
-  hasAny: (...keys: PermissionKey[]) => boolean,
-): boolean {
-  if (has(PM_DAILY_TASKS_VIEW_KEY)) return true;
-  if (hasAny(...ORGANIZATION_DAILY_TASK_MANAGE_KEYS)) return true;
-  if (!has('tasks.read')) return false;
-  if (hasAny('employees.view', 'leads.read', 'clients.read')) return true;
-  // Project collaborators need both project and task view for organization task boards.
-  if (has('projects.read') && has('tasks.read')) return true;
-  if (hasAny('attendance.punch.view', 'leave.requests.read_own', 'leave.balances.read_own')) {
-    return false;
-  }
-  return false;
+export function canViewOrganizationDailyTasks(has: (key: PermissionKey) => boolean): boolean {
+  return canViewOrganizationDailyTasksRule(has);
 }
 
 export type DailyTasksDataScope = 'team' | 'own';

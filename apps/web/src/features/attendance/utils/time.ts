@@ -79,6 +79,20 @@ export function formatIsoTime(iso: string | null, timeZone?: string): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+/** 12-hour clock label for an instant in the organization timezone (e.g. "10:30 AM"). Display only. */
+export function formatIsoTime12(iso: string | null, timeZone?: string): string {
+  const clock = formatIsoTime(iso, timeZone);
+  const match = /^(\d{2}):(\d{2})$/.exec(clock);
+  if (!match) return clock;
+  return minutesToLabel(Number(match[1]) * 60 + Number(match[2]));
+}
+
+/** "30 minutes", "1 minute", "No grace period". */
+export function formatGracePeriod(minutes: number): string {
+  if (minutes <= 0) return 'No grace period';
+  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+}
+
 export function formatAttendanceDate(date: string, timeZone?: string): string {
   const parsed = new Date(`${date}T12:00:00.000Z`);
   return parsed.toLocaleDateString(undefined, {

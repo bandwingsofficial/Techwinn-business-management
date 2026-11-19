@@ -20,6 +20,20 @@ export function DailyTaskToolbar({ className, children }: { className?: string; 
   );
 }
 
+/** Primary controls row: date navigation, search, and filters with consistent gaps and clean wrap. */
+export function DailyTaskToolbarRow({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2.5',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function DailyTaskToolbarSearch({
   search,
   onSearchChange,

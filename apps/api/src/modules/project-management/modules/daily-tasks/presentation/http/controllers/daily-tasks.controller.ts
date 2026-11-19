@@ -137,7 +137,10 @@ export class DailyTasksController {
   }
 
   @Patch('workflow-stages')
-  @RequirePermissions('tasks.update', 'daily_tasks.manage_workflow')
+  @RequirePermissions(
+    'project_management.daily_tasks.manage_workflow',
+    'daily_tasks.manage_workflow',
+  )
   @ApiOperation({ summary: 'Update daily task workflow stages' })
   async updateStages(
     @CrmContext() ctx: CrmRequestContext,

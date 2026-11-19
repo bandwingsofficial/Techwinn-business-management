@@ -10,6 +10,8 @@
     "start": "node scripts/start-standalone.mjs",
     "typecheck": "next typegen && tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
+    "test:dashboard-kpi-trend": "node --experimental-strip-types --test scripts/dashboard-kpi-trend.test.mjs",
+    "test:daily-tasks-manage-workflow-permission": "node --experimental-strip-types --test scripts/daily-tasks-manage-workflow-permission.test.mjs",
     "test:api-url": "node --experimental-strip-types --test scripts/resolve-api-base-url.test.mjs",
     "test:proxy-headers": "node --experimental-strip-types --test scripts/proxy-headers.test.mjs",
     "test:proxy-route": "node --experimental-strip-types --test scripts/proxy-route.test.mjs",

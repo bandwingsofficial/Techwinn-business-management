@@ -11,7 +11,7 @@ import type {
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { getDashboardWidget } from '../api/dashboard';
+import { getDashboardWidget, type DashboardQueryRange } from '../api/dashboard';
 import {
   DASHBOARD_CARD_SURFACE,
   DASHBOARD_GRID_CARD_CLASS,
@@ -31,11 +31,14 @@ import { cn } from '@/shared/lib/utils';
 
 export function DashboardWidgetCard({
   widget,
-  preset,
+  range,
+  refreshToken = 0,
   className,
 }: {
   widget: DashboardWidgetDescriptor;
-  preset: DashboardDateRangePreset;
+  range: DashboardQueryRange;
+  /** Changing this value reloads the widget for the same range (Refresh button). */
+  refreshToken?: number;
   className?: string;
 }) {
   const [data, setData] = useState<DashboardWidgetData | null>(null);
@@ -56,10 +59,12 @@ export function DashboardWidgetCard({
 
     const controller = new AbortController();
 
+    // While loading (or after an error) the skeleton/error renders instead of any previous
+    // payload, so another range's numbers are never shown for the new range.
     setLoading(true);
     setError(null);
 
-    void getDashboardWidget(widget.key, preset, controller.signal)
+    void getDashboardWidget(widget.key, range, controller.signal)
       .then((payload) => {
         setData(payload);
       })
@@ -77,7 +82,7 @@ export function DashboardWidgetCard({
       });
 
     return () => controller.abort();
-  }, [widget.key, widget.kind, preset]);
+  }, [widget.key, widget.kind, range, refreshToken]);
 
   if (widget.kind === 'section') {
     return null;

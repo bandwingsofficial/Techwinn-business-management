@@ -26,6 +26,8 @@ export interface ProjectTaskAssignee {
   readonly id: string;
   readonly displayName: string;
   readonly email: string;
+  /** From the assignee's linked employee record in the same organization, when present. */
+  readonly profileImageUrl: string | null;
 }
 
 export interface ProjectTask {

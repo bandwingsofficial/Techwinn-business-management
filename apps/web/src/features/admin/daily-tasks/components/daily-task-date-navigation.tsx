@@ -16,7 +16,7 @@ export function DailyTaskDateNavigation({
   className?: string;
 }) {
   return (
-    <div className={cn('flex shrink-0 items-center gap-1', className)}>
+    <div className={cn('flex shrink-0 flex-nowrap items-center gap-2', className)}>
       <Button
         type="button"
         variant="outline"
@@ -33,7 +33,7 @@ export function DailyTaskDateNavigation({
         value={assignDate}
         aria-label="Selected date"
         onChange={(e) => onAssignDateChange(e.target.value)}
-        className="h-9 w-[min(13.5rem,100%)] min-w-[12.5rem] shrink-0 cursor-pointer rounded-lg font-medium tabular-nums"
+        className="h-9 w-[13.5rem] max-w-full shrink-0 cursor-pointer rounded-lg font-medium tabular-nums"
       />
       <Button
         type="button"

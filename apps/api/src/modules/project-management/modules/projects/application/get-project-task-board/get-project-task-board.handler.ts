@@ -12,6 +12,7 @@ export class GetProjectTaskBoardHandler {
   execute(query: GetProjectTaskBoardQuery) {
     return this.repository.getProjectBoard(query.actor.organizationId, query.projectId, {
       planBaselineOnly: query.planBaselineOnly,
+      ...(query.organizationWide ? {} : { assigneeAdminId: query.actor.adminId }),
     });
   }
 }

@@ -9,41 +9,19 @@ import {
 } from '../../domain/repositories/daily-task.repository.js';
 import type { TaskNoteAttachOptions } from '../../domain/types/daily-task-inputs.js';
 import {
+  canManageOrganizationDailyTasks,
+  canViewOrganizationDailyTasks,
   hasPmDailyTaskMovePermission,
   hasPmDailyTaskViewDetailsPermission,
   hasUnrestrictedOrgPermissions,
-  PM_DAILY_TASKS_VIEW_KEY,
 } from '#contracts';
 import {
   hasDailyTaskCommentPermission,
-  hasDailyTaskNoteAcknowledgePermission,
-  hasDailyTaskNoteCreatePermission,
   hasDailyTaskNoteSubmitPermission,
   hasDailyTaskNoteViewAllPermission,
   hasDailyTaskNoteViewOwnPermission,
   hasDailyTaskUpdateStatusPermission,
 } from './daily-task-permission.helpers.js';
-
-const ORGANIZATION_TASK_MANAGE_KEYS: readonly PermissionKey[] = [
-  'tasks.create',
-  'tasks.assign',
-  'tasks.update',
-  'tasks.delete',
-  'project_management.daily_tasks.assign',
-  'project_management.daily_tasks.edit',
-  'project_management.daily_tasks.delete',
-];
-
-/**
- * Signals that the account collaborates on organization task boards (not self-service).
- * Do not include `projects.read` alone — the Employee system role also has it for own
- * project-task visibility, which must stay self-scoped.
- */
-const ORGANIZATION_TASK_COLLABORATOR_KEYS: readonly PermissionKey[] = [
-  'employees.view',
-  'leads.read',
-  'clients.read',
-];
 
 @Injectable()
 export class DailyTaskAuthorizationService {
@@ -61,30 +39,15 @@ export class DailyTaskAuthorizationService {
     actor: OrgAccessActor,
     effective: ReadonlySet<PermissionKey>,
   ): boolean {
-    if (actor.isPlatformSuperAdmin) return true;
-    return ORGANIZATION_TASK_MANAGE_KEYS.some((key) => effective.has(key));
+    return canManageOrganizationDailyTasks(effective, actor.isPlatformSuperAdmin);
   }
 
+  /** Accounts that fail this check are limited to tasks assigned to their own employee profile. */
   canViewOrganizationTasks(
     actor: OrgAccessActor,
     effective: ReadonlySet<PermissionKey>,
   ): boolean {
-    if (actor.isPlatformSuperAdmin) return true;
-    if (this.canManageOrganizationTasks(actor, effective)) return true;
-    if (effective.has(PM_DAILY_TASKS_VIEW_KEY)) return true;
-    if (!effective.has('tasks.read')) return false;
-    if (ORGANIZATION_TASK_COLLABORATOR_KEYS.some((key) => effective.has(key))) return true;
-    // Projects View + Tasks View unlocks org boards even when the account also has
-    // employee self-service keys (e.g. Employee role granted projects.read).
-    if (effective.has('projects.read') && effective.has('tasks.read')) return true;
-    if (
-      effective.has('attendance.punch.view') ||
-      effective.has('leave.requests.read_own') ||
-      effective.has('leave.balances.read_own')
-    ) {
-      return false;
-    }
-    return false;
+    return canViewOrganizationDailyTasks(effective, actor.isPlatformSuperAdmin);
   }
 
   async assertOrganizationTaskAccess(actor: OrgAccessActor): Promise<void> {

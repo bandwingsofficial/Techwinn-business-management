@@ -1,3 +1,4 @@
+import { resolveEmployeeProfileImageUrl } from '../../../../../../../../lib/persistence/employee-profile-image-url.js';
 import { collectTaskPhaseDateFieldErrors } from '#validation';
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../../../../generated/prisma/client.js';
@@ -17,6 +18,7 @@ import {
 import type { ProjectExecutionLifecycle, ProjectLifecycleTab } from '../../../../domain/project-types.js';
 import type {
   CreateProjectTaskInput,
+  GetProjectBoardOptions,
   PaginatedProjectTaskSummaries,
   ProjectTaskBoardRecord,
   ProjectTaskRecord,
@@ -31,7 +33,20 @@ const parseOptionalDate = (iso: string | null | undefined): Date | null =>
   iso ? parseDateOnly(iso) : null;
 
 const taskInclude = {
-  assignee: { select: { id: true, displayName: true, email: true } },
+  assignee: {
+    select: {
+      id: true,
+      displayName: true,
+      email: true,
+      employeeProfile: {
+        select: {
+          organizationId: true,
+          profileImageUrl: true,
+          profileImageStoredObjectId: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.ProjectTaskInclude;
 
 @Injectable()
@@ -49,10 +64,16 @@ export class PrismaProjectTaskRepository implements ProjectTaskRepository {
 
   private buildListBaseWhere(
     organizationId: string,
-    filters: Pick<ProjectTaskSummaryListFilters, 'search' | 'status' | 'priority'>,
+    filters: Pick<
+      ProjectTaskSummaryListFilters,
+      'search' | 'status' | 'priority' | 'assigneeAdminId'
+    >,
   ): Prisma.ProjectWhereInput {
     return {
       organizationId,
+      ...(filters.assigneeAdminId
+        ? { tasks: { some: { organizationId, assigneeAdminId: filters.assigneeAdminId } } }
+        : {}),
       ...(filters.status ? { status: filters.status } : {}),
       ...(filters.priority ? { priority: filters.priority } : {}),
       ...(filters.search
@@ -104,6 +125,11 @@ export class PrismaProjectTaskRepository implements ProjectTaskRepository {
             id: row.assignee.id,
             displayName: row.assignee.displayName,
             email: row.assignee.email,
+            profileImageUrl:
+              row.assignee.employeeProfile &&
+              row.assignee.employeeProfile.organizationId === row.organizationId
+                ? resolveEmployeeProfileImageUrl(row.assignee.employeeProfile)
+                : null,
           }
         : null,
       startDate: row.startDate ? dateOnly(row.startDate) : null,
@@ -202,7 +228,10 @@ export class PrismaProjectTaskRepository implements ProjectTaskRepository {
         take: pageSize,
         include: {
           phases: { orderBy: { sortOrder: 'asc' } },
-          tasks: { select: { status: true, phaseId: true } },
+          tasks: {
+            where: filters.assigneeAdminId ? { assigneeAdminId: filters.assigneeAdminId } : undefined,
+            select: { status: true, phaseId: true },
+          },
         },
       }),
     ]);
@@ -259,14 +288,17 @@ export class PrismaProjectTaskRepository implements ProjectTaskRepository {
   async getProjectBoard(
     organizationId: string,
     projectId: string,
-    options?: { planBaselineOnly?: boolean },
+    options?: GetProjectBoardOptions,
   ): Promise<ProjectTaskBoardRecord> {
     const row = await this.prisma.project.findFirst({
       where: { id: projectId, organizationId },
       include: {
         phases: { orderBy: { sortOrder: 'asc' } },
         tasks: {
-          where: options?.planBaselineOnly ? { inPlanBaseline: true } : undefined,
+          where: {
+            ...(options?.planBaselineOnly ? { inPlanBaseline: true } : {}),
+            ...(options?.assigneeAdminId ? { assigneeAdminId: options.assigneeAdminId } : {}),
+          },
           include: taskInclude,
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },

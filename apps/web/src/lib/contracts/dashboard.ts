@@ -11,10 +11,13 @@ export const DASHBOARD_ROUTES = {
 
 export type DashboardDateRangePreset =
   | 'today'
+  | 'yesterday'
   | 'week'
   | 'month'
+  | 'last_month'
   | 'quarter'
   | 'year'
+  | 'all_time'
   | 'custom';
 
 export type DashboardDataScopeKind = 'organization' | 'team' | 'assigned' | 'own';
@@ -57,8 +60,20 @@ export type DashboardMeResponse = {
 export type DashboardKpiMetric = {
   readonly label: string;
   readonly value: number | string;
+  /** Same metric for the comparison period; null when no comparison exists (e.g. All time). */
   readonly previousValue?: number | string | null;
+  /** Null when there is no comparison period or the previous value was 0. */
   readonly deltaPercent?: number | null;
+  /** e.g. "vs. last week"; matches the period `previousValue` was measured over. */
+  readonly comparisonLabel?: string | null;
+  /** Short definition of what `value` counts, e.g. "Assigned in period". */
+  readonly caption?: string | null;
+  /** Related figure shown beside the main value, e.g. new joiners for current headcount. */
+  readonly secondary?: { readonly label: string; readonly value: number | string } | null;
+  /** Marks the metric a hero KPI card should display. */
+  readonly primary?: boolean;
+  /** Per-bucket values over the selected period (oldest first). Omitted when unavailable. */
+  readonly trend?: readonly number[];
 };
 
 export type DashboardChartSeriesPoint = {

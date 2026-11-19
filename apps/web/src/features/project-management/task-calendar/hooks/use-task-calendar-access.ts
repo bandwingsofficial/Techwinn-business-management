@@ -2,6 +2,7 @@
 
 import {
   canAccessTaskCalendar,
+  canViewOrganizationDailyTasks,
   canViewOrganizationProjectTasksOnCalendar,
   canViewTaskCalendarDailyTasks,
   canViewTaskCalendarProjectTasks,
@@ -9,16 +10,16 @@ import {
 } from '@techwin/contracts';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { useIsPlatformSuperAdmin } from '@/features/auth/hooks/use-is-platform-super-admin';
-import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/utils/daily-tasks-organization-scope';
 
 export function useTaskCalendarAccess() {
-  const { permissionSet, has, hasAny } = usePermissions();
+  const { permissionSet, hasAny } = usePermissions();
   const isPlatformSuperAdmin = useIsPlatformSuperAdmin();
 
   const canAccess = canAccessTaskCalendar(permissionSet, isPlatformSuperAdmin);
   const canViewDaily = canViewTaskCalendarDailyTasks(permissionSet, isPlatformSuperAdmin);
   const canViewProject = canViewTaskCalendarProjectTasks(permissionSet, isPlatformSuperAdmin);
-  const orgWideDaily = canViewDaily && canViewOrganizationDailyTasks(has, hasAny);
+  const orgWideDaily =
+    canViewDaily && canViewOrganizationDailyTasks(permissionSet, isPlatformSuperAdmin);
   const orgWideProject = canViewProject && canViewOrganizationProjectTasksOnCalendar(
     permissionSet,
     isPlatformSuperAdmin,

@@ -12,6 +12,7 @@ import {
 } from './application/dashboard.handlers.js';
 import { DashboardAuthorizationService } from './application/services/dashboard-authorization.service.js';
 import { DashboardDataService } from './application/services/dashboard-data.service.js';
+import { DashboardDateRangeService } from './application/services/dashboard-date-range.service.js';
 import { DashboardLayoutService } from './application/services/dashboard-layout.service.js';
 import { DashboardController } from './presentation/http/controllers/dashboard.controller.js';
 
@@ -21,6 +22,7 @@ import { DashboardController } from './presentation/http/controllers/dashboard.c
   providers: [
     DashboardAuthorizationService,
     DashboardDataService,
+    DashboardDateRangeService,
     DashboardLayoutService,
     GetDashboardMeHandler,
     GetDashboardSummaryHandler,

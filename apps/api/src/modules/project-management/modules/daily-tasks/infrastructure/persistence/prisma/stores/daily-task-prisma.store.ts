@@ -662,37 +662,61 @@ export class DailyTaskPrismaStore {
         },
       });
 
-      const previousAssignees = input.employeeIds
-        ? await tx.dailyTaskAssignee.findMany({
-            where: { dailyTaskId: taskId },
-            select: { employeeId: true },
-          })
-        : [];
-
       if (input.employeeIds) {
-        await tx.dailyTaskAssignee.deleteMany({ where: { dailyTaskId: taskId } });
-        await tx.dailyTaskAssignee.createMany({
-          data: input.employeeIds.map((employeeId) => ({
-            id: randomUUID(),
-            organizationId,
-            dailyTaskId: taskId,
-            employeeId,
-          })),
-        });
-        await tx.dailyTaskActivity.create({
-          data: {
-            id: randomUUID(),
-            organizationId,
-            dailyTaskId: taskId,
-            actorAdminId: adminId,
-            ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
-            eventType: 'ASSIGNEES_CHANGED',
-            metadata: {
-              fromEmployeeIds: previousAssignees.map((row) => row.employeeId),
-              toEmployeeIds: input.employeeIds,
-            },
+        // Former-employee rows (employeeId null) are history and grant no access — never touch them.
+        const previousAssignees = await tx.dailyTaskAssignee.findMany({
+          where: { dailyTaskId: taskId, employeeId: { not: null } },
+          select: {
+            id: true,
+            employeeId: true,
+            startedAt: true,
+            completedAt: true,
+            employee: { select: { displayName: true, employeeCode: true } },
           },
         });
+        const nextIds = new Set(input.employeeIds);
+        const previousIds = new Set(previousAssignees.map((row) => row.employeeId));
+        const removed = previousAssignees.filter((row) => !nextIds.has(row.employeeId!));
+        const added = input.employeeIds.filter((employeeId) => !previousIds.has(employeeId));
+
+        if (removed.length > 0) {
+          await tx.dailyTaskAssignee.deleteMany({
+            where: { id: { in: removed.map((row) => row.id) } },
+          });
+        }
+        if (added.length > 0) {
+          await tx.dailyTaskAssignee.createMany({
+            data: added.map((employeeId) => ({
+              id: randomUUID(),
+              organizationId,
+              dailyTaskId: taskId,
+              employeeId,
+            })),
+          });
+        }
+        if (removed.length > 0 || added.length > 0) {
+          await tx.dailyTaskActivity.create({
+            data: {
+              id: randomUUID(),
+              organizationId,
+              dailyTaskId: taskId,
+              actorAdminId: adminId,
+              ...(await dailyTaskActivityActorSnapshot(tx, adminId)),
+              eventType: 'ASSIGNEES_CHANGED',
+              metadata: {
+                fromEmployeeIds: previousAssignees.map((row) => row.employeeId),
+                toEmployeeIds: input.employeeIds,
+                removedAssignees: removed.map((row) => ({
+                  employeeId: row.employeeId,
+                  displayName: row.employee?.displayName ?? '',
+                  employeeCode: row.employee?.employeeCode ?? '',
+                  startedAt: row.startedAt?.toISOString() ?? null,
+                  completedAt: row.completedAt?.toISOString() ?? null,
+                })),
+              },
+            },
+          });
+        }
       }
 
       const changes: Record<string, { from: unknown; to: unknown }> = {};

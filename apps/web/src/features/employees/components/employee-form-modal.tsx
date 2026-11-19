@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { invalidateMyPermissionsCache } from '@/features/admin/org-access/my-permissions-cache';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { useAdminToast } from '@/features/admin/components/toast';
 import {
@@ -149,7 +150,7 @@ export function EmployeeFormDialog({
 }) {
   const toast = useAdminToast();
   const { pending, run } = useAsyncAction();
-  const { has } = usePermissions();
+  const { has, sessionEmployee, refresh: refreshPermissions } = usePermissions();
   const canManageCompensation = has('employees.compensation.manage');
   const canReadCompensation = has('employees.compensation.read');
   const isCreate = editingId === null;
@@ -321,6 +322,10 @@ export function EmployeeFormDialog({
           const body = updateEmployeeRequestSchema.parse(withImage);
           await updateEmployee(editingId, body);
         });
+        if (sessionEmployee?.id === editingId) {
+          invalidateMyPermissionsCache();
+          await refreshPermissions();
+        }
         toast.success('Employee updated.');
         revokeDeferredImagePreview(form.profileImage.localPreviewUrl);
         closeDialog(false);

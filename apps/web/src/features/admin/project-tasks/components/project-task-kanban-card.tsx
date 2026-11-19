@@ -37,7 +37,7 @@ import {
   formatPipelineTaskStartedRange,
 } from '../utils/task-actual-date-display';
 import type { LeadPriority } from '@/features/admin/crm/types';
-import { initialsOf } from '@/shared/lib/format';
+import { EmployeeAvatar } from '@/features/employees/components/employee-avatar';
 import { cn } from '@/shared/lib/utils';
 import { isTaskDateOutsidePhase, type TaskPhaseDateBounds } from '@techwin/validation';
 import type { ProjectTask, ProjectTaskPriority, ProjectTaskStatus } from '../types';
@@ -358,14 +358,13 @@ export function ProjectTaskKanbanCard({
         ) : null}
 
         {task.assignee ? (
-          <div className="mt-auto flex items-center pt-0.5">
-            <span
-              className="inline-flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
-              style={{ backgroundColor: theme.accent }}
-              title={task.assignee.displayName}
-            >
-              {initialsOf(task.assignee.displayName)}
-            </span>
+          <div className="mt-auto flex items-center pt-0.5" title={task.assignee.displayName}>
+            <EmployeeAvatar
+              displayName={task.assignee.displayName}
+              profileImageUrl={task.assignee.profileImageUrl}
+              size="sm"
+              className="size-8"
+            />
           </div>
         ) : null}
       </article>
@@ -428,12 +427,12 @@ export function ProjectTaskKanbanCard({
           <div className="mt-auto space-y-1.5 pt-1">
             {task.assignee ? (
               <div className="flex min-w-0 items-center gap-2">
-                <span
-                  className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
-                  aria-hidden="true"
-                >
-                  {initialsOf(task.assignee.displayName)}
-                </span>
+                <EmployeeAvatar
+                  displayName={task.assignee.displayName}
+                  profileImageUrl={task.assignee.profileImageUrl}
+                  size="sm"
+                  className="size-7 text-[10px]"
+                />
                 <span className="text-muted-foreground truncate text-xs font-medium">
                   {task.assignee.displayName}
                 </span>

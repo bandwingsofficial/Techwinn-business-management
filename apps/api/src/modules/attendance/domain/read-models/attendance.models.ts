@@ -92,10 +92,19 @@ export type AttendanceCalendarResponse = {
   readonly days: readonly AttendanceCalendarDaySummary[];
 };
 
+export type AttendanceDayTiming = {
+  readonly officeStartMinutes: number;
+  readonly officeEndMinutes: number;
+  readonly lateGraceMinutes: number;
+  readonly lateThresholdMinutes: number;
+};
+
 export type AttendanceMyTodayResponse = {
   readonly attendanceDate: string;
   readonly serverTime: string;
   readonly schedule: AttendanceScheduleSnapshot | null;
+  /** Backend-resolved office hours, grace and late threshold applied to today. */
+  readonly timing: AttendanceDayTiming | null;
   readonly dayKind: 'WORKING' | 'WEEKLY_OFF' | 'HOLIDAY';
   readonly record: AttendanceRecordItem | null;
   readonly canPunchIn: boolean;

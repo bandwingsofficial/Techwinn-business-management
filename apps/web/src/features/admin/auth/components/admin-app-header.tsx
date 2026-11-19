@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { InputGroup, inputGroupPaddingClass } from '@/components/ui/input-group';
-import { initialsOf } from '@/shared/lib/format';
+import { EmployeeAvatar } from '@/features/employees/components/employee-avatar';
+import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { cn } from '@/shared/lib/utils';
 import { useAdminSession } from '../hooks/use-admin-session';
 import type { PlatformAdminProfile } from '../types/auth.types';
@@ -74,6 +75,8 @@ export function AdminAppHeader({
   membershipRoleLabel?: string;
 }) {
   const { signOut, isSigningOut } = useAdminSession();
+  const { sessionEmployee } = usePermissions();
+  const headerPhotoUrl = sessionEmployee?.profileImageUrl ?? null;
   const roleLabel = membershipRoleLabel?.trim() ?? '';
   const showRoleSubtitle =
     roleLabel.length > 0 && normalizeLabel(roleLabel) !== normalizeLabel(admin.displayName);
@@ -129,12 +132,13 @@ export function AdminAppHeader({
               variant="ghost"
               className="h-9 max-w-[14rem] gap-2 px-2 sm:px-2.5"
             >
-              <span
-                className="bg-muted text-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                aria-hidden="true"
-              >
-                {initialsOf(admin.displayName)}
-              </span>
+              <EmployeeAvatar
+                displayName={sessionEmployee?.displayName ?? admin.displayName}
+                profileImageUrl={headerPhotoUrl}
+                size="sm"
+                lazyLoad={false}
+                className="size-8 shrink-0"
+              />
               <span className="hidden min-w-0 flex-col items-start text-left leading-tight sm:flex">
                 <span className="text-foreground truncate text-sm font-medium">
                   {admin.displayName}

@@ -137,10 +137,20 @@ export interface AttendanceCalendarResponse {
   readonly days: readonly AttendanceCalendarDaySummary[];
 }
 
+export interface AttendanceDayTiming {
+  readonly officeStartMinutes: number;
+  readonly officeEndMinutes: number;
+  readonly lateGraceMinutes: number;
+  /** Punch-in at or before this minute is on time; late starts one minute after. */
+  readonly lateThresholdMinutes: number;
+}
+
 export interface AttendanceMyTodayResponse {
   readonly attendanceDate: string;
   readonly serverTime: string;
   readonly schedule: AttendanceScheduleSnapshot | null;
+  /** Backend-resolved office hours, grace and late threshold applied to today. */
+  readonly timing: AttendanceDayTiming | null;
   readonly dayKind: 'WORKING' | 'WEEKLY_OFF' | 'HOLIDAY';
   readonly record: AttendanceRecordItem | null;
   readonly canPunchIn: boolean;

@@ -69,7 +69,11 @@ import { DailyTaskKanbanBoard } from './daily-task-kanban-board';
 import { DailyTaskNotesReviewSheet } from './daily-task-notes-review-sheet';
 import { patchTaskAfterNoteAcknowledged } from '../utils/task-note-summary';
 import { DailyTaskListView } from './daily-task-list-view';
-import { DailyTaskToolbar, DailyTaskToolbarSearch } from './daily-task-toolbar';
+import {
+  DailyTaskToolbar,
+  DailyTaskToolbarRow,
+  DailyTaskToolbarSearch,
+} from './daily-task-toolbar';
 import { DailyTaskWorkflowDialog } from './daily-task-workflow-dialog';
 import {
   DailyTasksViewTabs,
@@ -100,7 +104,7 @@ export function DailyTasksWorkspace({
   const missingBoardTaskToast = useRef<string | null>(null);
   const stagesRef = useRef<readonly DailyTaskWorkflowStage[]>([]);
   const boardAbortRef = useRef<AbortController | null>(null);
-  const { has, hasAny } = useAdminAccess();
+  const { has } = useAdminAccess();
   const { hasAny: hasPermissionAny } = usePermissions();
   const isPlatformSuperAdmin = useIsPlatformSuperAdmin();
   const canLoadOrgCalendarMonth = hasPermissionAny(
@@ -115,8 +119,8 @@ export function DailyTasksWorkspace({
     canManageWorkflow,
   } = useDailyTaskPagePermissions();
   const canViewOrganizationTasks = useMemo(
-    () => canViewOrganizationDailyTasks(has, hasAny),
-    [has, hasAny],
+    () => canViewOrganizationDailyTasks(has),
+    [has],
   );
   const dataScope = useMemo((): DailyTasksDataScope => {
     return resolveDailyTasksDataScope({
@@ -744,7 +748,7 @@ export function DailyTasksWorkspace({
               }
             />
             <DailyTaskToolbar>
-              <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+              <DailyTaskToolbarRow>
                 {view !== 'calendar' ? (
                   <DailyTaskDateNavigation
                     assignDate={assignDate}
@@ -754,9 +758,9 @@ export function DailyTasksWorkspace({
                 <DailyTaskToolbarSearch
                   search={search}
                   onSearchChange={setSearch}
-                  className="min-w-[11rem] flex-1"
+                  className="min-w-0 flex-[1_1_min(100%,12rem)]"
                 />
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2.5">
                   <CrmIconFilterDropdown
                     icon={<ListFilter aria-hidden="true" />}
                     tooltip="Task Type"
@@ -864,7 +868,7 @@ export function DailyTasksWorkspace({
                     onSortDirChange={setSortDir}
                   />
                 </div>
-              </div>
+              </DailyTaskToolbarRow>
             </DailyTaskToolbar>
           </div>
 

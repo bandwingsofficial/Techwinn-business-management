@@ -24,6 +24,7 @@ const projectTaskResponseSchema = z.object({
       id: z.uuid(),
       displayName: z.string(),
       email: z.string(),
+      profileImageUrl: z.string().nullable(),
     })
     .nullable(),
   startDate: z.string().nullable(),

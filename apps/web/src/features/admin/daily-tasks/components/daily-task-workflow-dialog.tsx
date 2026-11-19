@@ -217,10 +217,11 @@ export function DailyTaskWorkflowDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(640px,calc(100dvh-48px))] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="border-border shrink-0 space-y-0 border-b px-5 py-4 pr-12">
             <DialogTitle>Manage workflow stages</DialogTitle>
           </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
           {loading ? (
             <p className="text-muted-foreground flex items-center gap-2 py-6 text-sm">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading…
@@ -241,7 +242,7 @@ export function DailyTaskWorkflowDialog({
             </div>
           ) : (
             <TooltipProvider delayDuration={200}>
-              <div className="max-h-[420px] space-y-3 overflow-y-auto py-2">
+              <div className="space-y-3 pb-1">
                 {drafts.map((stage, index) => (
                   <div key={stage.id ?? stage.stageKey} className="border-border rounded-lg border p-3">
                     <div className="flex items-start gap-2">
@@ -374,8 +375,14 @@ export function DailyTaskWorkflowDialog({
               </div>
             </TooltipProvider>
           )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          </div>
+          <DialogFooter className="border-border bg-card shrink-0 border-t px-5 py-4 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="button" disabled={saving || loading} onClick={() => void onSave()}>

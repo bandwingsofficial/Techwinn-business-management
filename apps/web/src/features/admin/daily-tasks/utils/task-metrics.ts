@@ -91,6 +91,7 @@ export function computeCalendarDayCounts(tasks: readonly DailyTaskListItem[]): C
 export type EmployeeWorkloadRow = {
   employeeId: string;
   displayName: string;
+  profileImageUrl: string | null;
   total: number;
   completed: number;
   pending: number;
@@ -100,13 +101,14 @@ export type EmployeeWorkloadRow = {
 
 export function computeEmployeeWorkload(
   tasks: readonly DailyTaskListItem[],
-  employees: readonly { id: string; displayName: string }[],
+  employees: readonly { id: string; displayName: string; profileImageUrl?: string | null }[],
 ): EmployeeWorkloadRow[] {
   const map = new Map<string, EmployeeWorkloadRow>();
   for (const e of employees) {
     map.set(e.id, {
       employeeId: e.id,
       displayName: e.displayName,
+      profileImageUrl: e.profileImageUrl ?? null,
       total: 0,
       completed: 0,
       pending: 0,
@@ -119,6 +121,9 @@ export function computeEmployeeWorkload(
     for (const assignee of task.assignees) {
       const row = map.get(assignee.employeeId);
       if (!row) continue;
+      if (assignee.profileImageUrl && !row.profileImageUrl) {
+        row.profileImageUrl = assignee.profileImageUrl;
+      }
       row.total += 1;
       if (bucket === 'completed') row.completed += 1;
       else if (bucket === 'in_progress') row.inProgress += 1;

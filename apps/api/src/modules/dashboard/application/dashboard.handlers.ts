@@ -16,32 +16,8 @@ import {
 import type { OrgAccessActor } from '../../org-access/application/shared/org-access-actor.js';
 import { DashboardAuthorizationService } from './services/dashboard-authorization.service.js';
 import { DashboardDataService } from './services/dashboard-data.service.js';
+import { DashboardDateRangeService } from './services/dashboard-date-range.service.js';
 import { DashboardLayoutService } from './services/dashboard-layout.service.js';
-
-function resolveDateRange(preset: DashboardDateRangePreset): { from: Date; to: Date } {
-  const to = new Date();
-  const from = new Date(to);
-  switch (preset) {
-    case 'today':
-      from.setUTCHours(0, 0, 0, 0);
-      break;
-    case 'week':
-      from.setUTCDate(from.getUTCDate() - 7);
-      break;
-    case 'month':
-      from.setUTCMonth(from.getUTCMonth() - 1);
-      break;
-    case 'quarter':
-      from.setUTCMonth(from.getUTCMonth() - 3);
-      break;
-    case 'year':
-      from.setUTCFullYear(from.getUTCFullYear() - 1);
-      break;
-    default:
-      from.setUTCMonth(from.getUTCMonth() - 1);
-  }
-  return { from, to };
-}
 
 function applyLayout(
   widgets: readonly DashboardWidgetDescriptor[],
@@ -64,16 +40,19 @@ export class GetDashboardMeHandler {
   constructor(
     @Inject(DashboardAuthorizationService) private readonly authz: DashboardAuthorizationService,
     @Inject(DashboardLayoutService) private readonly layout: DashboardLayoutService,
+    @Inject(DashboardDateRangeService) private readonly dateRange: DashboardDateRangeService,
   ) {}
 
   async execute(
     actor: OrgAccessActor,
     preset: DashboardDateRangePreset = 'month',
+    from?: string,
+    to?: string,
   ): Promise<DashboardMeResponse> {
     const effective = await this.authz.assertDashboardAccess(actor);
     const layout = await this.layout.getLayout(actor);
     const permitted = permittedDashboardWidgets(effective).map((widget) => {
-      const scope = this.authz.scopeForWidget(widget.key, effective) ?? undefined;
+      const scope = this.authz.scopeForWidget(actor, widget.key, effective) ?? undefined;
       return {
         key: widget.key,
         section: widget.section,
@@ -86,14 +65,19 @@ export class GetDashboardMeHandler {
         ...(scope ? { scope } : {}),
       } satisfies DashboardWidgetDescriptor;
     });
-    const range = resolveDateRange(preset);
+    const range = await this.dateRange.resolveForOrganization(
+      actor.organizationId,
+      preset,
+      from,
+      to,
+    );
     return {
       widgets: applyLayout(permitted, layout),
       layout,
       dateRange: {
         preset,
-        from: range.from.toISOString(),
-        to: range.to.toISOString(),
+        from: range.dateFrom.toISOString(),
+        to: range.dateTo.toISOString(),
       },
       generatedAt: new Date().toISOString(),
     };
@@ -105,17 +89,25 @@ export class GetDashboardWidgetHandler {
   constructor(
     @Inject(DashboardAuthorizationService) private readonly authz: DashboardAuthorizationService,
     @Inject(DashboardDataService) private readonly data: DashboardDataService,
+    @Inject(DashboardDateRangeService) private readonly dateRange: DashboardDateRangeService,
   ) {}
 
   async execute(
     actor: OrgAccessActor,
     widgetKey: string,
     preset: DashboardDateRangePreset = 'month',
+    from?: string,
+    to?: string,
   ): Promise<DashboardWidgetData> {
     const effective = await this.authz.assertWidgetAccess(actor, widgetKey);
-    const scope = this.authz.scopeForWidget(widgetKey, effective);
-    const range = resolveDateRange(preset);
-    return this.data.loadWidget(actor, widgetKey, scope, range.from, range.to);
+    const scope = this.authz.scopeForWidget(actor, widgetKey, effective);
+    const range = await this.dateRange.resolveForOrganization(
+      actor.organizationId,
+      preset,
+      from,
+      to,
+    );
+    return this.data.loadWidget(actor, widgetKey, scope, range);
   }
 }
 

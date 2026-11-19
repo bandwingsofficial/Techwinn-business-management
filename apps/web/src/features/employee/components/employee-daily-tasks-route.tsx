@@ -10,8 +10,8 @@ import { usePermissions } from '@/features/auth/components/permissions-provider'
  * depending on effective permissions — portal prefix is unchanged.
  */
 export function EmployeeDailyTasksRoute() {
-  const { has, hasAny } = usePermissions();
-  if (canViewOrganizationDailyTasks(has, hasAny)) {
+  const { has } = usePermissions();
+  if (canViewOrganizationDailyTasks(has)) {
     return <AdminDailyTasksWorkspace />;
   }
   return <EmployeeDailyTasksWorkspace />;

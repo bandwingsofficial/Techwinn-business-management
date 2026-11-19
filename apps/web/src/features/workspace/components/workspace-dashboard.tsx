@@ -7,7 +7,7 @@ import type {
 } from '@techwin/contracts';
 import { DASHBOARD_VIEW } from '@techwin/contracts';
 import { RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +22,7 @@ import { usePermissions } from '@/features/auth/components/permissions-provider'
 import { formatMembershipRoleDetails } from '@/features/auth/membership/membership-access';
 import { useAuthenticatedAdmin } from '@/features/admin/auth/hooks/use-admin-session';
 
-import { getDashboardMe } from '@/features/dashboard/api/dashboard';
+import { getDashboardMe, type DashboardQueryRange } from '@/features/dashboard/api/dashboard';
 import {
   DashboardHeroKpiRow,
   DashboardHeroKpiRowSkeleton,
@@ -42,10 +42,13 @@ const RANGE_OPTIONS: {
   label: string;
 }[] = [
   { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
   { value: 'week', label: 'This week' },
   { value: 'month', label: 'This month' },
-  { value: 'quarter', label: 'This quarter' },
+  { value: 'last_month', label: 'Last month' },
   { value: 'year', label: 'This year' },
+  { value: 'all_time', label: 'All time' },
+  { value: 'custom', label: 'Custom range' },
 ];
 
 export function WorkspaceDashboard() {
@@ -54,8 +57,19 @@ export function WorkspaceDashboard() {
 
   const roleLabel = formatMembershipRoleDetails(admin, roles);
 
-  const [preset, setPreset] =
-    useState<DashboardDateRangePreset>('month');
+  const [preset, setPreset] = useState<DashboardDateRangePreset>('month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
+  const range = useMemo<DashboardQueryRange>(
+    () => ({
+      preset,
+      ...(preset === 'custom' && customFrom && customTo
+        ? { from: customFrom, to: customTo }
+        : {}),
+    }),
+    [preset, customFrom, customTo],
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +85,7 @@ export function WorkspaceDashboard() {
       setLoading(true);
       setError(null);
 
-      return getDashboardMe(preset, signal)
+      return getDashboardMe(range, signal)
         .then((response) => {
           setWidgets(
             response.widgets.filter(
@@ -94,21 +108,48 @@ export function WorkspaceDashboard() {
           }
         });
     },
-    [preset],
+    [range],
   );
+
+  const customRangeIncomplete = preset === 'custom' && (!customFrom || !customTo);
+
+  // Bumped by the Refresh button; every KPI card and widget refetches when it changes.
+  const [refreshToken, setRefreshToken] = useState(0);
+  const refreshController = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!canViewDashboard) {
       setLoading(false);
       return;
     }
+    // Custom range without both dates: no request; the render branch shows the prompt.
+    if (customRangeIncomplete) return;
 
+    // A range change supersedes any refresh still in flight.
+    refreshController.current?.abort();
     const controller = new AbortController();
 
     void load(controller.signal);
 
     return () => controller.abort();
-  }, [canViewDashboard, load]);
+  }, [canViewDashboard, customRangeIncomplete, load]);
+
+  useEffect(() => () => refreshController.current?.abort(), []);
+
+  const handleRefresh = useCallback(() => {
+    refreshController.current?.abort();
+    const controller = new AbortController();
+    refreshController.current = controller;
+    setRefreshToken((token) => token + 1);
+    void load(controller.signal);
+  }, [load]);
+
+  const periodLabel = useMemo(() => {
+    if (preset === 'custom') {
+      return customFrom && customTo ? `${customFrom} to ${customTo}` : 'Custom range';
+    }
+    return RANGE_OPTIONS.find((option) => option.value === preset)?.label ?? '';
+  }, [preset, customFrom, customTo]);
 
   const heroKpiWidgetKeys = useMemo(
     () =>
@@ -188,7 +229,8 @@ export function WorkspaceDashboard() {
               </p>
 
               <p className="max-w-xl text-sm leading-snug text-[#5B6F8E]">
-                Here&apos;s what&apos;s happening across your organization today.
+                Here&apos;s what&apos;s happening across your organization
+                {periodLabel ? ` · ${periodLabel}` : ''}.
               </p>
             </div>
 
@@ -215,13 +257,33 @@ export function WorkspaceDashboard() {
                 </SelectContent>
               </Select>
 
+              {preset === 'custom' ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(event) => setCustomFrom(event.target.value)}
+                    className="h-10 rounded-md border border-[#D4DEF7] bg-white px-2 text-sm shadow-[0_2px_8px_rgba(79,111,196,0.08)]"
+                    aria-label="Custom range start"
+                  />
+                  <span className="text-muted-foreground text-sm">to</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(event) => setCustomTo(event.target.value)}
+                    className="h-10 rounded-md border border-[#D4DEF7] bg-white px-2 text-sm shadow-[0_2px_8px_rgba(79,111,196,0.08)]"
+                    aria-label="Custom range end"
+                  />
+                </div>
+              ) : null}
+
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 className="size-10 shrink-0 border-[#D4DEF7] bg-white shadow-[0_2px_8px_rgba(79,111,196,0.08)]"
-                onClick={() => void load()}
-                disabled={loading}
+                onClick={handleRefresh}
+                disabled={loading || (preset === 'custom' && (!customFrom || !customTo))}
                 aria-label="Refresh dashboard"
               >
                 <RefreshCw
@@ -236,19 +298,28 @@ export function WorkspaceDashboard() {
           </div>
         </header>
 
-        {heroKpiWidgetKeys.length > 0 ? (
+        {/* An incomplete custom range has no dates yet; never fetch (the API would fall back to
+            This month and show numbers for a period the user did not choose). */}
+        {heroKpiWidgetKeys.length > 0 && !customRangeIncomplete ? (
           loading && widgets.length === 0 ? (
             <DashboardHeroKpiRowSkeleton />
           ) : (
             <DashboardHeroKpiRow
               enabledWidgetKeys={heroKpiWidgetKeys}
-              preset={preset}
+              range={range}
+              refreshToken={refreshToken}
             />
           )
         ) : null}
 
         {/* Dashboard content */}
-        {loading && widgets.length === 0 ? (
+        {customRangeIncomplete ? (
+          <div className={`${DASHBOARD_GRID_CARD_CLASS} rounded-xl bg-white p-10 text-center`}>
+            <p className="text-sm text-muted-foreground">
+              Choose a start and end date to load dashboard data.
+            </p>
+          </div>
+        ) : loading && widgets.length === 0 ? (
           <div className={cn(DASHBOARD_GRID_CLASS)}>
             {Array.from({ length: 6 }).map((_, index) => (
               <div
@@ -279,7 +350,8 @@ export function WorkspaceDashboard() {
               <DashboardWidgetCard
                 key={widget.key}
                 widget={widget}
-                preset={preset}
+                range={range}
+                refreshToken={refreshToken}
               />
             ))}
           </div>

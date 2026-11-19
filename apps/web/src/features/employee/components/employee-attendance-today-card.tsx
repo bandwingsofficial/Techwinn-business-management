@@ -17,7 +17,9 @@ import { isDesktopBrowserSession } from '@/features/attendance/utils/device-elig
 import {
   formatAttendanceDate,
   formatElapsedWorking,
+  formatGracePeriod,
   formatIsoTime,
+  formatIsoTime12,
   formatLateDuration,
   formatWorkingHoursClock,
   minutesToLabel,
@@ -161,9 +163,19 @@ export function EmployeeAttendanceTodayCard({
   const showLateBy = record && record.lateMinutes > 0 && phase !== 'not_punched';
   const dayNum = today?.attendanceDate?.slice(8, 10) ?? '--';
 
-  const officeLine = schedule
-    ? `${minutesToLabel(schedule.officeStartMinutes)} – ${minutesToLabel(schedule.officeEndMinutes)}`
+  // Office hours, grace and threshold are resolved by the backend (per weekday, and from the
+  // record's own schedule snapshot once punched) — the same values used for late calculation.
+  const timing = today?.timing ?? null;
+  const officeLine = timing
+    ? `${minutesToLabel(timing.officeStartMinutes)} – ${minutesToLabel(timing.officeEndMinutes)}`
     : 'Not configured';
+  const graceLine = timing
+    ? `Late Grace: ${formatGracePeriod(timing.lateGraceMinutes)} · Late after ${minutesToLabel(timing.lateThresholdMinutes)}`
+    : null;
+  const lateDetail =
+    timing && record?.punchInAt
+      ? `Late threshold: ${minutesToLabel(timing.lateThresholdMinutes)} · Punched in: ${formatIsoTime12(record.punchInAt, timeZone)}`
+      : null;
 
   const showLateBanner = Boolean(showLateBy);
   const showCompleteBanner = phase === 'completed';
@@ -273,6 +285,9 @@ export function EmployeeAttendanceTodayCard({
               icon={<Clock className="size-4" strokeWidth={2} aria-hidden />}
             >
               <p className="text-sm font-bold tabular-nums text-[#1E293B]">{officeLine}</p>
+              {graceLine ? (
+                <p className="mt-0.5 text-[11px] font-medium leading-snug text-[#94A3B8]">{graceLine}</p>
+              ) : null}
             </MetricColumn>
 
             <MetricColumn
@@ -335,9 +350,14 @@ export function EmployeeAttendanceTodayCard({
             {showLateBanner ? (
               <div className="flex items-center gap-2 sm:pr-4">
                 <Clock className="size-4 shrink-0 text-[#EA580C]" aria-hidden />
-                <span className="text-sm font-bold text-[#C2410C]">
-                  Late by {formatLateDuration(record!.lateMinutes)}
-                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#C2410C]">
+                    Late by {formatLateDuration(record!.lateMinutes)}
+                  </p>
+                  {lateDetail ? (
+                    <p className="text-xs font-medium tabular-nums text-[#C2410C]/75">{lateDetail}</p>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             {showLateBanner && showCompleteBanner ? (

@@ -51,9 +51,11 @@ export class DashboardController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: { platformAuth?: { admin: { role: string } } },
     @Query('preset') preset?: DashboardDateRangePreset,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const actor = toOrgAccessActor(ctx, request.platformAuth?.admin.role === 'SUPER_ADMIN');
-    return this.getMe.execute(actor, preset ?? 'month');
+    return this.getMe.execute(actor, preset ?? 'month', from, to);
   }
 
   @Get('summary')
@@ -75,9 +77,11 @@ export class DashboardController {
     @Req() request: { platformAuth?: { admin: { role: string } } },
     @Param('widgetKey') widgetKey: string,
     @Query('preset') preset?: DashboardDateRangePreset,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const actor = toOrgAccessActor(ctx, request.platformAuth?.admin.role === 'SUPER_ADMIN');
-    return this.getWidget.execute(actor, widgetKey, preset ?? 'month');
+    return this.getWidget.execute(actor, widgetKey, preset ?? 'month', from, to);
   }
 
   @Get('available-widgets')
@@ -87,9 +91,11 @@ export class DashboardController {
     @CrmContext() ctx: CrmRequestContext,
     @Req() request: { platformAuth?: { admin: { role: string } } },
     @Query('preset') preset?: DashboardDateRangePreset,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const actor = toOrgAccessActor(ctx, request.platformAuth?.admin.role === 'SUPER_ADMIN');
-    return this.getMe.execute(actor, preset ?? 'month');
+    return this.getMe.execute(actor, preset ?? 'month', from, to);
   }
 
   @Patch('configuration')

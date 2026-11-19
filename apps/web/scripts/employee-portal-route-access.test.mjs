@@ -43,19 +43,12 @@ const ORG_DAILY_TASK_MANAGE = [
   'project_management.daily_tasks.assign',
 ];
 
+/** Mirror of `canViewOrganizationDailyTasks` in `src/lib/contracts/task-visibility.ts`. */
 function canViewOrganizationDailyTasks(permissions) {
-  if (permissions.has('project_management.daily_tasks.view')) return true;
   if (ORG_DAILY_TASK_MANAGE.some((k) => permissions.has(k))) return true;
+  if (permissions.has('project_management.daily_tasks.view')) return true;
   if (!permissions.has('tasks.read')) return false;
-  if (permissions.has('projects.read') && permissions.has('tasks.read')) return true;
-  if (
-    permissions.has('attendance.punch.view') ||
-    permissions.has('leave.requests.read_own') ||
-    permissions.has('leave.balances.read_own')
-  ) {
-    return false;
-  }
-  return false;
+  return ['employees.view', 'leads.read', 'clients.read'].some((k) => permissions.has(k));
 }
 
 function canAccessLeaveManagementPage(permissions) {
@@ -90,6 +83,11 @@ test('org daily tasks workspace when PM view granted', () => {
 
 test('self-service daily tasks when only tasks.read without org signals', () => {
   const perms = new Set(['tasks.read', 'leave.requests.read_own']);
+  assert.equal(pickDailyTasksWorkspace(perms), 'self-service');
+});
+
+test('Employee role with projects.read + tasks.read uses self-service daily tasks', () => {
+  const perms = new Set(['projects.read', 'tasks.read', 'daily_tasks.update_status']);
   assert.equal(pickDailyTasksWorkspace(perms), 'self-service');
 });
 

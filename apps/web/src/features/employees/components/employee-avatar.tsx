@@ -70,7 +70,7 @@ export function EmployeeAvatar({
         // eslint-disable-next-line @next/next/no-img-element -- blob or authorized fetch URL
         <img
           src={displaySrc}
-          alt=""
+          alt={displayName}
           decoding="async"
           className="relative z-[1] size-full object-cover"
           onError={() => setImgBroken(true)}

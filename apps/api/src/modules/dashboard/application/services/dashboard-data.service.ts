@@ -7,10 +7,22 @@ import type {
 import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 import type { OrgAccessActor } from '../../../org-access/application/shared/org-access-actor.js';
 import type { Prisma } from '../../../../generated/prisma/client.js';
-
-function startOfDayUtc(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
+import {
+  dayStartInstant,
+  orgLocalDayKey,
+  resolvePreviousDashboardRange,
+  trendDaysForRange,
+  trendWindowCoversRange,
+  utcDateToCalendarKey,
+  type ResolvedDashboardDateRange,
+} from '../dashboard-date-range.js';
+import { buildPeriodKpiMetric } from '../dashboard-kpi-metric.js';
+import {
+  DAILY_TASK_STATUS_CHART_LABELS,
+  dailyTaskOpenWhere,
+  dailyTaskStatusBucketOrder,
+  dailyTaskStatusWhere,
+} from '../daily-task-dashboard-status.js';
 
 function formatLeadSourceLabel(source: string): string {
   return source
@@ -20,15 +32,32 @@ function formatLeadSourceLabel(source: string): string {
     .join(' ');
 }
 
-function eachDayIso(from: Date, to: Date, maxDays = 31): string[] {
-  const days: string[] = [];
-  const cursor = startOfDayUtc(from);
-  const end = startOfDayUtc(to);
-  while (cursor <= end && days.length < maxDays) {
-    days.push(cursor.toISOString().slice(0, 10));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+/**
+ * Bucket timestamps into the trend's org-local days. Days with no rows get 0.
+ * Done in memory on one bounded query instead of one database query per day.
+ */
+function countTimestampsByOrgDay(
+  timestamps: readonly Date[],
+  days: readonly Date[],
+  timeZone: string,
+): number[] {
+  const index = new Map(days.map((day, i) => [utcDateToCalendarKey(day), i]));
+  const counts = new Array<number>(days.length).fill(0);
+  for (const ts of timestamps) {
+    const i = index.get(orgLocalDayKey(ts, timeZone));
+    if (i !== undefined) counts[i] = (counts[i] ?? 0) + 1;
   }
-  return days;
+  return counts;
+}
+
+function dayLabel(day: Date): string {
+  return utcDateToCalendarKey(day).slice(5, 10);
+}
+
+function assignDateRangeWhere(
+  range: ResolvedDashboardDateRange,
+): Prisma.DailyTaskWhereInput {
+  return { assignDate: { gte: range.dateFrom, lte: range.dateTo } };
 }
 
 @Injectable()
@@ -39,30 +68,29 @@ export class DashboardDataService {
     actor: OrgAccessActor,
     widgetKey: string,
     scope: DashboardDataScopeKind | null,
-    rangeFrom: Date,
-    rangeTo: Date,
+    range: ResolvedDashboardDateRange,
   ): Promise<DashboardWidgetData> {
     const generatedAt = new Date().toISOString();
     if (widgetKey === 'overview.welcome') {
       return { widgetKey, scope, empty: false, generatedAt, kpis: [] };
     }
     if (widgetKey.startsWith('tasks.')) {
-      return this.loadTasksWidget(actor, widgetKey, scope, rangeFrom, rangeTo, generatedAt);
+      return this.loadTasksWidget(actor, widgetKey, scope, range, generatedAt);
     }
     if (widgetKey.startsWith('crm.')) {
-      return this.loadCrmWidget(actor, widgetKey, scope, rangeFrom, rangeTo, generatedAt);
+      return this.loadCrmWidget(actor, widgetKey, scope, range, generatedAt);
     }
     if (widgetKey.startsWith('projects.')) {
-      return this.loadProjectsWidget(actor, widgetKey, scope, generatedAt);
+      return this.loadProjectsWidget(actor, widgetKey, scope, range, generatedAt);
     }
     if (widgetKey.startsWith('employees.')) {
-      return this.loadEmployeesWidget(actor, widgetKey, generatedAt, rangeFrom, rangeTo);
+      return this.loadEmployeesWidget(actor, widgetKey, generatedAt, range);
     }
     if (widgetKey.startsWith('attendance.')) {
-      return this.loadAttendanceWidget(actor, widgetKey, scope, rangeFrom, rangeTo, generatedAt);
+      return this.loadAttendanceWidget(actor, widgetKey, scope, range, generatedAt);
     }
     if (widgetKey.startsWith('leave.')) {
-      return this.loadLeaveWidget(actor, widgetKey, scope, rangeFrom, rangeTo, generatedAt);
+      return this.loadLeaveWidget(actor, widgetKey, scope, range, generatedAt);
     }
     if (widgetKey === 'reports.performance') {
       return this.loadReportsWidget(actor, scope, generatedAt);
@@ -97,26 +125,68 @@ export class DashboardDataService {
     return base;
   }
 
+  private async countTaskStatusBuckets(
+    where: Prisma.DailyTaskWhereInput,
+    completedStageIds: readonly string[],
+    orgToday: Date,
+  ) {
+    const buckets = dailyTaskStatusBucketOrder();
+    const counts = await Promise.all(
+      buckets.map((bucket) =>
+        this.prisma.dailyTask.count({
+          where: { AND: [where, dailyTaskStatusWhere(bucket, completedStageIds, orgToday)] },
+        }),
+      ),
+    );
+    const byBucket = Object.fromEntries(
+      buckets.map((bucket, index) => [bucket, counts[index] ?? 0]),
+    ) as Record<(typeof buckets)[number], number>;
+    const total = buckets.reduce((sum, bucket) => sum + byBucket[bucket], 0);
+    return { byBucket, total };
+  }
+
+  /** Tasks assigned per org-local day across the trend window of `range` (scope-respecting). */
+  private async assignedCountsByDay(
+    where: Prisma.DailyTaskWhereInput,
+    range: ResolvedDashboardDateRange,
+  ): Promise<{ days: Date[]; counts: number[] }> {
+    const days = trendDaysForRange(range);
+    const firstDay = days[0] ?? range.dateFrom;
+    const groups = await this.prisma.dailyTask.groupBy({
+      by: ['assignDate'],
+      where: { AND: [where, { assignDate: { gte: firstDay, lte: range.dateTo } }] },
+      _count: { _all: true },
+    });
+    const byDay = new Map<string, number>();
+    for (const group of groups) {
+      const key = utcDateToCalendarKey(group.assignDate);
+      byDay.set(key, (byDay.get(key) ?? 0) + group._count._all);
+    }
+    return {
+      days,
+      counts: days.map((day) => byDay.get(utcDateToCalendarKey(day)) ?? 0),
+    };
+  }
+
   private async loadTasksWidget(
     actor: OrgAccessActor,
     widgetKey: string,
     scope: DashboardDataScopeKind | null,
-    rangeFrom: Date,
-    rangeTo: Date,
+    range: ResolvedDashboardDateRange,
     generatedAt: string,
   ): Promise<DashboardWidgetData> {
     const employeeId = await this.sessionEmployeeId(actor);
     const where = this.taskScopeWhere(actor, scope, employeeId);
-    const today = startOfDayUtc(new Date());
+    const rangeWhere = { AND: [where, assignDateRangeWhere(range)] };
+    const orgToday = range.orgToday;
 
-    const [total, completedStages, recent] = await Promise.all([
-      this.prisma.dailyTask.count({ where }),
+    const [completedStages, recent] = await Promise.all([
       this.prisma.dailyTaskWorkflowStage.findMany({
         where: { organizationId: actor.organizationId, isCompletedStage: true },
         select: { id: true },
       }),
       this.prisma.dailyTask.findMany({
-        where,
+        where: rangeWhere,
         orderBy: { updatedAt: 'desc' },
         take: 10,
         select: {
@@ -134,136 +204,105 @@ export class DashboardDataService {
       }),
     ]);
 
-    const completedStageIds = new Set(completedStages.map((s) => s.id));
-    const openWhere = {
-      ...where,
-      OR: [{ workflowStageId: null }, { workflowStageId: { notIn: [...completedStageIds] } }],
-    };
-    const [openCount, overdueCount, dueTodayCount, inProgressCount] = await Promise.all([
-      this.prisma.dailyTask.count({ where: openWhere }),
-      this.prisma.dailyTask.count({
-        where: {
-          ...openWhere,
-          dueDate: { lt: today },
-        },
-      }),
-      this.prisma.dailyTask.count({
-        where: {
-          ...openWhere,
-          dueDate: today,
-        },
-      }),
-      this.prisma.dailyTask.count({
-        where: {
-          ...openWhere,
-          workflowStageId: { not: null },
-        },
-      }),
-    ]);
-    const completedCount = Math.max(0, total - openCount);
-    const pendingCount = Math.max(0, openCount - overdueCount - dueTodayCount - inProgressCount);
+    const completedStageIds = completedStages.map((s) => s.id);
+    const { byBucket, total } = await this.countTaskStatusBuckets(
+      rangeWhere,
+      completedStageIds,
+      orgToday,
+    );
+
+    const dueTodayCount = await this.prisma.dailyTask.count({
+      where: {
+        AND: [rangeWhere, dailyTaskOpenWhere(completedStageIds), { dueDate: orgToday }],
+      },
+    });
 
     if (widgetKey === 'tasks.kpi') {
+      // Total tasks = tasks ASSIGNED in the selected period (assignDate), within the actor's
+      // task scope. The status rows below are an exclusive breakdown of that same set.
+      const previousRange = resolvePreviousDashboardRange(range);
+      const [previousTotal, dailyAssigned] = await Promise.all([
+        previousRange
+          ? this.prisma.dailyTask.count({
+              where: { AND: [where, assignDateRangeWhere(previousRange)] },
+            })
+          : Promise.resolve(0),
+        this.assignedCountsByDay(where, range),
+      ]);
       return {
         widgetKey,
         scope,
         generatedAt,
         empty: total === 0,
         kpis: [
-          { label: 'Total tasks', value: total },
-          { label: 'Pending tasks', value: pendingCount },
-          { label: 'In progress', value: inProgressCount },
-          { label: 'Completed', value: completedCount },
-          { label: 'Overdue', value: overdueCount },
+          buildPeriodKpiMetric({
+            label: 'Total tasks',
+            value: total,
+            caption: 'Assigned in period',
+            comparison: previousRange
+              ? { previousValue: previousTotal, comparisonLabel: previousRange.comparisonLabel }
+              : null,
+            ...(trendWindowCoversRange(range) ? { dailyTrend: dailyAssigned.counts } : {}),
+            primary: true,
+          }),
+          { label: 'Not started', value: byBucket.not_started },
+          { label: 'Pending', value: byBucket.pending },
+          { label: 'In progress', value: byBucket.in_progress },
+          { label: 'Completed', value: byBucket.completed },
+          { label: 'Overdue', value: byBucket.overdue },
           { label: 'Due today', value: dueTodayCount },
         ],
       };
     }
 
     if (widgetKey === 'tasks.status_chart') {
-      const rangeWhere = { ...where, assignDate: { gte: rangeFrom, lte: rangeTo } };
-      const openWhereRange = {
-        ...rangeWhere,
-        OR: [{ workflowStageId: null }, { workflowStageId: { notIn: [...completedStageIds] } }],
-      };
-
-      const [
-        totalInRange,
-        completedInRange,
-        overdueInRange,
-        inProgressInRange,
-        pendingInRange,
-        notStartedInRange,
-      ] = await Promise.all([
-        this.prisma.dailyTask.count({ where: rangeWhere }),
-        this.prisma.dailyTask.count({
-          where: { ...rangeWhere, workflowStageId: { in: [...completedStageIds] } },
+      const series: DashboardChartPayload['series'][number][] = dailyTaskStatusBucketOrder().map(
+        (bucket) => ({
+          label: DAILY_TASK_STATUS_CHART_LABELS[bucket],
+          value: byBucket[bucket],
         }),
-        this.prisma.dailyTask.count({
-          where: { ...openWhereRange, dueDate: { lt: today } },
-        }),
-        this.prisma.dailyTask.count({
-          where: {
-            ...openWhereRange,
-            workflowStageId: { not: null },
-            OR: [{ dueDate: null }, { dueDate: { gte: today } }],
-          },
-        }),
-        this.prisma.dailyTask.count({
-          where: { ...openWhereRange, workflowStageId: null, dueDate: { gte: today } },
-        }),
-        this.prisma.dailyTask.count({
-          where: { ...openWhereRange, workflowStageId: null, dueDate: null },
-        }),
-      ]);
-
-      const series: DashboardChartPayload['series'][number][] = [
-        { label: 'Completed', value: completedInRange },
-        { label: 'In Progress', value: inProgressInRange },
-        { label: 'Pending', value: pendingInRange },
-        { label: 'Overdue', value: overdueInRange },
-        { label: 'Not Started', value: notStartedInRange },
-      ];
+      );
 
       const buckets: DashboardChartPayload = {
         chartType: 'donut',
         series,
-        totalValue: totalInRange,
+        totalValue: total,
       };
       return {
         widgetKey,
         scope,
         generatedAt,
-        empty: totalInRange === 0,
+        empty: total === 0,
         chart: buckets,
       };
     }
 
     if (widgetKey === 'tasks.trend_chart') {
-      const created: DashboardChartPayload['series'][number][] = [];
-      const completed: DashboardChartPayload['series'][number][] = [];
-      for (const day of eachDayIso(rangeFrom, rangeTo)) {
-        const start = new Date(`${day}T00:00:00.000Z`);
-        const end = new Date(`${day}T23:59:59.999Z`);
-        const createdCount = await this.prisma.dailyTask.count({
-          where: { ...where, createdAt: { gte: start, lte: end } },
-        });
-        const completedCountDay = await this.prisma.dailyTask.count({
-          where: { ...where, completedAt: { gte: start, lte: end } },
-        });
-        created.push({ label: day.slice(5), value: createdCount });
-        completed.push({ label: day.slice(5), value: completedCountDay });
-      }
+      const { days, counts: assignedCounts } = await this.assignedCountsByDay(where, range);
+      const firstDay = days[0] ?? range.dateFrom;
+      const windowStart = dayStartInstant(firstDay, range.timeZone);
+      const windowEnd = range.instantTo;
+      const completedRows = await this.prisma.dailyTask.findMany({
+        where: { ...where, completedAt: { gte: windowStart, lt: windowEnd } },
+        select: { completedAt: true },
+      });
+      const completedCounts = countTimestampsByOrgDay(
+        completedRows.flatMap((row) => (row.completedAt ? [row.completedAt] : [])),
+        days,
+        range.timeZone,
+      );
+      const assigned = days.map((day, i) => ({ label: dayLabel(day), value: assignedCounts[i] ?? 0 }));
+      const completed = days.map((day, i) => ({ label: dayLabel(day), value: completedCounts[i] ?? 0 }));
       return {
         widgetKey,
         scope,
         generatedAt,
-        empty: created.every((p) => p.value === 0) && completed.every((p) => p.value === 0),
+        empty: assigned.every((p) => p.value === 0) && completed.every((p) => p.value === 0),
         chart: {
           chartType: 'line',
           series: [],
           multiSeries: [
-            { name: 'Created', points: created },
+            { name: 'Assigned', points: assigned },
             { name: 'Completed', points: completed },
           ],
         },
@@ -336,10 +375,11 @@ export class DashboardDataService {
     actor: OrgAccessActor,
     widgetKey: string,
     scope: DashboardDataScopeKind | null,
-    rangeFrom: Date,
-    rangeTo: Date,
+    range: ResolvedDashboardDateRange,
     generatedAt: string,
   ): Promise<DashboardWidgetData> {
+    const rangeFrom = range.instantFrom;
+    const rangeToExclusive = range.instantTo;
     const where = this.leadScopeWhere(actor, scope);
     const lostWhere = this.lostLeadScopeWhere(actor, scope);
 
@@ -369,10 +409,10 @@ export class DashboardDataService {
     ] = await Promise.all([
       this.prisma.lead.count({ where }),
       this.prisma.lead.count({
-        where: { ...where, createdAt: { gte: rangeFrom, lte: rangeTo } },
+        where: { ...where, createdAt: { gte: rangeFrom, lt: rangeToExclusive } },
       }),
       this.prisma.lead.count({
-        where: { ...where, convertedAt: { not: null } },
+        where: { ...where, convertedAt: { gte: rangeFrom, lt: rangeToExclusive } },
       }),
       this.prisma.lead.count({ where: lostWhere }),
       stagesPromise,
@@ -393,14 +433,51 @@ export class DashboardDataService {
     );
 
     if (widgetKey === 'crm.kpi') {
+      // Total leads = leads CREATED in the selected period (within the actor's lead scope).
+      // The all-time pipeline size is kept separately as "All active leads".
+      const previousRange = resolvePreviousDashboardRange(range);
+      const trendDays = trendDaysForRange(range);
+      const [previousCreated, createdRows] = await Promise.all([
+        previousRange
+          ? this.prisma.lead.count({
+              where: {
+                ...where,
+                createdAt: { gte: previousRange.instantFrom, lt: previousRange.instantTo },
+              },
+            })
+          : Promise.resolve(0),
+        trendWindowCoversRange(range)
+          ? this.prisma.lead.findMany({
+              where: { ...where, createdAt: { gte: rangeFrom, lt: rangeToExclusive } },
+              select: { createdAt: true },
+            })
+          : Promise.resolve(null),
+      ]);
       return {
         widgetKey,
         scope,
         generatedAt,
         empty: false,
         kpis: [
-          { label: 'Total leads', value: total },
-          { label: 'New leads', value: createdInRange },
+          buildPeriodKpiMetric({
+            label: 'Total leads',
+            value: createdInRange,
+            caption: 'Created in period',
+            comparison: previousRange
+              ? { previousValue: previousCreated, comparisonLabel: previousRange.comparisonLabel }
+              : null,
+            ...(createdRows
+              ? {
+                  dailyTrend: countTimestampsByOrgDay(
+                    createdRows.map((row) => row.createdAt),
+                    trendDays,
+                    range.timeZone,
+                  ),
+                }
+              : {}),
+            primary: true,
+          }),
+          { label: 'All active leads', value: total },
           { label: 'Converted', value: converted },
           { label: 'Lost leads', value: lost },
         ],
@@ -448,15 +525,23 @@ export class DashboardDataService {
     }
 
     if (widgetKey === 'crm.trend_chart') {
-      const series: DashboardChartPayload['series'][number][] = [];
-      for (const day of eachDayIso(rangeFrom, rangeTo)) {
-        const start = new Date(`${day}T00:00:00.000Z`);
-        const end = new Date(`${day}T23:59:59.999Z`);
-        const value = await this.prisma.lead.count({
-          where: { ...where, createdAt: { gte: start, lte: end } },
-        });
-        series.push({ label: day.slice(5), value });
-      }
+      const days = trendDaysForRange(range);
+      const createdRows = await this.prisma.lead.findMany({
+        where: {
+          ...where,
+          createdAt: { gte: dayStartInstant(days[0] ?? range.dateFrom, range.timeZone), lt: range.instantTo },
+        },
+        select: { createdAt: true },
+      });
+      const counts = countTimestampsByOrgDay(
+        createdRows.map((row) => row.createdAt),
+        days,
+        range.timeZone,
+      );
+      const series: DashboardChartPayload['series'][number][] = days.map((day, i) => ({
+        label: dayLabel(day),
+        value: counts[i] ?? 0,
+      }));
       const createdInTrend = series.reduce((sum, point) => sum + point.value, 0);
       return {
         widgetKey,
@@ -468,20 +553,33 @@ export class DashboardDataService {
     }
 
     if (widgetKey === 'crm.conversion_chart') {
-      const created: DashboardChartPayload['series'][number][] = [];
-      const convertedSeries: DashboardChartPayload['series'][number][] = [];
-      for (const day of eachDayIso(rangeFrom, rangeTo)) {
-        const start = new Date(`${day}T00:00:00.000Z`);
-        const end = new Date(`${day}T23:59:59.999Z`);
-        const newCount = await this.prisma.lead.count({
-          where: { ...where, createdAt: { gte: start, lte: end } },
-        });
-        const convertedCount = await this.prisma.lead.count({
-          where: { ...where, convertedAt: { gte: start, lte: end } },
-        });
-        created.push({ label: day.slice(5), value: newCount });
-        convertedSeries.push({ label: day.slice(5), value: convertedCount });
-      }
+      const days = trendDaysForRange(range);
+      const windowStart = dayStartInstant(days[0] ?? range.dateFrom, range.timeZone);
+      const [createdRows, convertedRows] = await Promise.all([
+        this.prisma.lead.findMany({
+          where: { ...where, createdAt: { gte: windowStart, lt: range.instantTo } },
+          select: { createdAt: true },
+        }),
+        this.prisma.lead.findMany({
+          where: { ...where, convertedAt: { gte: windowStart, lt: range.instantTo } },
+          select: { convertedAt: true },
+        }),
+      ]);
+      const newCounts = countTimestampsByOrgDay(
+        createdRows.map((row) => row.createdAt),
+        days,
+        range.timeZone,
+      );
+      const convertedCounts = countTimestampsByOrgDay(
+        convertedRows.flatMap((row) => (row.convertedAt ? [row.convertedAt] : [])),
+        days,
+        range.timeZone,
+      );
+      const created = days.map((day, i) => ({ label: dayLabel(day), value: newCounts[i] ?? 0 }));
+      const convertedSeries = days.map((day, i) => ({
+        label: dayLabel(day),
+        value: convertedCounts[i] ?? 0,
+      }));
       const activityInRange =
         created.reduce((sum, point) => sum + point.value, 0) +
         convertedSeries.reduce((sum, point) => sum + point.value, 0);
@@ -555,10 +653,11 @@ export class DashboardDataService {
     actor: OrgAccessActor,
     widgetKey: string,
     scope: DashboardDataScopeKind | null,
+    range: ResolvedDashboardDateRange,
     generatedAt: string,
   ): Promise<DashboardWidgetData> {
     const where = this.projectScopeWhere(actor, scope);
-    const today = startOfDayUtc(new Date());
+    const today = range.orgToday;
     const statuses = ['ACTIVE', 'ON_HOLD', 'COMPLETED', 'INACTIVE'] as const;
     const counts = await Promise.all(
       statuses.map((status) => this.prisma.project.count({ where: { ...where, status } })),
@@ -573,13 +672,55 @@ export class DashboardDataService {
     const total = counts.reduce((sum, n) => sum + n, 0);
 
     if (widgetKey === 'projects.kpi') {
+      // Total projects = projects CREATED in the selected period, within the actor's project
+      // scope (employees only see projects they manage or have tasks in). The status rows are
+      // a current-portfolio snapshot, not period-filtered.
+      const previousRange = resolvePreviousDashboardRange(range);
+      const trendDays = trendDaysForRange(range);
+      const [createdInRange, previousCreated, createdRows] = await Promise.all([
+        this.prisma.project.count({
+          where: { ...where, createdAt: { gte: range.instantFrom, lt: range.instantTo } },
+        }),
+        previousRange
+          ? this.prisma.project.count({
+              where: {
+                ...where,
+                createdAt: { gte: previousRange.instantFrom, lt: previousRange.instantTo },
+              },
+            })
+          : Promise.resolve(0),
+        trendWindowCoversRange(range)
+          ? this.prisma.project.findMany({
+              where: { ...where, createdAt: { gte: range.instantFrom, lt: range.instantTo } },
+              select: { createdAt: true },
+            })
+          : Promise.resolve(null),
+      ]);
       return {
         widgetKey,
         scope,
         generatedAt,
         empty: total === 0,
         kpis: [
-          { label: 'Total projects', value: total },
+          buildPeriodKpiMetric({
+            label: 'Total projects',
+            value: createdInRange,
+            caption: 'Created in period',
+            comparison: previousRange
+              ? { previousValue: previousCreated, comparisonLabel: previousRange.comparisonLabel }
+              : null,
+            ...(createdRows
+              ? {
+                  dailyTrend: countTimestampsByOrgDay(
+                    createdRows.map((row) => row.createdAt),
+                    trendDays,
+                    range.timeZone,
+                  ),
+                }
+              : {}),
+            primary: true,
+          }),
+          { label: 'All projects', value: total },
           { label: 'Active projects', value: counts[0] ?? 0 },
           { label: 'Completed', value: counts[2] ?? 0 },
           { label: 'Delayed', value: delayed },
@@ -609,7 +750,10 @@ export class DashboardDataService {
         orderBy: { expectedEndDate: 'asc' },
         select: {
           name: true,
-          tasks: { select: { status: true } },
+          tasks: {
+            where: scope === 'assigned' ? { assigneeAdminId: actor.adminId } : undefined,
+            select: { status: true },
+          },
         },
       });
       const progressSeries = projects.map((project) => {
@@ -696,9 +840,10 @@ export class DashboardDataService {
     actor: OrgAccessActor,
     widgetKey: string,
     generatedAt: string,
-    rangeFrom: Date,
-    rangeTo: Date,
+    range: ResolvedDashboardDateRange,
   ): Promise<DashboardWidgetData> {
+    const rangeFrom = range.dateFrom;
+    const rangeTo = range.dateTo;
     const where = { organizationId: actor.organizationId, deactivatedAt: null };
     const [total, active, onLeave, inactive, newJoiners] = await Promise.all([
       this.prisma.employee.count({ where }),
@@ -711,13 +856,40 @@ export class DashboardDataService {
     ]);
 
     if (widgetKey === 'employees.kpi') {
+      // Total employees = CURRENT headcount (not date-filtered). Employees who joined during
+      // the selected period are reported separately as `secondary`, never added to the total.
+      const joinerRows = trendWindowCoversRange(range)
+        ? await this.prisma.employee.findMany({
+            where: { ...where, dateOfJoining: { gte: rangeFrom, lte: rangeTo } },
+            select: { dateOfJoining: true },
+          })
+        : null;
+      const joinersByDay = new Map<string, number>();
+      for (const row of joinerRows ?? []) {
+        const key = utcDateToCalendarKey(row.dateOfJoining);
+        joinersByDay.set(key, (joinersByDay.get(key) ?? 0) + 1);
+      }
       return {
         widgetKey,
         scope: 'organization',
         generatedAt,
         empty: total === 0,
         kpis: [
-          { label: 'Total employees', value: total },
+          buildPeriodKpiMetric({
+            label: 'Total employees',
+            value: total,
+            caption: 'Current headcount',
+            comparison: null,
+            secondary: { label: 'Joined in period', value: newJoiners },
+            ...(joinerRows
+              ? {
+                  dailyTrend: trendDaysForRange(range).map(
+                    (day) => joinersByDay.get(utcDateToCalendarKey(day)) ?? 0,
+                  ),
+                }
+              : {}),
+            primary: true,
+          }),
           { label: 'Active employees', value: active },
           { label: 'Inactive employees', value: inactive },
           { label: 'New joiners', value: newJoiners },
@@ -774,23 +946,21 @@ export class DashboardDataService {
     actor: OrgAccessActor,
     widgetKey: string,
     scope: DashboardDataScopeKind | null,
-    rangeFrom: Date,
-    rangeTo: Date,
+    range: ResolvedDashboardDateRange,
     generatedAt: string,
   ): Promise<DashboardWidgetData> {
     const employeeId = scope === 'own' ? await this.sessionEmployeeId(actor) : null;
     const where: Prisma.AttendanceRecordWhereInput = {
       organizationId: actor.organizationId,
-      attendanceDate: { gte: rangeFrom, lte: rangeTo },
+      attendanceDate: { gte: range.dateFrom, lte: range.dateTo },
       ...(employeeId ? { employeeId } : {}),
     };
-    const today = startOfDayUtc(new Date());
-    const todayWhere = { ...where, attendanceDate: today };
+    const periodWhere = where;
     const [present, absent, late, onLeaveToday] = await Promise.all([
-      this.prisma.attendanceRecord.count({ where: { ...todayWhere, status: 'PRESENT' } }),
-      this.prisma.attendanceRecord.count({ where: { ...todayWhere, status: 'ABSENT' } }),
-      this.prisma.attendanceRecord.count({ where: { ...todayWhere, status: 'LATE' } }),
-      this.prisma.attendanceRecord.count({ where: { ...todayWhere, status: 'ON_LEAVE' } }),
+      this.prisma.attendanceRecord.count({ where: { ...periodWhere, status: 'PRESENT' } }),
+      this.prisma.attendanceRecord.count({ where: { ...periodWhere, status: 'ABSENT' } }),
+      this.prisma.attendanceRecord.count({ where: { ...periodWhere, status: 'LATE' } }),
+      this.prisma.attendanceRecord.count({ where: { ...periodWhere, status: 'ON_LEAVE' } }),
     ]);
 
     if (widgetKey === 'attendance.kpi') {
@@ -800,10 +970,10 @@ export class DashboardDataService {
         generatedAt,
         empty: present + absent + late + onLeaveToday === 0,
         kpis: [
-          { label: 'Present today', value: present },
-          { label: 'Absent today', value: absent },
-          { label: 'Late today', value: late },
-          { label: 'On leave today', value: onLeaveToday },
+          { label: 'Present', value: present },
+          { label: 'Absent', value: absent },
+          { label: 'Late', value: late },
+          { label: 'On leave', value: onLeaveToday },
         ],
       };
     }
@@ -813,7 +983,7 @@ export class DashboardDataService {
       const series: DashboardChartPayload['series'][number][] = [];
       for (const status of statuses) {
         const value = await this.prisma.attendanceRecord.count({
-          where: { ...todayWhere, status },
+          where: { ...periodWhere, status },
         });
         if (value > 0) series.push({ label: status.replace('_', ' '), value });
       }
@@ -829,7 +999,7 @@ export class DashboardDataService {
     if (widgetKey === 'attendance.dept_chart') {
       const records = await this.prisma.attendanceRecord.findMany({
         where: {
-          ...todayWhere,
+          ...periodWhere,
           status: { in: ['PRESENT', 'LATE'] },
         },
         select: {
@@ -900,19 +1070,27 @@ export class DashboardDataService {
     actor: OrgAccessActor,
     widgetKey: string,
     scope: DashboardDataScopeKind | null,
-    rangeFrom: Date,
-    rangeTo: Date,
+    range: ResolvedDashboardDateRange,
     generatedAt: string,
   ): Promise<DashboardWidgetData> {
     const employeeId = scope === 'own' ? await this.sessionEmployeeId(actor) : null;
+    const periodFilter = {
+      createdAt: { gte: range.instantFrom, lt: range.instantTo },
+    };
     const requestWhere: Prisma.LeaveRequestWhereInput = {
       organizationId: actor.organizationId,
       ...(employeeId ? { employeeId } : {}),
     };
     const [pending, approved, rejected] = await Promise.all([
-      this.prisma.leaveRequest.count({ where: { ...requestWhere, status: 'PENDING' } }),
-      this.prisma.leaveRequest.count({ where: { ...requestWhere, status: 'APPROVED' } }),
-      this.prisma.leaveRequest.count({ where: { ...requestWhere, status: 'REJECTED' } }),
+      this.prisma.leaveRequest.count({
+        where: { ...requestWhere, ...periodFilter, status: 'PENDING' },
+      }),
+      this.prisma.leaveRequest.count({
+        where: { ...requestWhere, ...periodFilter, status: 'APPROVED' },
+      }),
+      this.prisma.leaveRequest.count({
+        where: { ...requestWhere, ...periodFilter, status: 'REJECTED' },
+      }),
     ]);
 
     if (widgetKey === 'leave.kpi') {
@@ -960,7 +1138,7 @@ export class DashboardDataService {
         where: {
           ...requestWhere,
           status: 'APPROVED',
-          updatedAt: { gte: rangeFrom, lte: rangeTo },
+          updatedAt: { gte: range.instantFrom, lt: range.instantTo },
         },
         select: { updatedAt: true },
         take: 1000,

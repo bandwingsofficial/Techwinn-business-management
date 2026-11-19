@@ -5,6 +5,7 @@ import {
   formatDateOnly,
   formatMinutesClock,
   getZonedParts,
+  resolveOfficeHoursForWeekday,
   type ZonedDateParts,
 } from '../services/attendance-time.service.js';
 import type { AttendanceScheduleConfig } from '../types/attendance-schedule.types.js';
@@ -68,6 +69,31 @@ export function earliestPunchInMinutes(
 
 export function lateThresholdMinutes(officeStartMinutes: number, lateGraceMinutes: number): number {
   return officeStartMinutes + lateGraceMinutes;
+}
+
+export type AttendanceDayTiming = {
+  readonly officeStartMinutes: number;
+  readonly officeEndMinutes: number;
+  readonly lateGraceMinutes: number;
+  /** Punch-in at or before this minute is on time; late starts one minute after. */
+  readonly lateThresholdMinutes: number;
+};
+
+/**
+ * Resolved office hours, grace and late threshold for one weekday. This is the same
+ * input `evaluateAttendance` uses, so the punch page can show exactly what is applied.
+ */
+export function resolveAttendanceDayTiming(
+  schedule: AttendanceScheduleConfig,
+  weekday: number,
+): AttendanceDayTiming {
+  const hours = resolveOfficeHoursForWeekday(schedule, weekday);
+  return {
+    officeStartMinutes: hours.startMinutes,
+    officeEndMinutes: hours.endMinutes,
+    lateGraceMinutes: schedule.lateGraceMinutes,
+    lateThresholdMinutes: lateThresholdMinutes(hours.startMinutes, schedule.lateGraceMinutes),
+  };
 }
 
 export function assertPunchInAllowed(

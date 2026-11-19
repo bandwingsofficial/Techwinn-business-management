@@ -1,80 +1,52 @@
 'use client';
 
-import type {
-  DashboardDateRangePreset,
-  DashboardKpiMetric,
-} from '@techwin/contracts';
+import type { DashboardKpiMetric } from '@techwin/contracts';
 import { MoreHorizontal, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { getDashboardWidget } from '../api/dashboard';
+import { getDashboardWidget, type DashboardQueryRange } from '../api/dashboard';
 import {
   DASHBOARD_GRID_CARD_CLASS,
   DASHBOARD_HERO_KPI_SLOTS,
 } from '../constants/dashboard-theme';
+import { describeKpiComparison } from '../utils/kpi-trend';
+import { DashboardKpiSparkline } from './dashboard-kpi-sparkline';
 
-const SPARKLINE_PATHS = [
-  'M2 25 C12 20 15 11 25 16 S39 24 49 12 S63 20 73 10 S87 13 98 3',
-  'M2 20 C12 25 17 12 27 15 S40 23 50 11 S64 16 74 8 S88 14 98 4',
-  'M2 24 C13 19 16 10 27 15 S40 20 51 9 S65 17 75 8 S88 12 98 3',
-  'M2 22 C13 15 17 19 27 12 S40 17 51 8 S64 16 76 7 S89 10 98 2',
-] as const;
+/** What each card's sparkline plots (one point per day of the selected period). */
+const TREND_TITLES: Record<string, string> = {
+  'tasks.kpi': 'Tasks assigned per day',
+  'crm.kpi': 'Leads created per day',
+  'projects.kpi': 'Projects created per day',
+  'employees.kpi': 'Employees joined per day',
+};
 
+/** The API marks the metric a hero card should show; fall back to the first "Total ..." metric. */
 function pickPrimaryMetric(
   kpis: readonly DashboardKpiMetric[] | undefined,
 ): DashboardKpiMetric | null {
   if (!kpis?.length) return null;
   return (
-    kpis.find((metric) => /total/i.test(metric.label)) ?? kpis[0] ?? null
-  );
-}
-
-function HeroKpiSparkline({
-  color,
-  index,
-  gradientId,
-}: {
-  color: string;
-  index: number;
-  gradientId: string;
-}) {
-  const path = SPARKLINE_PATHS[index % SPARKLINE_PATHS.length];
-
-  return (
-    <svg
-      viewBox="0 0 100 34"
-      className="h-8 w-[70px] shrink-0"
-      fill="none"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${path} L98 34 L2 34 Z`} fill={`url(#${gradientId})`} />
-      <path
-        d={path}
-        stroke={color}
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    kpis.find((metric) => metric.primary) ??
+    kpis.find((metric) => /total/i.test(metric.label)) ??
+    kpis[0] ??
+    null
   );
 }
 
 type HeroSlotState = {
-  metric: DashboardKpiMetric;
+  /** Null when this card's request failed. */
+  metric: DashboardKpiMetric | null;
   slotIndex: number;
 };
 
 export function DashboardHeroKpiRow({
   enabledWidgetKeys,
-  preset,
+  range,
+  refreshToken = 0,
 }: {
   enabledWidgetKeys: readonly string[];
-  preset: DashboardDateRangePreset;
+  range: DashboardQueryRange;
+  /** Changing this value reloads every card for the same range (Refresh button). */
+  refreshToken?: number;
 }) {
   const sparklineScope = useId().replace(/:/g, '');
   const slotsToLoad = useMemo(
@@ -99,35 +71,33 @@ export function DashboardHeroKpiRow({
     setLoading(true);
 
     void Promise.all(
-      slotsToLoad.map(async (slot) => {
-        const index = DASHBOARD_HERO_KPI_SLOTS.findIndex(
+      slotsToLoad.map(async (slot): Promise<HeroSlotState> => {
+        const slotIndex = DASHBOARD_HERO_KPI_SLOTS.findIndex(
           (entry) => entry.widgetKey === slot.widgetKey,
         );
-        const payload = await getDashboardWidget(
-          slot.widgetKey,
-          preset,
-          controller.signal,
-        );
-        const metric = pickPrimaryMetric(payload.kpis);
-        if (!metric) return null;
-        return { metric, slotIndex: index };
+        try {
+          const payload = await getDashboardWidget(
+            slot.widgetKey,
+            range,
+            controller.signal,
+          );
+          return { metric: pickPrimaryMetric(payload.kpis), slotIndex };
+        } catch {
+          // One failing card must not blank the others.
+          return { metric: null, slotIndex };
+        }
       }),
     )
       .then((results) => {
         if (controller.signal.aborted) return;
-        setItems(
-          results.filter((row): row is HeroSlotState => row !== null),
-        );
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setItems([]);
+        setItems(results);
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
 
     return () => controller.abort();
-  }, [preset, slotsToLoad]);
+  }, [range, slotsToLoad, refreshToken]);
 
   if (slotsToLoad.length === 0) return null;
 
@@ -146,8 +116,7 @@ export function DashboardHeroKpiRow({
         if (!slot) return null;
         const Icon = slot.icon;
         const gradientId = `${sparklineScope}-spark-${slotIndex}`;
-        const deltaUp =
-          metric.deltaPercent != null && metric.deltaPercent >= 0;
+        const comparison = metric ? describeKpiComparison(metric) : null;
 
         return (
           <article
@@ -173,38 +142,67 @@ export function DashboardHeroKpiRow({
               <p className="text-xs font-semibold leading-snug text-[#243656]">
                 {slot.displayLabel}
               </p>
+              {metric?.caption ? (
+                <p className="mt-0.5 whitespace-nowrap text-[10px] leading-none text-[#71819D]">
+                  {metric.caption}
+                </p>
+              ) : null}
               <p className="mt-1 text-[26px] font-bold leading-none tracking-tight text-[#172B50] tabular-nums">
-                {typeof metric.value === 'number'
-                  ? metric.value.toLocaleString()
-                  : metric.value}
+                {metric
+                  ? typeof metric.value === 'number'
+                    ? metric.value.toLocaleString()
+                    : metric.value
+                  : '—'}
               </p>
               <div className="mt-1.5 flex flex-col items-start gap-0.5">
-                {metric.deltaPercent != null ? (
-                  <p
-                    className={`flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold tabular-nums ${
-                      deltaUp ? 'text-emerald-600' : 'text-red-600'
-                    }`}
-                  >
-                    {deltaUp ? (
-                      <TrendingUp className="size-3 shrink-0" aria-hidden="true" />
-                    ) : (
-                      <TrendingDown className="size-3 shrink-0" aria-hidden="true" />
-                    )}
-                    {deltaUp ? '+' : '-'}
-                    {Math.abs(metric.deltaPercent)}%
+                {!metric ? (
+                  <p className="whitespace-nowrap text-[10px] leading-none text-[#71819D]">
+                    Couldn&apos;t load
                   </p>
-                ) : null}
-                <p className="whitespace-nowrap text-[10px] leading-none text-[#71819D]">
-                  vs. last month
-                </p>
+                ) : metric.secondary ? (
+                  <p className="whitespace-nowrap text-[11px] font-semibold tabular-nums text-[#243656]">
+                    {metric.secondary.label}:{' '}
+                    {typeof metric.secondary.value === 'number'
+                      ? metric.secondary.value.toLocaleString()
+                      : metric.secondary.value}
+                  </p>
+                ) : (
+                  <>
+                    {comparison?.deltaText ? (
+                      <p
+                        className={`flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold tabular-nums ${
+                          comparison.tone === 'up'
+                            ? 'text-emerald-600'
+                            : comparison.tone === 'down'
+                              ? 'text-red-600'
+                              : 'text-[#71819D]'
+                        }`}
+                      >
+                        {comparison.tone === 'up' ? (
+                          <TrendingUp className="size-3 shrink-0" aria-hidden="true" />
+                        ) : comparison.tone === 'down' ? (
+                          <TrendingDown className="size-3 shrink-0" aria-hidden="true" />
+                        ) : null}
+                        {comparison.deltaText}
+                      </p>
+                    ) : null}
+                    {comparison?.label ? (
+                      <p className="whitespace-nowrap text-[10px] leading-none text-[#71819D]">
+                        {comparison.label}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
 
             <div className="hidden justify-self-end sm:flex sm:items-center">
-              <HeroKpiSparkline
+              <DashboardKpiSparkline
                 color={slot.accent}
-                index={slotIndex}
                 gradientId={gradientId}
+                trend={metric?.trend}
+                title={TREND_TITLES[slot.widgetKey]}
+                className="h-8 w-[70px] shrink-0"
               />
             </div>
           </article>

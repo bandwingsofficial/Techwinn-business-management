@@ -38,6 +38,7 @@ import {
 import {
   assertPunchInAllowed,
   evaluateAttendance,
+  resolveAttendanceDayTiming,
 } from '../../../../domain/policies/attendance-status.policy.js';
 import type {
   AttendanceRepository,
@@ -341,10 +342,16 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
         punchBlockedReason ??
         'Register a trusted desktop device before punching attendance.';
     }
+    // Once a record exists its own schedule snapshot decides lateness, so later settings
+    // changes never alter what the employee sees for an already-punched day.
+    const timingSchedule = recordRow
+      ? snapshotToScheduleConfig(snapshotFromJson(recordRow.scheduleSnapshot))
+      : schedule;
     return {
       attendanceDate,
       serverTime: now.toISOString(),
       schedule: schedule ? toScheduleSnapshot(schedule) : null,
+      timing: timingSchedule ? resolveAttendanceDayTiming(timingSchedule, parts.weekday) : null,
       dayKind,
       record,
       canPunchIn,

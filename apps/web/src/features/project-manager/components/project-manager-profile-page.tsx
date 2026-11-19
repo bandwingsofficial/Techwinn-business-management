@@ -5,11 +5,12 @@ import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
 import { useAuthenticatedAdmin } from '@/features/admin/auth/hooks/use-admin-session';
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 import { usePortalNavigation } from '@/features/auth/portal/use-portal-navigation';
+import { EmployeeAvatar } from '@/features/employees/components/employee-avatar';
 import { formatDateTime } from '@/shared/lib/format';
 
 export function ProjectManagerProfilePage() {
   const { admin } = useAuthenticatedAdmin();
-  const { membershipRoleLabel } = usePermissions();
+  const { membershipRoleLabel, sessionEmployee } = usePermissions();
   const { dashboardBreadcrumb } = usePortalNavigation();
 
   return (
@@ -25,11 +26,29 @@ export function ProjectManagerProfilePage() {
           <CardTitle>Account</CardTitle>
           <CardDescription>Signed-in member profile.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid gap-6">
+          <div className="flex items-center gap-4">
+            <EmployeeAvatar
+              displayName={sessionEmployee?.displayName ?? admin.displayName}
+              profileImageUrl={sessionEmployee?.profileImageUrl ?? null}
+              lazyLoad={false}
+              className="size-16 text-base"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold">
+                {sessionEmployee?.displayName ?? admin.displayName}
+              </p>
+              {sessionEmployee?.jobTitle ? (
+                <p className="text-muted-foreground truncate text-sm">{sessionEmployee.jobTitle}</p>
+              ) : null}
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
           <Info label="Name" value={admin.displayName} />
           <Info label="Email" value={admin.email} />
           <Info label="Role" value={membershipRoleLabel} />
           <Info label="Last sign-in" value={formatDateTime(admin.lastLoginAt)} />
+          </div>
         </CardContent>
       </Card>
     </div>

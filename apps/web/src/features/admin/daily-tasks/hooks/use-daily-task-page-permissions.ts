@@ -2,6 +2,7 @@ import {
   hasPmDailyTaskAssignPermission,
   hasPmDailyTaskDeletePermission,
   hasPmDailyTaskEditPermission,
+  hasPmDailyTaskManageWorkflowPermission,
   hasPmDailyTaskMovePermission,
   hasPmDailyTaskViewDetailsPermission,
   hasPmDailyTaskViewPagePermission,
@@ -11,9 +12,9 @@ import { canViewOrganizationDailyTasks } from '@/features/admin/daily-tasks/util
 import { usePermissions } from '@/features/auth/components/permissions-provider';
 
 export function useDailyTaskPagePermissions() {
-  const { has, hasAny, loading: adminLoading } = useAdminAccess();
+  const { has, loading: adminLoading } = useAdminAccess();
   const { loading: permissionsLoading, permissionSet } = usePermissions();
-  const canViewOrgBoard = canViewOrganizationDailyTasks(has, hasAny);
+  const canViewOrgBoard = canViewOrganizationDailyTasks(has);
   const canViewPage =
     hasPmDailyTaskViewPagePermission(permissionSet) || canViewOrgBoard;
   const canAssign = hasPmDailyTaskAssignPermission(permissionSet);
@@ -22,7 +23,7 @@ export function useDailyTaskPagePermissions() {
   const canDelete = hasPmDailyTaskDeletePermission(permissionSet);
   const canMove = hasPmDailyTaskMovePermission(permissionSet);
   const showCardMenu = canViewDetails || canEdit || canDelete;
-  const canManageWorkflow = has('tasks.update') || has('daily_tasks.manage_workflow');
+  const canManageWorkflow = hasPmDailyTaskManageWorkflowPermission(permissionSet);
   return {
     loading: adminLoading || permissionsLoading,
     canViewPage,

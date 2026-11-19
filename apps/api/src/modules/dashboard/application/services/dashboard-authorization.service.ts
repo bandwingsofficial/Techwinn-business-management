@@ -1,14 +1,14 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   API_ERROR_CODES,
-  DASHBOARD_VIEW,
   canAccessDashboardPage,
   dashboardWidgetByKey,
   hasDashboardPermission,
   isShippedDashboardWidget,
   hasLeaveManagementPermission,
   LEAVE_MANAGEMENT_VIEW,
-  PM_DAILY_TASKS_VIEW_KEY,
+  canViewOrganizationProjectTasks,
+  canViewOwnDailyTasks,
   type DashboardDataScopeKind,
   type PermissionKey,
 } from '#contracts';
@@ -75,16 +75,9 @@ export class DashboardAuthorizationService {
     widgetKey: string,
   ): Promise<void> {
     if (widgetKey.startsWith('tasks.')) {
-      const scope = resolveTaskDashboardScope(effective);
+      const scope = this.scopeForWidget(actor, widgetKey, effective);
       if (!scope) throw this.forbidden();
-      if (scope === 'assigned') {
-        if (!effective.has('tasks.read') && !effective.has(PM_DAILY_TASKS_VIEW_KEY)) {
-          throw this.forbidden();
-        }
-        return;
-      }
-      const canOrg = this.dailyTaskAuthz.canViewOrganizationTasks(actor, effective);
-      if (!canOrg) throw this.forbidden();
+      if (scope === 'assigned' && !canViewOwnDailyTasks(effective)) throw this.forbidden();
       return;
     }
     if (widgetKey.startsWith('crm.')) {
@@ -130,10 +123,28 @@ export class DashboardAuthorizationService {
     }
   }
 
-  scopeForWidget(widgetKey: string, effective: ReadonlySet<PermissionKey>): DashboardDataScopeKind | null {
-    if (widgetKey.startsWith('tasks.')) return resolveTaskDashboardScope(effective);
+  /**
+   * Task and project widgets fall back to the caller's own assignments unless the account
+   * passes the same organization task-visibility rules as the task modules themselves.
+   */
+  scopeForWidget(
+    actor: OrgAccessActor,
+    widgetKey: string,
+    effective: ReadonlySet<PermissionKey>,
+  ): DashboardDataScopeKind | null {
+    if (widgetKey.startsWith('tasks.')) {
+      const scope = resolveTaskDashboardScope(effective);
+      if (!scope || scope === 'assigned') return scope;
+      return this.dailyTaskAuthz.canViewOrganizationTasks(actor, effective) ? scope : 'assigned';
+    }
     if (widgetKey.startsWith('crm.')) return resolveCrmDashboardScope(effective);
-    if (widgetKey.startsWith('projects.')) return resolveProjectDashboardScope(effective);
+    if (widgetKey.startsWith('projects.')) {
+      const scope = resolveProjectDashboardScope(effective);
+      if (!scope || scope === 'assigned') return scope;
+      return canViewOrganizationProjectTasks(effective, actor.isPlatformSuperAdmin)
+        ? scope
+        : 'assigned';
+    }
     if (widgetKey.startsWith('employees.')) return 'organization';
     if (widgetKey.startsWith('attendance.')) return resolveAttendanceDashboardScope(effective);
     if (widgetKey.startsWith('leave.')) return resolveLeaveDashboardScope(effective);

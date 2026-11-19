@@ -8,6 +8,7 @@ export interface ProjectTaskAssigneeRecord {
   readonly id: string;
   readonly displayName: string;
   readonly email: string;
+  readonly profileImageUrl: string | null;
 }
 
 export interface ProjectTaskRecord {
@@ -33,6 +34,8 @@ export interface ProjectTaskRecord {
 
 export type GetProjectBoardOptions = {
   readonly planBaselineOnly?: boolean;
+  /** When set, only tasks assigned to this platform admin are returned and counted. */
+  readonly assigneeAdminId?: string;
 };
 
 export interface ProjectTaskSummaryPhaseRecord {
@@ -117,6 +120,8 @@ export interface ProjectTaskSummaryListFilters {
   readonly lifecycleTab?: ProjectLifecycleTab;
   readonly page: number;
   readonly pageSize: number;
+  /** When set, only projects with tasks assigned to this platform admin, counting only those tasks. */
+  readonly assigneeAdminId?: string;
 }
 
 export interface PaginatedProjectTaskSummaries {

@@ -35,6 +35,7 @@ export * from './permission-pm-daily-tasks-prerequisites';
 export * from './permission-pm-daily-tasks-tooltips';
 export * from './pm-task-calendar-permissions';
 export * from './task-calendar-access';
+export * from './task-visibility';
 export * from './permission-hierarchy';
 import { assertPermissionHierarchyComplete } from './permission-hierarchy';
 export * from './permission-view-dependencies';

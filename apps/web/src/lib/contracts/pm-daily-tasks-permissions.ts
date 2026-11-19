@@ -7,6 +7,7 @@ export const PM_DAILY_TASKS_PERMISSION_KEYS = [
   'project_management.daily_tasks.edit',
   'project_management.daily_tasks.delete',
   'project_management.daily_tasks.move',
+  'project_management.daily_tasks.manage_workflow',
 ] as const satisfies readonly PermissionKey[];
 
 export type PmDailyTasksPermissionKey = (typeof PM_DAILY_TASKS_PERMISSION_KEYS)[number];
@@ -38,7 +39,6 @@ const ORG_DAILY_TASKS_READ_COLLABORATOR_KEYS = [
   'tasks.assign',
   'tasks.update',
   'tasks.delete',
-  'projects.read',
   'employees.view',
   'leads.read',
   'clients.read',
@@ -75,8 +75,11 @@ export function expandLegacyPmDailyTasksPermissions(keys: Set<PermissionKey>): v
       keys.add('project_management.daily_tasks.delete');
     }
   }
-  if (keys.has('daily_tasks.update_status') || keys.has('tasks.progress')) {
-    ensureViewPage();
+  // Status updates on own assignments must not imply the organization Daily Tasks board.
+  if (
+    (keys.has('daily_tasks.update_status') || keys.has('tasks.progress')) &&
+    keys.has(PM_DAILY_TASKS_VIEW_KEY)
+  ) {
     if (!keys.has('project_management.daily_tasks.move')) {
       keys.add('project_management.daily_tasks.move');
     }
@@ -145,6 +148,21 @@ export const PM_DAILY_TASK_MOVE = [
   PM_DAILY_TASKS_VIEW_KEY,
   'project_management.daily_tasks.move',
 ] as const satisfies readonly PermissionKey[];
+
+export const PM_DAILY_TASK_MANAGE_WORKFLOW = [
+  PM_DAILY_TASKS_VIEW_KEY,
+  'project_management.daily_tasks.manage_workflow',
+] as const satisfies readonly PermissionKey[];
+
+/** Organization daily task workflow stage configuration (independent of task edit). */
+export function hasPmDailyTaskManageWorkflowPermission(
+  permissions: ReadonlySet<PermissionKey>,
+): boolean {
+  return (
+    permissions.has('project_management.daily_tasks.manage_workflow') ||
+    permissions.has('daily_tasks.manage_workflow')
+  );
+}
 
 export function hasPmDailyTaskMovePermission(permissions: ReadonlySet<PermissionKey>): boolean {
   return (

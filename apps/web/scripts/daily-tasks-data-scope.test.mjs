@@ -7,8 +7,8 @@ import test from 'node:test';
 
 const PM_DAILY_TASKS_VIEW_KEY = 'project_management.daily_tasks.view';
 
+/** Mirror of `canViewOrganizationDailyTasks` in `src/lib/contracts/task-visibility.ts`. */
 function canViewOrganizationDailyTasks(has, hasAny) {
-  if (has(PM_DAILY_TASKS_VIEW_KEY)) return true;
   const manage = [
     'tasks.create',
     'tasks.assign',
@@ -19,15 +19,9 @@ function canViewOrganizationDailyTasks(has, hasAny) {
     'project_management.daily_tasks.delete',
   ];
   if (hasAny(...manage)) return true;
+  if (has(PM_DAILY_TASKS_VIEW_KEY)) return true;
   if (!has('tasks.read')) return false;
-  if (hasAny('employees.view', 'leads.read', 'clients.read')) return true;
-  if (has('projects.read') && has('tasks.read')) return true;
-  if (
-    hasAny('attendance.punch.view', 'leave.requests.read_own', 'leave.balances.read_own')
-  ) {
-    return false;
-  }
-  return false;
+  return hasAny('employees.view', 'leads.read', 'clients.read');
 }
 
 function resolveDailyTasksDataScope(input) {
@@ -103,6 +97,26 @@ test('?workspace=my with tasks.read selects personal API', () => {
   const scope = resolveDailyTasksDataScope({
     portal: 'admin',
     workspaceParam: 'my',
+    canViewOrganizationTasks: canOrg,
+    hasTasksRead: true,
+  });
+  assert.equal(scope, 'own');
+});
+
+test('Employee role (projects.read + tasks.read) stays on own scope', () => {
+  const permissions = new Set([
+    'projects.read',
+    'tasks.read',
+    'daily_tasks.update_status',
+    'attendance.punch.view',
+  ]);
+  const has = (key) => permissions.has(key);
+  const hasAny = (...keys) => keys.some((k) => permissions.has(k));
+  const canOrg = canViewOrganizationDailyTasks(has, hasAny);
+  assert.equal(canOrg, false);
+  const scope = resolveDailyTasksDataScope({
+    portal: 'employee',
+    workspaceParam: null,
     canViewOrganizationTasks: canOrg,
     hasTasksRead: true,
   });

@@ -17,6 +17,8 @@ import type { Request } from 'express';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   canAccessProjectTaskBoardApi,
+  canViewOrganizationProjectTasks,
+  type PermissionKey,
   type ProjectTask,
   type ProjectTaskBoardResponse,
   type ProjectTaskSummaryListResponse,
@@ -91,14 +93,28 @@ export class ProjectTasksController {
   @ApiOkResponse({ schema: toOpenApiSchema(projectTaskSummaryListResponseSchema) })
   async listProjects(
     @CrmContext() ctx: CrmRequestContext,
-    @Req() request: Request,
+    @Req() request: PlatformAuthenticatedRequest & Request,
   ): Promise<ProjectTaskSummaryListResponse> {
     const listQuery = parseProjectListQuery(request.query);
+    const effective = await this.resolveEffective(ctx, request);
     const result = await this.listSummaries.execute({
       actor: toProjectActor(ctx),
       listQuery,
+      organizationWide: canViewOrganizationProjectTasks(effective, this.isSuperAdmin(request)),
     });
     return toProjectTaskSummaryListResponse(result);
+  }
+
+  private isSuperAdmin(request: PlatformAuthenticatedRequest): boolean {
+    return request.platformAuth?.admin.role === 'SUPER_ADMIN';
+  }
+
+  private async resolveEffective(
+    ctx: CrmRequestContext,
+    request: PlatformAuthenticatedRequest,
+  ): Promise<ReadonlySet<PermissionKey>> {
+    const accessActor = toOrgAccessActor(ctx, this.isSuperAdmin(request));
+    return new Set(await this.permissionChecker.resolveEffectivePermissions(accessActor));
   }
 
   @RequirePermissions('projects.read')
@@ -112,18 +128,15 @@ export class ProjectTasksController {
   ): Promise<ProjectTaskBoardResponse> {
     const planBaselineOnly =
       request.query.planBaseline === '1' || request.query.planBaseline === 'true';
+    const effective = await this.resolveEffective(ctx, request);
     const board = await this.getBoard.execute({
       actor: toProjectActor(ctx),
       projectId,
       planBaselineOnly,
+      organizationWide: canViewOrganizationProjectTasks(effective, this.isSuperAdmin(request)),
     });
-    const accessActor = toOrgAccessActor(
-      ctx,
-      request.platformAuth?.admin.role === 'SUPER_ADMIN',
-    );
-    const effective = await this.permissionChecker.resolveEffectivePermissions(accessActor);
     const lifecycle = board.project.executionLifecycle as ProjectWorkspaceLifecycle;
-    if (!canAccessProjectTaskBoardApi(lifecycle, new Set(effective))) {
+    if (!canAccessProjectTaskBoardApi(lifecycle, effective)) {
       throw new OrgAccessForbiddenError('You do not have permission to access this project board.');
     }
     return toProjectTaskBoardResponse(board);
