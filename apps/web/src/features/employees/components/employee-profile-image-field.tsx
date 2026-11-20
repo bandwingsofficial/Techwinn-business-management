@@ -9,6 +9,7 @@ import {
   type DeferredImageUploadValue,
 } from '@/features/admin/media/components/image-upload-field';
 import { EmployeeAvatar } from './employee-avatar';
+import { resolveEmployeeProfileImageSrc } from '../utils/profile-image';
 
 export type EmployeeProfileImageFormValue = {
   /** Saved server preview path (edit mode). */
@@ -61,6 +62,7 @@ export function EmployeeProfileImageField({
       value={employeeProfileImageToFieldValue(value)}
       uploadLabel="Upload"
       changeLabel="Change Photo"
+      resolveImageUrl={resolveEmployeeProfileImageSrc}
       renderAvatar={(previewUrl) => (
         <EmployeeAvatar displayName={displayName} profileImageUrl={previewUrl} lazyLoad={false} />
       )}

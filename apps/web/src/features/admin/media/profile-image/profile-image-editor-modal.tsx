@@ -26,6 +26,7 @@ import {
   ProfileImageEditorFooter,
 } from './profile-image-actions';
 import { ProfileImagePreview } from './profile-image-preview';
+import { Button } from '@/components/ui/button';
 import { renderCroppedProfileImage, revokeProfileImageEditorSrc } from './profile-image-crop-utils';
 
 export function ProfileImageEditorModal({
@@ -36,6 +37,7 @@ export function ProfileImageEditorModal({
   onSaved,
   onDiscard,
   renderPreviewFallback,
+  onChooseDifferentPhoto,
 }: {
   open: boolean;
   sourceMime: string;
@@ -44,6 +46,7 @@ export function ProfileImageEditorModal({
   onSaved: (file: File, previewUrl: string) => void;
   onDiscard: () => void;
   renderPreviewFallback: (previewUrl: string | null) => ReactNode;
+  onChooseDifferentPhoto?: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : undefined)}>
@@ -56,6 +59,7 @@ export function ProfileImageEditorModal({
           onSaved={onSaved}
           onDiscard={onDiscard}
           renderPreviewFallback={renderPreviewFallback}
+          onChooseDifferentPhoto={onChooseDifferentPhoto}
         />
       ) : null}
     </Dialog>
@@ -69,6 +73,7 @@ function ProfileImageEditorModalWorkspace({
   onSaved,
   onDiscard,
   renderPreviewFallback,
+  onChooseDifferentPhoto,
 }: {
   imageSrc: string;
   sourceMime: string;
@@ -76,6 +81,7 @@ function ProfileImageEditorModalWorkspace({
   onSaved: (file: File, previewUrl: string) => void;
   onDiscard: () => void;
   renderPreviewFallback: (previewUrl: string | null) => ReactNode;
+  onChooseDifferentPhoto?: () => void;
 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -85,10 +91,10 @@ function ProfileImageEditorModalWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
+  const [userAdjusted, setUserAdjusted] = useState(false);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const dirty =
-    crop.x !== 0 || crop.y !== 0 || zoom !== 1 || rotation !== 0 || croppedAreaPixels !== null;
+  const dirty = userAdjusted;
 
   useEffect(() => {
     if (!croppedAreaPixels) return;
@@ -122,6 +128,17 @@ function ProfileImageEditorModalWorkspace({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setRotation(0);
+    setUserAdjusted(false);
+  }, []);
+
+  const onCropChange = useCallback((next: { x: number; y: number }) => {
+    setUserAdjusted(true);
+    setCrop(next);
+  }, []);
+
+  const onZoomChange = useCallback((next: number) => {
+    setUserAdjusted(true);
+    setZoom(next);
   }, []);
 
   const requestClose = useCallback(() => {
@@ -173,20 +190,43 @@ function ProfileImageEditorModalWorkspace({
             crop={crop}
             zoom={zoom}
             rotation={rotation}
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
+            onCropChange={onCropChange}
+            onZoomChange={onZoomChange}
             onCropComplete={setCroppedAreaPixels}
           />
 
           <ProfileImageEditorControls
             zoom={zoom}
             disabled={processing}
-            onZoomChange={setZoom}
-            onRotateLeft={() => setRotation((value) => value - 90)}
-            onRotateRight={() => setRotation((value) => value + 90)}
+            onZoomChange={onZoomChange}
+            onRotateLeft={() => {
+              setUserAdjusted(true);
+              setRotation((value) => value - 90);
+            }}
+            onRotateRight={() => {
+              setUserAdjusted(true);
+              setRotation((value) => value + 90);
+            }}
             onReset={handleReset}
-            onCenter={() => setCrop({ x: 0, y: 0 })}
+            onCenter={() => {
+              setUserAdjusted(true);
+              setCrop({ x: 0, y: 0 });
+            }}
           />
+
+          {onChooseDifferentPhoto ? (
+            <div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={processing}
+                onClick={onChooseDifferentPhoto}
+              >
+                Choose different photo
+              </Button>
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5">
             <ProfileImagePreview className="size-14" label="Final circular preview">

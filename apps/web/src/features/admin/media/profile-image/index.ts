@@ -11,3 +11,4 @@ export {
   PROFILE_IMAGE_MAX_BYTES,
   PROFILE_IMAGE_ACCEPT,
 } from './profile-image-constants';
+export { loadProfileImageEditorSource } from './profile-image-source-loader';

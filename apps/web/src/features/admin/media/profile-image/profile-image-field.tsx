@@ -25,6 +25,7 @@ import {
   normalizeProfileImageMime,
 } from './profile-image-constants';
 import { prepareProfileImageEditorSrc, revokeProfileImageEditorSrc } from './profile-image-crop-utils';
+import { loadProfileImageEditorSource } from './profile-image-source-loader';
 
 export type ProfileImageFieldValue = {
   readonly previewUrl: string | null;
@@ -49,6 +50,7 @@ export function ProfileImageField({
   renderAvatar,
   uploadLabel = 'Upload',
   changeLabel = 'Change Photo',
+  resolveImageUrl,
 }: {
   label: string;
   optional?: boolean;
@@ -58,6 +60,8 @@ export function ProfileImageField({
   renderAvatar: (previewUrl: string | null) => ReactNode;
   uploadLabel?: string;
   changeLabel?: string;
+  /** Resolves stored preview paths to fetchable URLs (e.g. authorized employee content routes). */
+  resolveImageUrl?: (previewUrl: string) => string | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,14 +71,16 @@ export function ProfileImageField({
   const [selecting, setSelecting] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const editorSessionRef = useRef<string | null>(null);
+  const editorSessionOwned = useRef(false);
 
   const displayUrl = value.removed ? null : value.previewUrl;
 
   const clearEditorSession = useCallback(() => {
-    if (editorSessionRef.current) {
+    if (editorSessionRef.current && editorSessionOwned.current) {
       revokeProfileImageEditorSrc(editorSessionRef.current);
-      editorSessionRef.current = null;
     }
+    editorSessionRef.current = null;
+    editorSessionOwned.current = false;
     setEditorSrc(null);
   }, []);
 
@@ -84,6 +90,20 @@ export function ProfileImageField({
     if (disabled || selecting) return;
     inputRef.current?.click();
   };
+
+  const applyEditorSource = useCallback(
+    (src: string, sourceMime: string, ownedBlob: boolean) => {
+      if (editorSessionRef.current && editorSessionOwned.current) {
+        revokeProfileImageEditorSrc(editorSessionRef.current);
+      }
+      editorSessionRef.current = src;
+      editorSessionOwned.current = ownedBlob;
+      setEditorSourceMime(sourceMime);
+      setEditorSrc(src);
+      setEditorOpen(true);
+    },
+    [],
+  );
 
   const onPickFile = async (file: File) => {
     setError(null);
@@ -98,17 +118,34 @@ export function ProfileImageField({
     }
     setSelecting(true);
     try {
-      clearEditorSession();
+      if (!editorOpen) clearEditorSession();
       const src = await prepareProfileImageEditorSrc(file);
-      editorSessionRef.current = src;
-      setEditorSourceMime(normalizedMime || file.type);
-      setEditorSrc(src);
-      setEditorOpen(true);
+      applyEditorSource(src, normalizedMime, true);
     } catch {
       setError('Could not open the image. Try another file.');
     } finally {
       setSelecting(false);
     }
+  };
+
+  const openExistingInEditor = async () => {
+    if (!displayUrl || disabled || selecting) return;
+    setError(null);
+    setSelecting(true);
+    try {
+      clearEditorSession();
+      const loaded = await loadProfileImageEditorSource(displayUrl, resolveImageUrl);
+      applyEditorSource(loaded.src, loaded.sourceMime, loaded.ownedBlob);
+    } catch {
+      setError('Could not load the current photo for editing.');
+    } finally {
+      setSelecting(false);
+    }
+  };
+
+  const onChangePhotoClick = () => {
+    if (displayUrl) void openExistingInEditor();
+    else openFilePicker();
   };
 
   const onEditorSaved = (file: File, previewUrl: string) => {
@@ -166,7 +203,7 @@ export function ProfileImageField({
                 variant="outline"
                 size="sm"
                 disabled={disabled || selecting}
-                onClick={openFilePicker}
+                onClick={onChangePhotoClick}
               >
                 {selecting ? (
                   <>
@@ -208,6 +245,7 @@ export function ProfileImageField({
         onOpenChange={setEditorOpen}
         onSaved={onEditorSaved}
         onDiscard={onEditorDiscard}
+        onChooseDifferentPhoto={openFilePicker}
       />
 
       <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
