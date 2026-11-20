@@ -27,6 +27,8 @@ import {
   dashboardKpiModuleFromKey,
 } from './dashboard-kpi-strip';
 
+import { API_ERROR_CODES } from '@techwin/contracts';
+import { isApiError } from '@/shared/api/api-error';
 import { cn } from '@/shared/lib/utils';
 
 export function DashboardWidgetCard({
@@ -44,6 +46,7 @@ export function DashboardWidgetCard({
   const [data, setData] = useState<DashboardWidgetData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [denied, setDenied] = useState(false);
 
   const span: DashboardGridSpan =
     widget.gridColumnSpan ?? (widget.size === 'full' ? 4 : 2);
@@ -63,6 +66,7 @@ export function DashboardWidgetCard({
     // payload, so another range's numbers are never shown for the new range.
     setLoading(true);
     setError(null);
+    setDenied(false);
 
     void getDashboardWidget(widget.key, range, controller.signal)
       .then((payload) => {
@@ -70,6 +74,15 @@ export function DashboardWidgetCard({
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
+
+        if (
+          isApiError(err) &&
+          err.status === 403 &&
+          err.code === API_ERROR_CODES.FORBIDDEN
+        ) {
+          setDenied(true);
+          return;
+        }
 
         setError(
           err instanceof Error ? err.message : 'Failed to load widget',
@@ -84,7 +97,7 @@ export function DashboardWidgetCard({
     return () => controller.abort();
   }, [widget.key, widget.kind, range, refreshToken]);
 
-  if (widget.kind === 'section') {
+  if (widget.kind === 'section' || denied) {
     return null;
   }
 

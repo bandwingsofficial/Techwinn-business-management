@@ -1,4 +1,5 @@
 import { EMPLOYEE_ROUTES } from '#contracts';
+import { sortCurrentDailyTaskAssigneeRows } from '../../../../../../../../lib/persistence/daily-task-current-assignees.js';
 import type { Prisma } from '../../../../../../../../generated/prisma/client.js';
 import type { DailyTaskListItem } from '../../../../domain/read-models/daily-task.models.js';
 
@@ -70,7 +71,7 @@ export function toDailyTaskListItem(row: DailyTaskListRow, clientToday?: string)
     referenceUrl: row.referenceUrl,
     completedAt: row.completedAt?.toISOString() ?? null,
     isOverdue,
-    assignees: row.assignees.map((assignee) => ({
+    assignees: sortCurrentDailyTaskAssigneeRows(row.assignees).map((assignee) => ({
       id: assignee.id,
       employeeId: assignee.employeeId ?? '',
       displayName:

@@ -2,15 +2,15 @@ import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   API_ERROR_CODES,
   canAccessDashboardPage,
+  canAccessDashboardWidgetModuleData,
   dashboardWidgetByKey,
   hasDashboardPermission,
   isShippedDashboardWidget,
-  hasLeaveManagementPermission,
-  LEAVE_MANAGEMENT_VIEW,
   canViewOrganizationProjectTasks,
-  canViewOwnDailyTasks,
   type DashboardDataScopeKind,
+  type DashboardWidgetDefinition,
   type PermissionKey,
+  permittedDashboardWidgets,
 } from '#contracts';
 import { ApiException } from '../../../../common/filters/api-error.response.js';
 import type { OrgAccessActor } from '../../../org-access/application/shared/org-access-actor.js';
@@ -65,62 +65,38 @@ export class DashboardAuthorizationService {
         'This dashboard widget is not permitted.',
       );
     }
-    await this.assertModuleDataAccess(actor, effective, widgetKey);
+    if (!(await this.canAccessWidgetData(actor, widgetKey, effective))) {
+      throw this.forbidden();
+    }
     return effective;
   }
 
-  private async assertModuleDataAccess(
+  async canAccessWidgetData(
+    actor: OrgAccessActor,
+    widgetKey: string,
+    effective: ReadonlySet<PermissionKey>,
+  ): Promise<boolean> {
+    if (!isShippedDashboardWidget(widgetKey)) return false;
+    const widget = dashboardWidgetByKey(widgetKey);
+    if (!widget || !hasDashboardPermission(effective, widget.permissionKey)) return false;
+    if (!canAccessDashboardWidgetModuleData(effective, widgetKey)) return false;
+    if (widgetKey.startsWith('overview.') || widgetKey.startsWith('reports.')) {
+      return true;
+    }
+    return this.scopeForWidget(actor, widgetKey, effective) !== null;
+  }
+
+  async accessibleDashboardWidgets(
     actor: OrgAccessActor,
     effective: ReadonlySet<PermissionKey>,
-    widgetKey: string,
-  ): Promise<void> {
-    if (widgetKey.startsWith('tasks.')) {
-      const scope = this.scopeForWidget(actor, widgetKey, effective);
-      if (!scope) throw this.forbidden();
-      if (scope === 'assigned' && !canViewOwnDailyTasks(effective)) throw this.forbidden();
-      return;
-    }
-    if (widgetKey.startsWith('crm.')) {
-      if (!effective.has('crm.leads.view') && !effective.has('leads.read')) {
-        throw this.forbidden();
+  ): Promise<readonly DashboardWidgetDefinition[]> {
+    const accessible: DashboardWidgetDefinition[] = [];
+    for (const widget of permittedDashboardWidgets(effective)) {
+      if (await this.canAccessWidgetData(actor, widget.key, effective)) {
+        accessible.push(widget);
       }
-      if (!resolveCrmDashboardScope(effective)) throw this.forbidden();
-      return;
     }
-    if (widgetKey.startsWith('projects.')) {
-      if (!effective.has('projects.read')) throw this.forbidden();
-      if (!resolveProjectDashboardScope(effective)) throw this.forbidden();
-      return;
-    }
-    if (widgetKey.startsWith('employees.')) {
-      if (!effective.has('employees.view') && !effective.has('employees.read')) {
-        throw this.forbidden();
-      }
-      return;
-    }
-    if (widgetKey.startsWith('attendance.')) {
-      if (
-        !effective.has('attendance.records.view') &&
-        !effective.has('attendance.punch.view') &&
-        !effective.has('attendance.view_summary')
-      ) {
-        throw this.forbidden();
-      }
-      if (!resolveAttendanceDashboardScope(effective)) throw this.forbidden();
-      return;
-    }
-    if (widgetKey.startsWith('leave.')) {
-      const own =
-        effective.has('leave.requests.read_own') ||
-        effective.has('leave.balances.read_own');
-      const admin = hasLeaveManagementPermission(effective, LEAVE_MANAGEMENT_VIEW);
-      if (!own && !admin) throw this.forbidden();
-      if (!resolveLeaveDashboardScope(effective)) throw this.forbidden();
-      return;
-    }
-    if (widgetKey.startsWith('reports.')) {
-      return;
-    }
+    return accessible;
   }
 
   /**

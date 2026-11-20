@@ -2,6 +2,7 @@
 
 import { employeeListQuerySchema } from '../schemas/employee.schema';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AdminBreadcrumb } from '@/features/admin/components/admin-page-header';
 import { useAdminToast } from '@/features/admin/components/toast';
 import { CrmErrorAlert } from '@/features/admin/crm/components/crm-feedback';
@@ -78,6 +79,14 @@ export function EmployeesPage() {
   const { changeEmployeeStatus, pending: statusPending } = useChangeEmployeeStatus();
   const { deleteEmployee, pending: deletePending } = useDeleteEmployee();
   const pending = statusPending || deletePending;
+  const urlSearchParams = useSearchParams();
+
+  useEffect(() => {
+    const employeeId = urlSearchParams.get('employeeId');
+    if (!employeeId) return;
+    setDetailId(employeeId);
+    setDetailOpen(true);
+  }, [urlSearchParams]);
 
   useEffect(() => {
     const next = searchDraft.trim();

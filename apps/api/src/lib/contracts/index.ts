@@ -60,3 +60,5 @@ export * from './whatsapp.js';
 export * from './attendance.js';
 export * from './org-calendar.js';
 export * from './leave.js';
+export * from './global-search.js';
+export * from './global-search-visibility.js';

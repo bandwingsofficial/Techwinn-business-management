@@ -28,6 +28,11 @@ import {
   DASHBOARD_TASKS_TEAM,
   hasDashboardPermission,
 } from './dashboard-permission-keys';
+import {
+  hasLeaveManagementPermission,
+  LEAVE_MANAGEMENT_VIEW,
+} from './leave-management-permission-keys';
+import { canViewOwnDailyTasks } from './task-visibility';
 
 export type DashboardWidgetDefinition = DashboardWidgetDescriptor & {
   readonly permissionKey: PermissionKey;
@@ -471,6 +476,56 @@ export function resolveLeaveDashboardScope(
 
 export function dashboardWidgetByKey(key: string): DashboardWidgetDefinition | undefined {
   return DASHBOARD_WIDGET_REGISTRY.find((w) => w.key === key);
+}
+
+/**
+ * Whether effective permissions include the underlying module access required to load
+ * widget data (dashboard widget keys alone are insufficient).
+ */
+export function canAccessDashboardWidgetModuleData(
+  effective: ReadonlySet<PermissionKey>,
+  widgetKey: string,
+): boolean {
+  if (widgetKey.startsWith('overview.') || widgetKey.startsWith('reports.')) {
+    return true;
+  }
+  if (widgetKey.startsWith('tasks.')) {
+    const scope = resolveTaskDashboardScope(effective);
+    if (!scope) return false;
+    if (scope === 'assigned' && !canViewOwnDailyTasks(effective)) return false;
+    return true;
+  }
+  if (widgetKey.startsWith('crm.')) {
+    if (!effective.has('crm.leads.view') && !effective.has('leads.read')) {
+      return false;
+    }
+    return resolveCrmDashboardScope(effective) !== null;
+  }
+  if (widgetKey.startsWith('projects.')) {
+    if (!effective.has('projects.read')) return false;
+    return resolveProjectDashboardScope(effective) !== null;
+  }
+  if (widgetKey.startsWith('employees.')) {
+    return effective.has('employees.view') || effective.has('employees.read');
+  }
+  if (widgetKey.startsWith('attendance.')) {
+    if (
+      !effective.has('attendance.records.view') &&
+      !effective.has('attendance.punch.view') &&
+      !effective.has('attendance.view_summary')
+    ) {
+      return false;
+    }
+    return resolveAttendanceDashboardScope(effective) !== null;
+  }
+  if (widgetKey.startsWith('leave.')) {
+    const own =
+      effective.has('leave.requests.read_own') || effective.has('leave.balances.read_own');
+    const admin = hasLeaveManagementPermission(effective, LEAVE_MANAGEMENT_VIEW);
+    if (!own && !admin) return false;
+    return resolveLeaveDashboardScope(effective) !== null;
+  }
+  return false;
 }
 
 export function permittedDashboardWidgets(

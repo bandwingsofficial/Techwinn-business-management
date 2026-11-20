@@ -33,3 +33,4 @@ export * from './whatsapp.schemas.js';
 export * from './attendance.schemas.js';
 export * from './org-calendar.schemas.js';
 export * from './leave.schemas.js';
+export * from './global-search.schemas.js';

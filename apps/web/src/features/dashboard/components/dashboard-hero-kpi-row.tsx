@@ -8,6 +8,8 @@ import {
   DASHBOARD_GRID_CARD_CLASS,
   DASHBOARD_HERO_KPI_SLOTS,
 } from '../constants/dashboard-theme';
+import { API_ERROR_CODES } from '@techwin/contracts';
+import { isApiError } from '@/shared/api/api-error';
 import { describeKpiComparison } from '../utils/kpi-trend';
 import { DashboardKpiSparkline } from './dashboard-kpi-sparkline';
 
@@ -74,7 +76,7 @@ export function DashboardHeroKpiRow({
     setLoading(true);
 
     void Promise.all(
-      slotsToLoad.map(async (slot): Promise<HeroSlotState> => {
+      slotsToLoad.map(async (slot): Promise<HeroSlotState | null> => {
         const slotIndex = DASHBOARD_HERO_KPI_SLOTS.findIndex(
           (entry) => entry.widgetKey === slot.widgetKey,
         );
@@ -85,14 +87,21 @@ export function DashboardHeroKpiRow({
             controller.signal,
           );
           return { metric: pickPrimaryMetric(payload.kpis), slotIndex };
-        } catch {
+        } catch (err: unknown) {
+          if (
+            isApiError(err) &&
+            err.status === 403 &&
+            err.code === API_ERROR_CODES.FORBIDDEN
+          ) {
+            return null;
+          }
           return { metric: null, slotIndex };
         }
       }),
     )
       .then((results) => {
         if (controller.signal.aborted) return;
-        setItems(results);
+        setItems(results.filter((entry): entry is HeroSlotState => entry !== null));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);

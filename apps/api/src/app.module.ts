@@ -16,6 +16,7 @@ import { AttendanceModule } from './modules/attendance/index.js';
 import { OrganizationCalendarModule } from './modules/organization-calendar/index.js';
 import { LeaveModule } from './modules/leave/index.js';
 import { DashboardModule } from './modules/dashboard/index.js';
+import { GlobalSearchModule } from './modules/global-search/index.js';
 import { TenantContextModule } from './platform/tenant-context/tenant-context.module.js';
 
 @Module({
@@ -36,6 +37,7 @@ import { TenantContextModule } from './platform/tenant-context/tenant-context.mo
     OrganizationCalendarModule,
     LeaveModule,
     DashboardModule,
+    GlobalSearchModule,
   ],
 })
 export class AppModule implements NestModule {

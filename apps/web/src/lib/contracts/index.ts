@@ -58,6 +58,8 @@ export * from './leave-management-permission-keys';
 export * from './users-permission-keys';
 export * from './dashboard-permission-keys';
 export * from './dashboard';
+export * from './global-search';
+export * from './global-search-visibility';
 export * from './dashboard-widgets';
 export * from './dashboard-module-support';
 export * from './org-calendar';

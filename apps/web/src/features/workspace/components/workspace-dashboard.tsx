@@ -53,7 +53,7 @@ const RANGE_OPTIONS: {
 
 export function WorkspaceDashboard() {
   const { admin } = useAuthenticatedAdmin();
-  const { roles, has } = usePermissions();
+  const { roles, has, permissionsReady } = usePermissions();
 
   const roleLabel = formatMembershipRoleDetails(admin, roles);
 
@@ -118,8 +118,12 @@ export function WorkspaceDashboard() {
   const refreshController = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!canViewDashboard) {
-      setLoading(false);
+    if (!canViewDashboard || !permissionsReady) {
+      if (!permissionsReady && canViewDashboard) {
+        setLoading(true);
+      } else if (!canViewDashboard) {
+        setLoading(false);
+      }
       return;
     }
     // Custom range without both dates: no request; the render branch shows the prompt.
@@ -132,7 +136,7 @@ export function WorkspaceDashboard() {
     void load(controller.signal);
 
     return () => controller.abort();
-  }, [canViewDashboard, customRangeIncomplete, load]);
+  }, [canViewDashboard, permissionsReady, customRangeIncomplete, load]);
 
   useEffect(() => () => refreshController.current?.abort(), []);
 

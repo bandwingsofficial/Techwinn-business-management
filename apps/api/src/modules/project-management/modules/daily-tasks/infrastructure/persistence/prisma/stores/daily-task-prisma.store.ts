@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { EMPLOYEE_ROUTES } from '#contracts';
+import { CURRENT_DAILY_TASK_ASSIGNEE_WHERE } from '../../../../../../../../lib/persistence/daily-task-current-assignees.js';
 import {
   dailyTaskAssignedToEmployeeIdWhere,
   dailyTaskAssignedToEmployeeIdsWhere,
@@ -217,6 +218,8 @@ export class DailyTaskPrismaStore {
       project: { select: { id: true, name: true } },
       createdBy: { select: { displayName: true } },
       assignees: {
+        where: CURRENT_DAILY_TASK_ASSIGNEE_WHERE,
+        orderBy: { createdAt: 'asc' },
         include: {
           employee: {
             select: {

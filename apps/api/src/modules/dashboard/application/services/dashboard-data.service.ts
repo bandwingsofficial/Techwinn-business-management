@@ -10,6 +10,10 @@ import {
 } from '../../../../lib/persistence/employee-platform-admin-link.js';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 import type { OrgAccessActor } from '../../../org-access/application/shared/org-access-actor.js';
+import {
+  CURRENT_DAILY_TASK_ASSIGNEE_WHERE,
+  formatCurrentDailyTaskAssigneeNames,
+} from '../../../../lib/persistence/daily-task-current-assignees.js';
 import type { Prisma } from '../../../../generated/prisma/client.js';
 import {
   dayStartInstant,
@@ -204,8 +208,14 @@ export class DashboardDataService {
           updatedAt: true,
           workflowStage: { select: { name: true } },
           assignees: {
-            take: 1,
-            select: { historicalDisplayName: true, employee: { select: { displayName: true } } },
+            where: CURRENT_DAILY_TASK_ASSIGNEE_WHERE,
+            orderBy: { createdAt: 'asc' },
+            select: {
+              employeeId: true,
+              historicalDisplayName: true,
+              createdAt: true,
+              employee: { select: { displayName: true } },
+            },
           },
           project: { select: { name: true } },
         },
@@ -334,10 +344,7 @@ export class DashboardDataService {
         ],
         rows: recent.map((row) => ({
           title: row.title,
-          assignee:
-            row.assignees[0]?.employee?.displayName ??
-            row.assignees[0]?.historicalDisplayName ??
-            '—',
+          assignee: formatCurrentDailyTaskAssigneeNames(row.assignees),
           project: row.project?.name ?? '—',
           priority: row.priority,
           dueDate: row.dueDate ? row.dueDate.toISOString().slice(0, 10) : '—',

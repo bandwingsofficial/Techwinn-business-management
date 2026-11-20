@@ -11,6 +11,7 @@
     "typecheck": "next typegen && tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test:profile-image-constants": "node --experimental-strip-types --test scripts/profile-image-constants.test.mjs",
+    "test:global-search-highlight": "node --experimental-strip-types --test scripts/global-search-highlight.test.mjs",
     "test:dashboard-kpi-trend": "node --experimental-strip-types --test scripts/dashboard-kpi-trend.test.mjs",
     "test:daily-tasks-manage-workflow-permission": "node --experimental-strip-types --test scripts/daily-tasks-manage-workflow-permission.test.mjs",
     "test:api-url": "node --experimental-strip-types --test scripts/resolve-api-base-url.test.mjs",

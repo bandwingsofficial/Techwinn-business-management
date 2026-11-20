@@ -11,7 +11,6 @@ import {
   DASHBOARD_OVERVIEW_SUMMARY,
   dashboardWidgetGridSpan,
   hasDashboardPermission,
-  permittedDashboardWidgets,
 } from '#contracts';
 import type { OrgAccessActor } from '../../org-access/application/shared/org-access-actor.js';
 import { DashboardAuthorizationService } from './services/dashboard-authorization.service.js';
@@ -51,7 +50,8 @@ export class GetDashboardMeHandler {
   ): Promise<DashboardMeResponse> {
     const effective = await this.authz.assertDashboardAccess(actor);
     const layout = await this.layout.getLayout(actor);
-    const permitted = permittedDashboardWidgets(effective).map((widget) => {
+    const allowed = await this.authz.accessibleDashboardWidgets(actor, effective);
+    const permitted = allowed.map((widget) => {
       const scope = this.authz.scopeForWidget(actor, widget.key, effective) ?? undefined;
       return {
         key: widget.key,
@@ -120,7 +120,9 @@ export class PatchDashboardConfigurationHandler {
 
   async execute(actor: OrgAccessActor, patch: DashboardConfigurationPatch) {
     const effective = await this.authz.assertDashboardAccess(actor);
-    const permittedKeys = new Set(permittedDashboardWidgets(effective).map((w) => w.key));
+    const permittedKeys = new Set(
+      (await this.authz.accessibleDashboardWidgets(actor, effective)).map((w) => w.key),
+    );
     const widgetOrder = patch.widgetOrder?.filter((key) => permittedKeys.has(key));
     const hiddenWidgets = patch.hiddenWidgets?.filter((key) => permittedKeys.has(key));
     return this.layout.patchLayout(actor, { widgetOrder, hiddenWidgets });

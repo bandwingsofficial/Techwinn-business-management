@@ -10,6 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,6 +27,7 @@ import { usePermissions } from '@/features/auth/components/permissions-provider'
 import { cn } from '@/shared/lib/utils';
 import { useAdminSession } from '../hooks/use-admin-session';
 import type { PlatformAdminProfile } from '../types/auth.types';
+import { GlobalSearchPalette } from '@/features/search/components/global-search-palette';
 
 function normalizeLabel(value: string): string {
   return value.replaceAll('_', ' ').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -76,6 +78,24 @@ export function AdminAppHeader({
 }) {
   const { signOut, isSigningOut } = useAdminSession();
   const { sessionEmployee } = usePermissions();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        openSearch();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [openSearch]);
+
+  useEffect(() => {
+    setSearchOpen(false);
+  }, [admin.id]);
   const headerPhotoUrl = sessionEmployee?.profileImageUrl ?? null;
   const roleLabel = membershipRoleLabel?.trim() ?? '';
   const showRoleSubtitle =
@@ -92,25 +112,27 @@ export function AdminAppHeader({
       </div>
 
       <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-2 md:flex">
-        <form
-          role="search"
-          className="w-full max-w-md min-w-0"
-          onSubmit={(event) => event.preventDefault()}
+        <button
+          type="button"
+          className="w-full max-w-md min-w-0 text-left"
+          onClick={openSearch}
+          aria-label="Open global search (Ctrl+K)"
         >
           <InputGroup leading={<Search aria-hidden="true" />}>
             <Input
+              readOnly
               type="search"
               name="global-search"
               placeholder="Search for anything..."
               autoComplete="off"
               className={cn(
-                'border-input bg-background h-9 rounded-full text-sm shadow-none',
+                'border-input bg-background h-9 cursor-pointer rounded-full text-sm shadow-none',
                 inputGroupPaddingClass({ leading: true }),
               )}
               aria-label="Search"
             />
           </InputGroup>
-        </form>
+        </button>
         <Button
           type="button"
           aria-label="Quick action"
@@ -121,6 +143,16 @@ export function AdminAppHeader({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="md:hidden"
+          aria-label="Open search"
+          onClick={openSearch}
+        >
+          <Search className="size-[18px]" aria-hidden="true" />
+        </Button>
         <Button type="button" variant="ghost" size="icon-sm" aria-label="Help">
           <CircleHelp className="size-[18px]" aria-hidden="true" />
         </Button>
@@ -176,6 +208,7 @@ export function AdminAppHeader({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <GlobalSearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 }
