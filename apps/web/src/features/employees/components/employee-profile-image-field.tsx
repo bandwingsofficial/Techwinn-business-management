@@ -1,7 +1,10 @@
 'use client';
 
 import {
-  ImageUploadField,
+  ProfileImageField,
+  type ProfileImageFieldValue,
+} from '@/features/admin/media/profile-image/profile-image-field';
+import {
   revokeDeferredImagePreview,
   type DeferredImageUploadValue,
 } from '@/features/admin/media/components/image-upload-field';
@@ -29,6 +32,16 @@ export function employeeProfileImageToDeferred(value: EmployeeProfileImageFormVa
   };
 }
 
+export function employeeProfileImageToFieldValue(
+  value: EmployeeProfileImageFormValue,
+): ProfileImageFieldValue {
+  return {
+    previewUrl: employeeProfileImageDisplayUrl(value),
+    pendingFile: value.pendingFile,
+    removed: value.removeOnSave,
+  };
+}
+
 export function EmployeeProfileImageField({
   displayName,
   value,
@@ -41,22 +54,17 @@ export function EmployeeProfileImageField({
   disabled?: boolean;
 }) {
   return (
-    <ImageUploadField
+    <ProfileImageField
       label="Profile image"
       optional
-      displayName={displayName}
       disabled={disabled}
-      value={employeeProfileImageToDeferred(value)}
+      value={employeeProfileImageToFieldValue(value)}
+      uploadLabel="Upload"
+      changeLabel="Change Photo"
+      renderAvatar={(previewUrl) => (
+        <EmployeeAvatar displayName={displayName} profileImageUrl={previewUrl} lazyLoad={false} />
+      )}
       onChange={(next) => {
-        if (next.pendingFile && next.previewUrl?.startsWith('blob:')) {
-          onChange({
-            savedPreviewUrl: value.savedPreviewUrl,
-            localPreviewUrl: next.previewUrl,
-            pendingFile: next.pendingFile,
-            removeOnSave: false,
-          });
-          return;
-        }
         if (next.removed) {
           revokeDeferredImagePreview(value.localPreviewUrl);
           onChange({
@@ -65,11 +73,18 @@ export function EmployeeProfileImageField({
             pendingFile: null,
             removeOnSave: true,
           });
+          return;
+        }
+        if (next.pendingFile && next.previewUrl?.startsWith('blob:')) {
+          revokeDeferredImagePreview(value.localPreviewUrl);
+          onChange({
+            savedPreviewUrl: value.savedPreviewUrl,
+            localPreviewUrl: next.previewUrl,
+            pendingFile: next.pendingFile,
+            removeOnSave: false,
+          });
         }
       }}
-      renderPreview={(previewUrl, name) => (
-        <EmployeeAvatar displayName={name} profileImageUrl={previewUrl} lazyLoad={false} />
-      )}
     />
   );
 }

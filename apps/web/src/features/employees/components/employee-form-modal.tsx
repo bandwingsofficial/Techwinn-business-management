@@ -465,6 +465,7 @@ export function EmployeeFormDialog({
 
               {(!isCreate || showProfilePhoto) ? (
                 <EmployeeProfileImageField
+                  key={editingId ?? 'create'}
                   displayName={`${form.firstName} ${form.lastName}`.trim() || 'Employee'}
                   disabled={pending}
                   value={form.profileImage}
